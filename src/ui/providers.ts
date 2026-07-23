@@ -1,9 +1,8 @@
 import {
   clampPct,
+  formatCountdown,
   formatPct,
-  formatResetLine,
-  formatResetsIn,
-  formatTokenMeta,
+  formatSubline,
   isOver,
   levelClass,
 } from "./format";
@@ -16,23 +15,22 @@ export function mountProviders(root: HTMLElement): {
 
   function render(): void {
     if (snaps.length === 0) {
-      root.innerHTML = `<div class="empty-state">No provider data yet.<br/>Tap ↻ after login / tokscale setup.</div>`;
+      root.innerHTML = `<div class="empty-state">Waiting for usage…</div>`;
       return;
     }
-
-    root.innerHTML = `<div class="provider-list">${snaps.map(cardHtml).join("")}</div>`;
+    root.innerHTML = `<div class="provider-list">${snaps.map(rowHtml).join("")}</div>`;
   }
 
   setInterval(() => {
     root.querySelectorAll<HTMLElement>("[data-resets-at]").forEach((el) => {
-      const iso = el.dataset.resetsAt || null;
       const idle = el.dataset.idle === "1";
-      const hasUsage = el.dataset.hasUsage === "1";
-      el.textContent = formatResetLine({
-        resetsAt: iso,
+      const over = el.dataset.over === "1";
+      el.textContent = formatSubline({
+        resetsAt: el.dataset.resetsAt || null,
         idle,
-        hasUsage,
+        over,
       });
+      el.classList.toggle("urgent", over || (!idle && formatCountdown(el.dataset.resetsAt) === "soon"));
     });
   }, 15_000);
 
@@ -44,86 +42,56 @@ export function mountProviders(root: HTMLElement): {
   };
 }
 
-function cardHtml(s: ProviderSnapshot): string {
-  const hasUsage = s.windows.some(
-    (w) => (w.used_percent ?? 0) > 0 || w.used > 0,
-  );
+/** Pick the single bar that matters: highest pressure window. */
+function primaryWindow(s: ProviderSnapshot): UsageWindow | null {
+  if (!s.windows.length) return null;
+  return s.windows.reduce((best, w) => {
+    const bp = best.used_percent ?? -1;
+    const wp = w.used_percent ?? -1;
+    return wp >= bp ? w : best;
+  });
+}
+
+function rowHtml(s: ProviderSnapshot): string {
+  const primary = primaryWindow(s);
+  const hasUsage =
+    s.windows.some((w) => (w.used_percent ?? 0) > 0 || w.used > 0) ||
+    (s.primary_used_percent ?? 0) > 0;
+
   const idle =
     s.message === "idle" ||
-    (s.status === "degraded" && !hasUsage) ||
-    (s.status === "unavailable" && s.windows.length === 0);
+    (!hasUsage && (s.status === "degraded" || s.status === "unavailable"));
 
   const over =
-    isOver(s.primary_used_percent, s.message) ||
-    s.windows.some((w) => isOver(w.used_percent, s.message, w.used, w.limit));
+    !idle &&
+    (isOver(s.primary_used_percent, s.message) ||
+      s.windows.some((w) => isOver(w.used_percent, s.message, w.used, w.limit)));
 
-  const pct = clampPct(s.primary_used_percent);
-  const lvl = levelClass(pct, over);
-  const resetPrimary =
+  const pct = idle ? 0 : clampPct(primary?.used_percent ?? s.primary_used_percent);
+  const lvl = levelClass(pct, over, idle);
+  const width = idle ? 0 : (pct ?? 0);
+
+  const resetsAt =
     s.primary_resets_at ??
+    primary?.resets_at ??
     s.windows.find((w) => w.resets_at)?.resets_at ??
     null;
 
-  const windows = s.windows.length
-    ? s.windows.map((w) => windowHtml(w, s.message)).join("")
-    : s.status === "unavailable"
-      ? `<div class="provider-idle">${escapeHtml(s.message ?? "unavailable")}</div>`
-      : "";
-
-  const resetLine = formatResetLine({
-    resetsAt: resetPrimary,
-    idle: idle && !hasUsage,
-    hasUsage,
-  });
+  const sub = formatSubline({ resetsAt, idle, over });
 
   return `
-    <div class="provider-card" data-provider="${s.provider_id}">
-      <div class="provider-head">
-        <div class="provider-name-row">
-          <span class="provider-name">${escapeHtml(s.display_name)}</span>
-          ${sourceChip(s)}
-          ${over ? `<span class="badge-over">over</span>` : ""}
-        </div>
-        <div class="provider-pct ${lvl}">${formatPct(pct, over)}</div>
+    <div class="provider-row" data-provider="${s.provider_id}">
+      <div class="provider-top">
+        <span class="provider-name">${escapeHtml(s.display_name)}</span>
+        <span class="provider-pct ${lvl}">${formatPct(pct, over, idle)}</span>
       </div>
-      <div class="provider-reset"
-           data-resets-at="${escapeAttr(resetPrimary ?? "")}"
-           data-idle="${idle && !hasUsage ? "1" : "0"}"
-           data-has-usage="${hasUsage ? "1" : "0"}">${escapeHtml(resetLine)}</div>
-      ${windows}
-    </div>
-  `;
-}
-
-function sourceChip(s: ProviderSnapshot): string {
-  const kind = s.source === "tokscale" ? "tokscale" : "local";
-  const plan =
-    s.source === "tokscale" && s.message && !/over|idle/i.test(s.message)
-      ? s.message
-      : null;
-  const title = plan ? `${kind} · ${plan}` : kind;
-  return `<span class="source-chip source-${kind}" title="${escapeAttr(title)}">${escapeHtml(kind)}${plan ? ` · ${escapeHtml(plan)}` : ""}</span>`;
-}
-
-function windowHtml(w: UsageWindow, cardMessage: string | null): string {
-  const over = isOver(w.used_percent, cardMessage, w.used, w.limit);
-  const pct = clampPct(w.used_percent);
-  const lvl = levelClass(pct, over);
-  const width = pct == null ? 0 : pct;
-  let label = w.label ?? w.kind;
-  label = label.replace(/\s*·\s*over$/i, "");
-  let meta: string;
-  if (w.unit === "tokens" && w.limit != null) {
-    meta = formatTokenMeta(w.used, w.limit, over);
-  } else {
-    meta = formatPct(pct, over);
-  }
-  const resetHint = w.resets_at ? formatResetsIn(w.resets_at) : "";
-  return `
-    <div class="window-row">
-      <div class="window-label">${escapeHtml(label)}</div>
-      <div class="bar"><div class="bar-fill ${lvl}" style="width:${width}%"></div></div>
-      <div class="window-meta" title="${escapeAttr(resetHint)}">${escapeHtml(meta)}</div>
+      <div class="track" aria-hidden="true">
+        <div class="track-fill ${lvl}" style="width:${width}%"></div>
+      </div>
+      <div class="provider-sub${over ? " urgent" : ""}"
+           data-resets-at="${escapeAttr(resetsAt ?? "")}"
+           data-idle="${idle ? "1" : "0"}"
+           data-over="${over ? "1" : "0"}">${escapeHtml(sub)}</div>
     </div>
   `;
 }

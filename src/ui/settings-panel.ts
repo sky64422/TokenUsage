@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import type { AppSettings, ProviderId, ThemeMode } from "./types";
 
 export function applyThemeToDocument(theme: ThemeMode): void {
@@ -71,7 +72,10 @@ export function mountSettingsPanel(
         <button type="button" class="btn-text" id="btn-diag">Copy diagnostics</button>
         <button type="button" class="btn-text btn-danger" id="btn-quit">Quit</button>
       </div>
-      <div class="settings-hint" style="margin-top:6px">Hotkey: ${settings.hotkey} · Primary: tokscale · Fallback: local JSONL</div>
+      <div class="settings-hint" style="margin-top:8px">Hotkey ${settings.hotkey} · Double-click title to check app updates</div>
+      <div class="settings-row" style="margin-top:4px">
+        <button type="button" class="btn-text" id="btn-update-app">Check for updates</button>
+      </div>
     </div>
   `;
 
@@ -139,6 +143,9 @@ export function mountSettingsPanel(
 
   root.querySelector("#btn-diag")?.addEventListener("click", handlers.onDiagnostics);
   root.querySelector("#btn-quit")?.addEventListener("click", handlers.onQuit);
+  root.querySelector("#btn-update-app")?.addEventListener("click", () => {
+    void invoke<boolean>("check_for_updates").catch(() => undefined);
+  });
 
   return {
     show() {
