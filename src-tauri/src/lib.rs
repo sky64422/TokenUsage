@@ -102,9 +102,9 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let WindowEvent::Resized(size) = event {
                 if let Some(state) = window.app_handle().try_state::<AppHandleState>() {
-                    let (mw, mh) = state.content_min();
+                    let (min_w, min_h) = state.content_min_logical();
                     let _ = window_ctl::clamp_physical_size_to_content_min(
-                        window, *size, mw as f64, mh as f64,
+                        window, *size, min_w, min_h,
                     );
                 }
             }
