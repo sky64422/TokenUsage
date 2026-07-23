@@ -8,8 +8,8 @@ export function renderHeader(
     <div class="header">
       <div class="title">Token Usage</div>
       <div class="header-actions">
-        <button class="icon-btn" id="btn-update" title="Check for updates" type="button" aria-label="Check for updates">⬆</button>
-        <button class="icon-btn" id="btn-refresh" title="Refresh usage" type="button" aria-label="Refresh usage">↻</button>
+        <button class="icon-btn" id="btn-update" title="App updates" type="button" aria-label="Check for app updates">⬆</button>
+        <button class="icon-btn" id="btn-refresh" title="Refresh quotas" type="button" aria-label="Refresh quotas">↻</button>
         <button class="icon-btn" id="btn-settings" title="Settings" type="button">⚙</button>
         <button class="icon-btn" id="btn-hide" title="Hide" type="button">–</button>
       </div>

@@ -16,10 +16,7 @@ pub fn fetch(limits: &PlanLimits) -> ProviderSnapshot {
     };
     let sessions = root.join("sessions");
     if !sessions.is_dir() {
-        return unavailable_snapshot(
-            ProviderId::Grok,
-            format!("Grok sessions not found at {}", sessions.display()),
-        );
+        return unavailable_snapshot(ProviderId::Grok, "Grok sessions not found");
     }
 
     let events = collect_events(&sessions);
@@ -29,7 +26,7 @@ pub fn fetch(limits: &PlanLimits) -> ProviderSnapshot {
         limits,
         Utc::now(),
         DataSource::Estimate,
-        Some(format!("Local estimate from {}", sessions.display())),
+        None,
     )
 }
 
