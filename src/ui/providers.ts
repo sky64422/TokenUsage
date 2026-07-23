@@ -2,6 +2,7 @@ import {
   clampPct,
   formatCountdown,
   formatPct,
+  formatResetClock,
   formatTokenPair,
   formatWindowReset,
   isOver,
@@ -31,7 +32,7 @@ export function mountProviders(root: HTMLElement): {
         over: el.dataset.over === "1",
       });
       const soon =
-        !el.dataset.idle &&
+        el.dataset.idle !== "1" &&
         formatCountdown(el.dataset.resetsAt || null) === "soon";
       el.classList.toggle("urgent", el.dataset.over === "1" || soon);
     });
@@ -61,9 +62,7 @@ function cardHtml(s: ProviderSnapshot): string {
         isOver(w.used_percent, s.message, w.used, w.limit),
       ));
 
-  const pct = idle
-    ? 0
-    : clampPct(s.primary_used_percent);
+  const pct = idle ? 0 : clampPct(s.primary_used_percent);
   const lvl = levelClass(pct, over, idle);
 
   const src = sourceLabel(s.source, s.message);
@@ -71,26 +70,33 @@ function cardHtml(s: ProviderSnapshot): string {
   if (src.detail) metaParts.push(src.detail);
   if (over) metaParts.push("over");
 
+  const metaHtml = metaParts
+    .map((p, i) =>
+      i === 0
+        ? escapeHtml(p)
+        : p === "over"
+          ? `<span class="dot">·</span><span class="over-tag">over</span>`
+          : `<span class="dot">·</span>${escapeHtml(p)}`,
+    )
+    .join("");
+
   const windows = s.windows.length
-    ? `<div class="windows">${s.windows.map((w) => windowBlock(w, s.message, idle)).join("")}</div>`
+    ? `<div class="windows windows-cols">${s.windows
+        .map((w) => windowCell(w, s.message, idle))
+        .join("")}</div>`
     : s.status === "unavailable"
-      ? `<div class="windows"><div class="window-reset">${escapeHtml(s.message ?? "Unavailable")}</div></div>`
+      ? `<div class="window-reset">${escapeHtml(s.message ?? "Unavailable")}</div>`
       : "";
 
+  // Compact head: name · meta on one line, big % right
   return `
     <div class="provider-card" data-provider="${s.provider_id}">
       <div class="provider-head">
         <div class="provider-head-left">
-          <div class="provider-name">${escapeHtml(s.display_name)}</div>
-          <div class="provider-meta">${metaParts
-            .map((p, i) =>
-              i === 0
-                ? escapeHtml(p)
-                : p === "over"
-                  ? `<span class="dot">·</span><span class="over-tag">over</span>`
-                  : `<span class="dot">·</span>${escapeHtml(p)}`,
-            )
-            .join("")}</div>
+          <div class="provider-title-line">
+            <span class="provider-name">${escapeHtml(s.display_name)}</span>
+            <span class="provider-meta">${metaHtml}</span>
+          </div>
         </div>
         <div class="provider-pct ${lvl}">${formatPct(pct, over, idle)}</div>
       </div>
@@ -99,7 +105,7 @@ function cardHtml(s: ProviderSnapshot): string {
   `;
 }
 
-function windowBlock(
+function windowCell(
   w: UsageWindow,
   cardMessage: string | null,
   cardIdle: boolean,
@@ -113,15 +119,14 @@ function windowBlock(
   const width = idle ? 0 : (pct ?? 0);
 
   let label = (w.label ?? w.kind).replace(/\s*·\s*over$/i, "");
-  // Human labels
-  if (label === "rolling_5h") label = "5-hour";
-  if (label === "weekly") label = "Weekly";
+  if (label === "rolling_5h") label = "5h";
+  if (label === "weekly") label = "Week";
+  if (label === "5-hour") label = "5h";
+  if (label === "Weekly") label = "Week";
 
   let values: string;
   if (w.unit === "tokens" && w.limit != null) {
     values = formatTokenPair(w.used, w.limit, over);
-  } else if (w.unit === "percent") {
-    values = formatPct(pct, over, idle);
   } else {
     values = formatPct(pct, over, idle);
   }
@@ -131,9 +136,11 @@ function windowBlock(
     idle,
     over,
   });
+  const clock = formatResetClock(w.resets_at);
+  const title = [values, clock || reset].filter(Boolean).join(" · ");
 
   return `
-    <div class="window-block">
+    <div class="window-cell" title="${escapeAttr(title)}">
       <div class="window-top">
         <span class="window-label">${escapeHtml(label)}</span>
         <span class="window-values${over ? " over" : ""}">${escapeHtml(values)}</span>
