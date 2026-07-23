@@ -19,8 +19,8 @@
   --radius: 18px;
   --radius-card: 14px;
   --blur: 36px;
-  --header-height: 42px;
-  --pad-x: 16px;
+  --header-height: 38px;
+  --pad-x: 14px;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Pretendard,
     "Segoe UI", system-ui, sans-serif;
 }

@@ -104,25 +104,23 @@ body {
 }
 
 .content {
-  padding: 2px var(--pad-x) 18px;
-  /* Prefer content-hug; scroll only if user shrunk below min (should be rare). */
+  padding: 2px var(--pad-x) 12px;
   overflow-y: auto;
   min-height: 0;
-  /* Do not force height:100% — that breaks content-hug min measurement. */
 }
 
-/* —— Provider cards (airy, full info) —— */
+/* —— Provider cards: compact height, full info, side-by-side windows —— */
 .provider-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .provider-card {
-  border-radius: var(--radius-card);
+  border-radius: 12px;
   background: var(--bg-section);
   border: 1px solid var(--border-soft);
-  padding: 14px 14px 12px;
+  padding: 10px 12px 9px;
   transition: background 0.15s ease;
 }
 
@@ -132,36 +130,42 @@ body {
 
 .provider-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 4px;
+  gap: 10px;
+  margin-bottom: 0;
 }
 
 .provider-head-left {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
   min-width: 0;
+  flex: 1;
+}
+
+.provider-title-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .provider-name {
   font-weight: 600;
-  font-size: 15px;
-  letter-spacing: -0.03em;
+  font-size: 13px;
+  letter-spacing: -0.02em;
   color: var(--text);
 }
 
 .provider-meta {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--text-tertiary);
   letter-spacing: -0.01em;
 }
 
 .provider-meta .dot {
-  margin: 0 5px;
-  opacity: 0.5;
+  margin: 0 4px;
+  opacity: 0.45;
 }
 
 .provider-meta .over-tag {
@@ -172,11 +176,10 @@ body {
 .provider-pct {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  font-size: 20px;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  line-height: 1;
   flex-shrink: 0;
-  padding-top: 1px;
 }
 
 .provider-pct.level-ok {
@@ -193,55 +196,66 @@ body {
 .provider-pct.level-na {
   color: var(--text-tertiary);
   font-weight: 500;
-  font-size: 18px;
+  font-size: 14px;
 }
 
-/* Windows block */
+/* Two columns for 5h | Week — halves card height vs stacked */
 .windows {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 14px;
-  padding-top: 12px;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid var(--border-soft);
 }
 
-.window-block {
+.windows.windows-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+
+.window-cell {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  min-width: 0;
 }
 
 .window-top {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: 6px;
 }
 
 .window-label {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 10px;
+  font-weight: 600;
   color: var(--text-secondary);
-  letter-spacing: -0.01em;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .window-values {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--text-tertiary);
   text-align: right;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
 }
 
 .window-values.over {
   color: var(--critical);
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .track {
-  height: 5px;
+  height: 4px;
   border-radius: 99px;
   background: var(--track);
   overflow: hidden;
@@ -271,11 +285,27 @@ body {
 }
 
 .window-reset {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--text-tertiary);
   letter-spacing: -0.01em;
-  min-height: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.window-reset.urgent {
+  color: var(--critical);
+  opacity: 0.9;
+}
+
+/* Narrow window: stack windows again for readability */
+@media (max-width: 300px) {
+  .windows.windows-cols {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
 }
 
 .window-reset.urgent {

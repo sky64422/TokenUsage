@@ -51,7 +51,10 @@ export function formatResetClock(iso: string | null | undefined): string {
   });
 }
 
-/** Per-window reset line: countdown · clock, or Idle / — */
+/**
+ * Per-window reset line (compact).
+ * Prefer short countdown only — full clock on title hover in UI.
+ */
 export function formatWindowReset(opts: {
   resetsAt: string | null | undefined;
   idle: boolean;
@@ -59,14 +62,13 @@ export function formatWindowReset(opts: {
   now?: number;
 }): string {
   if (opts.idle) return "Idle";
-  if (opts.over && !opts.resetsAt) return "Over limit";
+  if (opts.over && !opts.resetsAt) return "Over";
   if (!opts.resetsAt) return "—";
   const c = formatCountdown(opts.resetsAt, opts.now);
-  const clock = formatResetClock(opts.resetsAt);
-  if (!c) return clock || "—";
-  if (c === "soon") return clock ? `Resets soon · ${clock}` : "Resets soon";
-  if (opts.over) return clock ? `Over · resets in ${c}` : `Over · ${c}`;
-  return clock ? `Resets in ${c} · ${clock}` : `Resets in ${c}`;
+  if (!c) return "—";
+  if (c === "soon") return opts.over ? "Over · soon" : "Soon";
+  if (opts.over) return `Over · ${c}`;
+  return c; // e.g. "2h 14m"
 }
 
 export function levelClass(
