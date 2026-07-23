@@ -178,7 +178,7 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             theme: ThemeMode::System,
-            opacity: 0.88,
+            opacity: 0.92,
             window: WindowGeometry {
                 x: 80.0,
                 y: 80.0,

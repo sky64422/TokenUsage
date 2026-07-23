@@ -15,7 +15,7 @@ export function isOver(
   return false;
 }
 
-/** Short countdown only: "2h 14m" / "4d" / "soon" / "" */
+/** "2h 14m" / "4d" / "soon" */
 export function formatCountdown(
   iso: string | null | undefined,
   now = Date.now(),
@@ -35,19 +35,34 @@ export function formatCountdown(
   return `${mins}m`;
 }
 
-/** One calm subtitle under the bar. */
-export function formatSubline(opts: {
+export function formatResetClock(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** Per-window reset line: countdown · clock, or Idle / — */
+export function formatWindowReset(opts: {
   resetsAt: string | null | undefined;
   idle: boolean;
   over: boolean;
   now?: number;
 }): string {
   if (opts.idle) return "Idle";
-  if (opts.over) return "Over limit";
+  if (opts.over && !opts.resetsAt) return "Over limit";
+  if (!opts.resetsAt) return "—";
   const c = formatCountdown(opts.resetsAt, opts.now);
-  if (!c) return "";
-  if (c === "soon") return "Resets soon";
-  return `Resets in ${c}`;
+  const clock = formatResetClock(opts.resetsAt);
+  if (!c) return clock || "—";
+  if (c === "soon") return clock ? `Resets soon · ${clock}` : "Resets soon";
+  if (opts.over) return clock ? `Over · resets in ${c}` : `Over · ${c}`;
+  return clock ? `Resets in ${c} · ${clock}` : `Resets in ${c}`;
 }
 
 export function levelClass(
@@ -77,7 +92,22 @@ export function formatPct(
   return `${Math.round(c)}%`;
 }
 
-// Kept for settings / legacy call sites
+export function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return `${Math.round(n)}`;
+}
+
+export function formatTokenPair(
+  used: number,
+  limit: number | null | undefined,
+  over: boolean,
+): string {
+  if (limit == null) return formatTokens(used);
+  const base = `${formatTokens(used)} / ${formatTokens(limit)}`;
+  return over ? `${base} · over` : base;
+}
+
 export function formatResetsIn(iso: string | null | undefined, now = Date.now()): string {
   const c = formatCountdown(iso, now);
   if (!c) return "";
@@ -85,12 +115,16 @@ export function formatResetsIn(iso: string | null | undefined, now = Date.now())
   return `resets in ${c}`;
 }
 
-export function formatResetClock(_iso: string | null | undefined): string {
-  return "";
-}
-
-export function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return `${Math.round(n)}`;
+export function sourceLabel(
+  source: string,
+  message?: string | null,
+): { kind: string; detail: string | null } {
+  if (source === "tokscale") {
+    const plan =
+      message && !/over|idle/i.test(message) ? message : null;
+    return { kind: "tokscale", detail: plan };
+  }
+  if (message === "idle") return { kind: "local", detail: null };
+  if (message === "over limit") return { kind: "local", detail: null };
+  return { kind: "local", detail: null };
 }
