@@ -52,8 +52,11 @@ export function formatResetClock(iso: string | null | undefined): string {
   });
 }
 
+/** Korean weekday short: 일 월 화 수 목 금 토 */
+const KO_WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
+
 /**
- * Compact reset stamp: "7/30 15:42" (M/D + 24h local time).
+ * Compact reset stamp: "7/30 (목) 15:42" (M/D + weekday + 24h local).
  * Avoid locale-long forms like "7월 30일" / "Jul 30".
  */
 export function formatResetClockCompact(iso: string | null | undefined): string {
@@ -61,9 +64,10 @@ export function formatResetClockCompact(iso: string | null | undefined): string 
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const md = `${d.getMonth() + 1}/${d.getDate()}`;
+  const dow = KO_WEEKDAYS[d.getDay()] ?? "";
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${md} ${hh}:${mm}`;
+  return dow ? `${md} (${dow}) ${hh}:${mm}` : `${md} ${hh}:${mm}`;
 }
 
 /**
