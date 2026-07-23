@@ -13,7 +13,8 @@ If you are an automated coding agent in a new session:
 - **Primary data:** `tokscale usage --json` (vendor-reported). **Fallback:** local JSONL under `~/.claude`, `~/.codex`, `~/.grok`.
 - **No** browser scraping of vendor dashboards without an explicit design decision.
 - **Notifications** are out of scope until requested.
-- **Antigravity (AGY)** is deferred (generic CLI adapter later).
+- **Antigravity (AGY)** deferred in-app; tokscale may support AGY via `antigravity sync` (macOS/Linux) — not wired here yet.
+- UI: keep **fixed column geometry** for tracks (label width shared across single-limit cards); dual vs single layouts may differ.
 - Prefer thin `commands.rs`; put logic in `application` / `domain` / provider adapters.
 - Keep `tmp/updater.key` **out of git** (signing private key).
 

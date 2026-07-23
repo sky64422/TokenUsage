@@ -129,7 +129,7 @@ pub fn get_diagnostics(state: State<'_, AppHandleState>) -> DiagnosticsSnapshot 
 }
 
 /// Update OS min-size from measured content height (logical px).
-/// `grow_if_needed`: only true when content grew or on boot — never mid-drag.
+/// `grow_if_needed`: snap height to content (grow or shrink). False = min only (live ticks).
 #[tauri::command(rename_all = "snake_case")]
 pub fn set_content_min_size(
     app: AppHandle,
@@ -144,7 +144,8 @@ pub fn set_content_min_size(
     let window = window_ctl::main_window(&app)?;
     window_ctl::apply_content_min_size(&window, width, height)?;
     if grow_if_needed {
-        window_ctl::ensure_at_least_min_size(&window, width, height)?;
+        // Full content-hug: avoid leftover empty glass under cards.
+        window_ctl::snap_height_to_content(&window, width, height)?;
     }
     Ok(())
 }

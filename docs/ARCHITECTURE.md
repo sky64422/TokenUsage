@@ -5,18 +5,29 @@
 ## Runtime
 
 ```
-Web UI (progress rows, reset countdown, settings)
+Web UI (provider cards, fixed-column tracks, reset stamp, settings)
         │ invoke / events (snapshots-updated)
+        │ set_content_min_size (content-hug min + snap height)
 Rust AppCore
         │ refresh_all()
+tokscale usage --json  ──► map claude/codex/grok
+        │ (fallback)
 Local adapters (Claude / Codex / Grok JSONL + optional Claude rate_limits dump)
 ```
+
+## UI layout contracts
+
+- **Dual windows** (e.g. Claude 5h + Week): CSS grid `1fr 1fr`; each row `label | track | %` with fixed `--win-label-w` / `--win-pct-w`.
+- **Single window** (e.g. Codex 30D, Grok Week): full-width track; `%` only in card header.
+- **Reset:** `formatWindowReset` → `↻ M/D HH:mm` (local); empty when idle / no `resets_at`.
+- **Opacity:** `applyPanelOpacity` sets `--panel-opacity`, `--fg-opacity`, `--accent-opacity`, `--chrome-opacity` so glass, text, and bar fills fade together.
+- **Height:** frontend measures unconstrained panel height; Rust `snap_height_to_content` sets size to content floor (not grow-only).
 
 ## Providers
 
 ### Primary: tokscale
 
-`tokscale usage --json` (or `npx tokscale usage --json`) once per refresh (45s process cache).  
+`tokscale usage --json` (or `npx` / `npx.cmd` on Windows) once per refresh (45s process cache).  
 Maps vendor `used_percent` + `resets_at` → `ProviderSnapshot` (`source: tokscale`).  
 Setting: `use_tokscale` (default true).
 
@@ -34,7 +45,7 @@ Local percentages use **user-configured token limits**. Tokscale uses vendor %.
 
 - Push notifications / tray alerts  
 - HTTP scraping of vendor dashboards  
-- Google Antigravity (AGY) — future generic CLI adapter  
+- Google Antigravity (AGY) in-widget — tokscale has `antigravity sync` (macOS/Linux); TokenUsage does not surface it yet  
 - Perfect billing parity with official subscription meters  
 
 ## Commands

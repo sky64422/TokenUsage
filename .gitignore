@@ -5,3 +5,4 @@ src-tauri/target
 *.log
 .env
 tmp/
+.tmp-ui*.png

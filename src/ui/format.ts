@@ -39,6 +39,7 @@ export function formatCountdown(
   return `${mins}m`;
 }
 
+/** Hover / long form: "Jul 31, 3:42 PM" */
 export function formatResetClock(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -52,8 +53,22 @@ export function formatResetClock(iso: string | null | undefined): string {
 }
 
 /**
- * Per-window reset line (compact).
- * Prefer short countdown only — full clock on title hover in UI.
+ * Compact reset stamp: "7/30 15:42" (M/D + 24h local time).
+ * Avoid locale-long forms like "7월 30일" / "Jul 30".
+ */
+export function formatResetClockCompact(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const md = `${d.getMonth() + 1}/${d.getDate()}`;
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${md} ${hh}:${mm}`;
+}
+
+/**
+ * One-line reset: date/time only ("↻ 7/31 3:42 PM").
+ * Countdown removed — absolute clock is enough in the widget.
  */
 export function formatWindowReset(opts: {
   resetsAt: string | null | undefined;
@@ -61,14 +76,15 @@ export function formatWindowReset(opts: {
   over: boolean;
   now?: number;
 }): string {
-  if (opts.idle) return "Idle";
-  if (opts.over && !opts.resetsAt) return "Over";
-  if (!opts.resetsAt) return "—";
-  const c = formatCountdown(opts.resetsAt, opts.now);
-  if (!c) return "—";
-  if (c === "soon") return opts.over ? "Over · soon" : "Soon";
-  if (opts.over) return `Over · ${c}`;
-  return c; // e.g. "2h 14m"
+  // Idle: no label — empty track + %/tokens tell the story
+  if (opts.idle) return "";
+  if (opts.over && !opts.resetsAt) return "Over limit";
+  if (!opts.resetsAt) return "";
+  const when = formatResetClockCompact(opts.resetsAt);
+  if (!when) return "";
+  const soon = formatCountdown(opts.resetsAt, opts.now) === "soon";
+  const body = soon ? `↻ soon · ${when}` : `↻ ${when}`;
+  return opts.over ? `Over · ${body}` : body;
 }
 
 export function levelClass(
@@ -107,11 +123,11 @@ export function formatTokens(n: number): string {
 export function formatTokenPair(
   used: number,
   limit: number | null | undefined,
-  over: boolean,
+  _over = false,
 ): string {
   if (limit == null) return formatTokens(used);
-  const base = `${formatTokens(used)} / ${formatTokens(limit)}`;
-  return over ? `${base} · over` : base;
+  // Compact "used / limit" only — over is shown via color / meta tag
+  return `${formatTokens(used)} / ${formatTokens(limit)}`;
 }
 
 export function formatResetsIn(iso: string | null | undefined, now = Date.now()): string {
@@ -130,7 +146,8 @@ export function sourceLabel(
       message && !/over|idle|estimate/i.test(message) ? message : null;
     return { kind: "tokscale", detail: plan };
   }
-  if (message === "idle") return { kind: "local", detail: "idle" };
+  // Don't surface "idle" in chrome — empty usage is enough
+  if (message === "idle") return { kind: "local", detail: null };
   if (message && /estimate\s*\(context/i.test(message)) {
     return { kind: "local", detail: "context est." };
   }

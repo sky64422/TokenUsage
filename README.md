@@ -2,17 +2,19 @@
 
 Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent usage vs configurable limits — **local files & CLI data only**, with **reset-time–first** display. Design language follows [EconomyWarRoom](../EconomyWarRoom) (glass, always-on-top, hotkey).
 
-## Features (v0.1)
+## Features (v0.1+)
 
-- Always-on-top glass panel (Apple-like light/dark)
+- Always-on-top glass panel (Apple-like light/dark); **opacity slider** tints panel, text, and bar colors together
 - Providers: **Claude Code**, **Codex**, **Grok Build**
 - Primary data: **`tokscale usage --json`** (vendor quotas); local JSONL fallback
-- Primary metric: **resets in …** + secondary progress bars
+- **Progress rows:** label + thick pill track; dual limits (5h | Week) side-by-side, single limit full width
+- **Reset stamp:** coral `↻ M/D HH:mm` (no countdown clutter); hover title keeps long form
+- **Content-hug height:** window min size tracks card content (grow + shrink)
 - Settings: theme, opacity, refresh, tokscale toggle, autostart, per-provider limits
 - Hotkey: `Ctrl+Shift+U` (toggle hide/show)
 - **In-app updates** (Tauri updater; header **⬆** + release startup check)
 - **No notifications yet** (planned later)
-- **Antigravity (AGY)** not in v0.1 — reserved for a generic provider later
+- **Antigravity (AGY)** not in app yet — tokscale has AGY sync (macOS/Linux); deferred for Windows widget
 
 ## Data sources
 

@@ -5,9 +5,25 @@ export function applyThemeToDocument(theme: ThemeMode): void {
   document.documentElement.dataset.theme = theme;
 }
 
+/**
+ * Glass opacity + matching text/graph alpha.
+ * Background uses --panel-opacity; fg/accent/chrome track the slider so bars
+ * and labels don't stay fully solid while the panel goes transparent.
+ */
 export function applyPanelOpacity(panel: HTMLElement, opacity: number): void {
-  panel.style.setProperty("--panel-opacity", String(opacity));
-  document.documentElement.style.setProperty("--panel-opacity", String(opacity));
+  const o = Math.min(1, Math.max(0.35, opacity));
+  // Keep type slightly stronger than glass so low opacity stays readable
+  const fg = Math.min(1, Math.max(0.62, o * 1.02));
+  const accent = Math.min(1, Math.max(0.55, o * 1.05));
+  const chrome = Math.min(1, Math.max(0.4, o));
+
+  const root = document.documentElement;
+  for (const el of [panel, root]) {
+    el.style.setProperty("--panel-opacity", String(o));
+    el.style.setProperty("--fg-opacity", String(fg));
+    el.style.setProperty("--accent-opacity", String(accent));
+    el.style.setProperty("--chrome-opacity", String(chrome));
+  }
 }
 
 export function mountSettingsPanel(

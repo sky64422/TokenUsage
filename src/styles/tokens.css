@@ -4,18 +4,36 @@
   --bg-glass-dark-rgb: 28, 28, 30;
   --bg-glass-rgb-active: var(--bg-glass-rgb);
   --panel-opacity: 0.92;
-  --bg-hover: rgba(0, 0, 0, 0.03);
-  --bg-section: rgba(0, 0, 0, 0.025);
-  --border: rgba(0, 0, 0, 0.07);
-  --border-soft: rgba(0, 0, 0, 0.045);
-  --text: #1d1d1f;
-  --text-secondary: rgba(0, 0, 0, 0.48);
-  --text-tertiary: rgba(0, 0, 0, 0.32);
-  --ok: #30d158;
-  --warn: #ff9f0a;
-  --critical: #ff453a;
-  --accent: #0a84ff;
-  --track: rgba(0, 0, 0, 0.07);
+  /* Content/chrome alpha — driven by opacity slider (see applyPanelOpacity) */
+  --fg-opacity: 0.92;
+  --accent-opacity: 0.95;
+  --chrome-opacity: 0.92;
+
+  --text-rgb: 29, 29, 31;
+  --ok-rgb: 48, 209, 88;
+  --ok-bright-rgb: 52, 199, 89;
+  --warn-rgb: 255, 159, 10;
+  --warn-bright-rgb: 255, 214, 10;
+  --critical-rgb: 255, 69, 58;
+  --critical-bright-rgb: 255, 105, 97;
+  /* Warm coral for reset countdown — readable without full alarm red */
+  --reset-rgb: 255, 105, 97;
+  --accent-rgb: 10, 132, 255;
+
+  --bg-hover: rgba(0, 0, 0, calc(0.03 * var(--chrome-opacity)));
+  --bg-section: rgba(0, 0, 0, calc(0.025 * var(--chrome-opacity)));
+  --border: rgba(0, 0, 0, calc(0.08 * var(--chrome-opacity)));
+  --border-soft: rgba(0, 0, 0, calc(0.05 * var(--chrome-opacity)));
+  --text: rgba(var(--text-rgb), var(--fg-opacity));
+  --text-secondary: rgba(0, 0, 0, calc(0.52 * var(--fg-opacity)));
+  --text-tertiary: rgba(0, 0, 0, calc(0.36 * var(--fg-opacity)));
+  --ok: rgba(var(--ok-rgb), var(--accent-opacity));
+  --warn: rgba(var(--warn-rgb), var(--accent-opacity));
+  --critical: rgba(var(--critical-rgb), var(--accent-opacity));
+  --reset: rgba(var(--reset-rgb), var(--accent-opacity));
+  --accent: rgba(var(--accent-rgb), var(--accent-opacity));
+  --track: rgba(0, 0, 0, calc(0.08 * var(--chrome-opacity)));
+  --track-inset: rgba(0, 0, 0, calc(0.12 * var(--chrome-opacity)));
   --radius: 18px;
   --radius-card: 14px;
   --blur: 36px;
@@ -27,27 +45,31 @@
 
 html[data-theme="dark"] {
   --bg-glass-rgb-active: var(--bg-glass-dark-rgb);
-  --bg-hover: rgba(255, 255, 255, 0.05);
-  --bg-section: rgba(255, 255, 255, 0.04);
-  --border: rgba(255, 255, 255, 0.09);
-  --border-soft: rgba(255, 255, 255, 0.06);
-  --text: #f5f5f7;
-  --text-secondary: rgba(255, 255, 255, 0.52);
-  --text-tertiary: rgba(255, 255, 255, 0.34);
-  --track: rgba(255, 255, 255, 0.12);
+  --text-rgb: 245, 245, 247;
+  --bg-hover: rgba(255, 255, 255, calc(0.06 * var(--chrome-opacity)));
+  --bg-section: rgba(255, 255, 255, calc(0.045 * var(--chrome-opacity)));
+  --border: rgba(255, 255, 255, calc(0.1 * var(--chrome-opacity)));
+  --border-soft: rgba(255, 255, 255, calc(0.07 * var(--chrome-opacity)));
+  --text: rgba(var(--text-rgb), var(--fg-opacity));
+  --text-secondary: rgba(255, 255, 255, calc(0.55 * var(--fg-opacity)));
+  --text-tertiary: rgba(255, 255, 255, calc(0.38 * var(--fg-opacity)));
+  --track: rgba(255, 255, 255, calc(0.14 * var(--chrome-opacity)));
+  --track-inset: rgba(0, 0, 0, calc(0.28 * var(--chrome-opacity)));
 }
 
 @media (prefers-color-scheme: dark) {
   html[data-theme="system"] {
     --bg-glass-rgb-active: var(--bg-glass-dark-rgb);
-    --bg-hover: rgba(255, 255, 255, 0.05);
-    --bg-section: rgba(255, 255, 255, 0.04);
-    --border: rgba(255, 255, 255, 0.09);
-    --border-soft: rgba(255, 255, 255, 0.06);
-    --text: #f5f5f7;
-    --text-secondary: rgba(255, 255, 255, 0.52);
-    --text-tertiary: rgba(255, 255, 255, 0.34);
-    --track: rgba(255, 255, 255, 0.12);
+    --text-rgb: 245, 245, 247;
+    --bg-hover: rgba(255, 255, 255, calc(0.06 * var(--chrome-opacity)));
+    --bg-section: rgba(255, 255, 255, calc(0.045 * var(--chrome-opacity)));
+    --border: rgba(255, 255, 255, calc(0.1 * var(--chrome-opacity)));
+    --border-soft: rgba(255, 255, 255, calc(0.07 * var(--chrome-opacity)));
+    --text: rgba(var(--text-rgb), var(--fg-opacity));
+    --text-secondary: rgba(255, 255, 255, calc(0.55 * var(--fg-opacity)));
+    --text-tertiary: rgba(255, 255, 255, calc(0.38 * var(--fg-opacity)));
+    --track: rgba(255, 255, 255, calc(0.14 * var(--chrome-opacity)));
+    --track-inset: rgba(0, 0, 0, calc(0.28 * var(--chrome-opacity)));
   }
 }
 
@@ -55,5 +77,8 @@ html[data-theme="dark"] {
   :root {
     --blur: 0px;
     --panel-opacity: 1;
+    --fg-opacity: 1;
+    --accent-opacity: 1;
+    --chrome-opacity: 1;
   }
 }

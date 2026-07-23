@@ -147,13 +147,16 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       const contentH = measureContentHugHeight(panel);
       const minHeight = Math.max(CHROME_MIN_H, contentH);
       const grew = minHeight > lastContentMinH + 0.5;
+      const shrank = minHeight < lastContentMinH - 0.5;
       const changed = Math.abs(minHeight - lastContentMinH) >= 1;
+      // Snap height when content grew/shrank, or explicit fit (boot/refresh/settings).
+      const fit = opts.growIfNeeded || grew || shrank;
       if (!changed && !opts.growIfNeeded) return;
       lastContentMinH = minHeight;
       await invoke("set_content_min_size", {
         width: POLICY_MIN_W,
         height: minHeight,
-        grow_if_needed: opts.growIfNeeded || grew,
+        grow_if_needed: fit,
       });
     } catch (err) {
       console.error("set_content_min_size failed", err);
