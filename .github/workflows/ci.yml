@@ -28,6 +28,8 @@ jobs:
 
   rust:
     runs-on: ubuntu-latest
+    env:
+      TOKENUSAGE_SKIP_TOKSCALE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -42,9 +44,11 @@ jobs:
       - name: Cargo clippy
         working-directory: src-tauri
         run: cargo clippy --all-targets -- -D warnings
-      - name: Cargo test (lib + bins)
+      - name: Cargo test (lib + risk_scenarios)
         working-directory: src-tauri
-        run: cargo test --all-targets
+        run: |
+          cargo test --lib
+          cargo test --test risk_scenarios
 
   secret-scan:
     runs-on: ubuntu-latest
@@ -63,3 +67,19 @@ jobs:
             exit 1
           fi
           echo "OK"
+
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TOKENUSAGE_SKIP_TOKSCALE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin --locked --version 0.31.5
+      - name: Coverage gate
+        run: bash scripts/coverage.sh

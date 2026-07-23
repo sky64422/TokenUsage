@@ -22,7 +22,8 @@ If you are an automated coding agent in a new session:
 ```text
 npm test
 npm run build
+# optional: npm run test:coverage   (needs cargo-tarpaulin; bash)
 # UI: npm run tauri dev  (Windows preferred)
 ```
 
-Default branch: **`main`**.
+Default branch: **`main`**. See also [`docs/testing.md`](docs/testing.md).

@@ -54,3 +54,29 @@ pub fn clamp_geometry(g: &WindowGeometry) -> WindowGeometry {
         height: g.height.max(WindowPolicy::MIN_HEIGHT),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::types::WindowGeometry;
+
+    #[test]
+    fn clamps_opacity_and_refresh() {
+        assert!((clamp_opacity(0.1) - OpacityPolicy::MIN).abs() < 0.001);
+        assert!((clamp_opacity(2.0) - OpacityPolicy::MAX).abs() < 0.001);
+        assert_eq!(clamp_refresh_secs(1), RefreshPolicy::MIN_REFRESH_SECS);
+        assert_eq!(clamp_refresh_secs(999), RefreshPolicy::MAX_REFRESH_SECS);
+    }
+
+    #[test]
+    fn clamps_geometry_min() {
+        let g = clamp_geometry(&WindowGeometry {
+            x: 0.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0,
+        });
+        assert!(g.width >= WindowPolicy::MIN_WIDTH);
+        assert!(g.height >= WindowPolicy::MIN_HEIGHT);
+    }
+}

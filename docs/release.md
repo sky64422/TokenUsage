@@ -89,3 +89,17 @@ npm run run:exe
 | Startup (release) | After ~30s, check + download/install if newer |
 | Header **⬆** | Manual `check_for_updates` (same install path) |
 | `tauri dev` | Startup check skipped; manual check may still fail without a published `latest.json` |
+
+## Pre-release verification matrix
+
+| Check | Command / action |
+|-------|------------------|
+| Unit + risk | `npm test` |
+| Coverage gate | `npm run test:coverage` (bash + tarpaulin) |
+| Frontend | `npm run build` |
+| Clippy | `cd src-tauri && cargo clippy --all-targets -- -D warnings` |
+| Signed dry-run | `npm run release:publish -- --dry-run` |
+| Publish | `npm run release:publish` (GitHub token + key) |
+| Updater smoke | Install older signed NSIS → ⬆ / wait for auto-check |
+
+**Note:** Full NSIS/MSI CI is not on GitHub Actions (signing key must stay local). Windows workflow runs `cargo test` + `cargo build --release` only.
