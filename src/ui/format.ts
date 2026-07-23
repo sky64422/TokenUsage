@@ -10,6 +10,10 @@ export function isOver(
   limit?: number | null,
 ): boolean {
   if (message && /over\s*limit/i.test(message)) return true;
+  // Local context-token estimates can exceed plan tables without being "quota over"
+  if (message && /estimate\s*\(context/i.test(message)) {
+    if (used != null && limit != null && limit > 0 && used > limit) return true;
+  }
   if (used != null && limit != null && limit > 0 && used > limit) return true;
   if (pct != null && !Number.isNaN(pct) && pct > 100) return true;
   return false;
@@ -121,10 +125,13 @@ export function sourceLabel(
 ): { kind: string; detail: string | null } {
   if (source === "tokscale") {
     const plan =
-      message && !/over|idle/i.test(message) ? message : null;
+      message && !/over|idle|estimate/i.test(message) ? message : null;
     return { kind: "tokscale", detail: plan };
   }
-  if (message === "idle") return { kind: "local", detail: null };
-  if (message === "over limit") return { kind: "local", detail: null };
+  if (message === "idle") return { kind: "local", detail: "idle" };
+  if (message && /estimate\s*\(context/i.test(message)) {
+    return { kind: "local", detail: "context est." };
+  }
+  if (message === "over limit") return { kind: "local", detail: "over" };
   return { kind: "local", detail: null };
 }

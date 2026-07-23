@@ -1,6 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import {
+  CHROME_MIN_H,
+  measureContentHugHeight,
+  POLICY_MIN_W,
+} from "./content-size";
 import { renderHeader, setSettingsButtonActive } from "./header";
 import { mountProviders } from "./providers";
 import {
@@ -48,6 +53,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     onThemeChange: async (t) => {
       applyThemeToDocument(t);
       await invoke("set_theme", { theme: t });
+      scheduleContentMin(true);
     },
     onOpacityChange: async (o) => {
       applyPanelOpacity(panel, o);
@@ -61,16 +67,21 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     },
     onUseTokscale: async (v) => {
       await invoke("set_use_tokscale", { enabled: v });
+      scheduleContentMin(true);
     },
     onProviderEnabled: async (id, enabled) => {
       await invoke("set_provider_enabled", { provider: id, enabled });
+      scheduleContentMin(true);
     },
     onLimits: async (id, five, weekly) => {
       const limits: PlanLimits = {
         five_hour_tokens: five,
         weekly_tokens: weekly,
       };
-      await invoke("set_provider_limits", { provider: id as ProviderId, limits });
+      await invoke("set_provider_limits", {
+        provider: id as ProviderId,
+        limits,
+      });
     },
     onDiagnostics: async () => {
       const diag = await invoke<DiagnosticsSnapshot>("get_diagnostics");
@@ -88,16 +99,21 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
   function toggleSettings(): void {
     settingsOpen = !settingsOpen;
-    if (settingsOpen) settings.show();
-    else settings.hide();
+    if (settingsOpen) {
+      settings.show();
+      panel.classList.add("settings-open");
+    } else {
+      settings.hide();
+      panel.classList.remove("settings-open");
+    }
     setSettingsButtonActive(headerRoot, settingsOpen);
-    void scheduleContentMin();
+    scheduleContentMin(true);
   }
 
   async function doRefresh(): Promise<void> {
     const snaps = await invoke<ProviderSnapshot[]>("refresh_now");
     providers.setSnapshots(snaps);
-    void scheduleContentMin();
+    scheduleContentMin(true);
   }
 
   renderHeader(headerRoot, {
@@ -119,11 +135,54 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
   await listen<ProviderSnapshot[]>("snapshots-updated", (ev) => {
     providers.setSnapshots(ev.payload);
-    void scheduleContentMin();
+    scheduleContentMin(true);
   });
 
-  // Persist geometry on move/resize (best-effort)
+  // —— Content-hug min size (WarRoom pattern) ——
+  let lastContentMinH = 0;
+  let contentMinTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const syncContentMinSize = async (opts: { growIfNeeded: boolean }) => {
+    try {
+      const contentH = measureContentHugHeight(panel);
+      const minHeight = Math.max(CHROME_MIN_H, contentH);
+      const grew = minHeight > lastContentMinH + 0.5;
+      const changed = Math.abs(minHeight - lastContentMinH) >= 1;
+      if (!changed && !opts.growIfNeeded) return;
+      lastContentMinH = minHeight;
+      await invoke("set_content_min_size", {
+        width: POLICY_MIN_W,
+        height: minHeight,
+        grow_if_needed: opts.growIfNeeded || grew,
+      });
+    } catch (err) {
+      console.error("set_content_min_size failed", err);
+    }
+  };
+
+  function scheduleContentMin(growIfNeeded: boolean): void {
+    if (contentMinTimer) clearTimeout(contentMinTimer);
+    contentMinTimer = setTimeout(() => {
+      void syncContentMinSize({ growIfNeeded });
+    }, 40);
+  }
+
+  // Content mutations only — never remeasure min from window resize
+  // (that caused min to track the drag and bounce with setSize).
+  const mutObs = new MutationObserver(() => {
+    scheduleContentMin(false);
+  });
+  mutObs.observe(panel, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ["class", "style", "hidden"],
+  });
+
+  // Geometry persistence
   const win = getCurrentWindow();
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
   const persistGeometry = async () => {
     try {
       const pos = await win.outerPosition();
@@ -142,28 +201,26 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     }
   };
   await win.onMoved(() => {
-    void persistGeometry();
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      void persistGeometry();
+    }, 250);
   });
+  // Persist only; OS min + Rust Resized clamp handle the hard wall.
   await win.onResized(() => {
-    void persistGeometry();
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      void persistGeometry();
+    }, 250);
   });
 
-  async function scheduleContentMin(): Promise<void> {
-    requestAnimationFrame(async () => {
-      const panelEl = document.getElementById("glass-panel");
-      if (!panelEl) return;
-      const rect = panelEl.getBoundingClientRect();
-      const w = Math.ceil(rect.width);
-      const h = Math.ceil(rect.height);
-      try {
-        await invoke("set_content_min_size", { width: w, height: h });
-      } catch {
-        /* ignore */
-      }
-    });
-  }
+  // Boot: measure after layout, install hard min, grow if restored size too small.
+  requestAnimationFrame(() => {
+    void syncContentMinSize({ growIfNeeded: true });
+    window.setTimeout(() => {
+      void syncContentMinSize({ growIfNeeded: true });
+    }, 200);
+  });
 
-  void scheduleContentMin();
-  // Kick a refresh so first paint has real data
   void doRefresh();
 }

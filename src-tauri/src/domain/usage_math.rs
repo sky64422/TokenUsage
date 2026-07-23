@@ -177,7 +177,12 @@ pub fn build_snapshot_from_events(
         if idle {
             Some("idle".into())
         } else if any_over {
-            Some("over limit".into())
+            // Local JSONL sums context throughput, not vendor subscription quotas.
+            if source == DataSource::Estimate {
+                Some("estimate (context tokens)".into())
+            } else {
+                Some("over limit".into())
+            }
         } else {
             None
         }
@@ -293,7 +298,10 @@ mod tests {
             DataSource::Estimate,
             None,
         );
-        assert_eq!(snap.message.as_deref(), Some("over limit"));
+        assert_eq!(
+            snap.message.as_deref(),
+            Some("estimate (context tokens)")
+        );
         assert_eq!(snap.primary_used_percent, Some(100.0));
     }
 }

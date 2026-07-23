@@ -105,8 +105,10 @@ body {
 
 .content {
   padding: 2px var(--pad-x) 18px;
+  /* Prefer content-hug; scroll only if user shrunk below min (should be rare). */
   overflow-y: auto;
   min-height: 0;
+  /* Do not force height:100% — that breaks content-hug min measurement. */
 }
 
 /* —— Provider cards (airy, full info) —— */

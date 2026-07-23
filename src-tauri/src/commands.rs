@@ -128,16 +128,22 @@ pub fn get_diagnostics(state: State<'_, AppHandleState>) -> DiagnosticsSnapshot 
     state.core.diagnostics()
 }
 
-#[tauri::command]
+/// Update OS min-size from measured content height (logical px).
+/// `grow_if_needed`: only true when content grew or on boot — never mid-drag.
+#[tauri::command(rename_all = "snake_case")]
 pub fn set_content_min_size(
     app: AppHandle,
     state: State<'_, AppHandleState>,
     width: f64,
     height: f64,
+    grow_if_needed: bool,
 ) -> Result<(), String> {
-    state.set_content_min(width.ceil() as u32, height.ceil() as u32);
-    if let Some(window) = app.get_webview_window("main") {
-        window_ctl::apply_content_min_size(&window, width, height)?;
+    let w = width.max(1.0).ceil() as u32;
+    let h = height.max(1.0).ceil() as u32;
+    state.set_content_min(w, h);
+    let window = window_ctl::main_window(&app)?;
+    window_ctl::apply_content_min_size(&window, width, height)?;
+    if grow_if_needed {
         window_ctl::ensure_at_least_min_size(&window, width, height)?;
     }
     Ok(())
