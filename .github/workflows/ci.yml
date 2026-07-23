@@ -1,0 +1,65 @@
+# Lightweight CI inspired by AssetStocker gates + WarRoom cargo tests.
+# Full Tauri Windows bundle is not built here (needs MSVC + WebView2).
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Cargo fmt check
+        working-directory: src-tauri
+        run: cargo fmt --all -- --check
+      - name: Cargo clippy
+        working-directory: src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Cargo test (lib + bins)
+        working-directory: src-tauri
+        run: cargo test --all-targets
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject private updater key in tree
+        run: |
+          if git ls-files | grep -E '(^|/)updater\.key$|(^|/)tmp/updater\.key$'; then
+            echo "Private updater key must not be committed"
+            exit 1
+          fi
+          if grep -RIn --exclude-dir=target --exclude-dir=node_modules \
+              -e 'BEGIN.*PRIVATE KEY' -e 'rsign encrypted secret key' \
+              --include='*.rs' --include='*.ts' --include='*.json' --include='*.md' . ; then
+            echo "Possible private key material in tracked sources"
+            exit 1
+          fi
+          echo "OK"
