@@ -37,7 +37,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
   const state = await invoke<PersistedState>("get_state");
   const theme: ThemeMode = state.settings.theme ?? "system";
-  const opacity = state.settings.opacity ?? 0.88;
+  const opacity = state.settings.opacity ?? 0.92;
 
   applyThemeToDocument(theme);
   applyPanelOpacity(panel, opacity);

@@ -12,16 +12,16 @@ pub struct WindowPolicy;
 impl WindowPolicy {
     pub const MIN_WIDTH: f64 = 280.0;
     pub const MIN_HEIGHT: f64 = 160.0;
-    pub const DEFAULT_WIDTH: f64 = 300.0;
-    pub const DEFAULT_HEIGHT: f64 = 280.0;
+    pub const DEFAULT_WIDTH: f64 = 320.0;
+    pub const DEFAULT_HEIGHT: f64 = 480.0;
 }
 
 pub struct OpacityPolicy;
 impl OpacityPolicy {
     pub const MIN: f64 = 0.35;
     pub const MAX: f64 = 1.0;
-    /// Soft glass — high enough to read, low enough to feel light.
-    pub const DEFAULT: f64 = 0.88;
+    /// Readable glass without feeling heavy.
+    pub const DEFAULT: f64 = 0.92;
 }
 
 pub struct HotkeyPolicy;

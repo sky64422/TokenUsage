@@ -18,14 +18,8 @@ export function renderHeader(
   root.querySelector("#btn-refresh")?.addEventListener("click", opts.onRefresh);
   root.querySelector("#btn-hide")?.addEventListener("click", opts.onHide);
 
-  // Long-press / secondary: app updates via settings diagnostics; header stays calm.
-  // Keep update check available from double-click on title (hidden power user path).
-  root.querySelector(".title")?.addEventListener("dblclick", async () => {
-    try {
-      await invoke<boolean>("check_for_updates");
-    } catch {
-      /* ignore */
-    }
+  root.querySelector(".title")?.addEventListener("dblclick", () => {
+    void invoke<boolean>("check_for_updates").catch(() => undefined);
   });
 }
 
