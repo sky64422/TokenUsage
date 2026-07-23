@@ -26,10 +26,7 @@ pub fn fetch(limits: &PlanLimits) -> ProviderSnapshot {
         return unavailable_snapshot(ProviderId::Claude, "Home directory not found");
     };
     if !root.exists() {
-        return unavailable_snapshot(
-            ProviderId::Claude,
-            format!("Claude data not found at {}", root.display()),
-        );
+        return unavailable_snapshot(ProviderId::Claude, "Claude data not found");
     }
 
     let projects = root.join("projects");
@@ -45,7 +42,7 @@ pub fn fetch(limits: &PlanLimits) -> ProviderSnapshot {
         limits,
         Utc::now(),
         DataSource::Estimate,
-        Some(format!("Local estimate from {}", projects.display())),
+        None, // UI shows short source chip only
     )
 }
 

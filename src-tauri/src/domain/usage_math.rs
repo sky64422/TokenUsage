@@ -22,7 +22,7 @@ pub fn sum_tokens_in_range(events: &[UsageEvent], start: DateTime<Utc>, end: Dat
 }
 
 /// Active 5-hour block: from the earliest event still within the last 5 hours,
-/// or "now ??5h" if empty. Reset is that start + 5h.
+/// or "now − 5h" if empty. Reset is that start + 5h.
 pub fn active_five_hour_window(
     events: &[UsageEvent],
     now: DateTime<Utc>,
@@ -37,7 +37,6 @@ pub fn active_five_hour_window(
         let end = start + Duration::seconds(UsagePolicy::FIVE_HOURS_SECS);
         return (start, end, 0.0);
     }
-    // Claude-style: window anchored to first activity in the current rolling span.
     let start = in_window
         .iter()
         .map(|e| e.at)
@@ -55,10 +54,6 @@ pub fn weekly_window(
     let start = now - Duration::seconds(UsagePolicy::WEEK_SECS);
     let end = start + Duration::seconds(UsagePolicy::WEEK_SECS);
     let used = sum_tokens_in_range(events, start, now);
-    // Approximate weekly reset as now + remaining until rolling 7d from oldest activity, else now+7d from start
-    let resets = now + Duration::seconds(UsagePolicy::WEEK_SECS) - (now - start);
-    let _ = resets;
-    // Prefer: if we have events, reset when the oldest event in the week ages out
     let resets_at = if let Some(oldest) = events
         .iter()
         .filter(|e| e.at >= start && e.at <= now)
@@ -72,12 +67,29 @@ pub fn weekly_window(
     (start, resets_at.min(end.max(now)), used)
 }
 
+/// Display percent capped at 100. Raw over-limit is signalled separately via `is_over_limit`.
 pub fn percent(used: f64, limit: Option<f64>) -> Option<f64> {
     let lim = limit?;
     if lim <= 0.0 {
         return None;
     }
-    Some(((used / lim) * 100.0).clamp(0.0, 999.0))
+    Some(((used / lim) * 100.0).clamp(0.0, 100.0))
+}
+
+pub fn is_over_limit(used: f64, limit: Option<f64>) -> bool {
+    match limit {
+        Some(lim) if lim > 0.0 => used > lim,
+        _ => false,
+    }
+}
+
+/// Raw uncapped percent for diagnostics (not used in primary UI).
+pub fn percent_raw(used: f64, limit: Option<f64>) -> Option<f64> {
+    let lim = limit?;
+    if lim <= 0.0 {
+        return None;
+    }
+    Some((used / lim) * 100.0)
 }
 
 pub fn build_snapshot_from_events(
@@ -88,58 +100,86 @@ pub fn build_snapshot_from_events(
     source: DataSource,
     message: Option<String>,
 ) -> ProviderSnapshot {
+    let idle = events.is_empty();
     let (_s5, reset5, used5) = active_five_hour_window(&events, now);
     let (_sw, reset_w, used_w) = weekly_window(&events, now);
 
     let mut windows = Vec::new();
 
     let p5 = percent(used5, Some(limits.five_hour_tokens));
+    // Idle: no fabricated reset times (avoids "resets soon" with 0% usage).
+    let reset5_s = if idle {
+        None
+    } else {
+        Some(reset5.to_rfc3339())
+    };
     windows.push(UsageWindow {
         kind: WindowKind::Rolling5h,
         used: used5,
         limit: Some(limits.five_hour_tokens),
         unit: UsageUnit::Tokens,
-        resets_at: Some(reset5.to_rfc3339()),
+        resets_at: reset5_s,
         used_percent: p5,
         label: Some("5-hour".into()),
     });
 
     if let Some(weekly_limit) = limits.weekly_tokens {
         let pw = percent(used_w, Some(weekly_limit));
+        let reset_w_s = if idle {
+            None
+        } else {
+            Some(reset_w.to_rfc3339())
+        };
         windows.push(UsageWindow {
             kind: WindowKind::Weekly,
             used: used_w,
             limit: Some(weekly_limit),
             unit: UsageUnit::Tokens,
-            resets_at: Some(reset_w.to_rfc3339()),
+            resets_at: reset_w_s,
             used_percent: pw,
             label: Some("Weekly".into()),
         });
     }
+
+    // Primary %: max among windows; if any over-limit, show 100 with UI "over" via message flag
+    let any_over = is_over_limit(used5, Some(limits.five_hour_tokens))
+        || limits
+            .weekly_tokens
+            .map(|w| is_over_limit(used_w, Some(w)))
+            .unwrap_or(false);
 
     let primary_used_percent = windows
         .iter()
         .filter_map(|w| w.used_percent)
         .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-    // Prefer nearest future reset among windows that are non-trivial.
-    let primary_resets_at = windows
-        .iter()
-        .filter_map(|w| w.resets_at.as_ref())
-        .cloned()
-        .min_by(|a, b| a.cmp(b));
+    // Prefer highest-pressure window's reset when active
+    let primary_resets_at = if idle {
+        None
+    } else {
+        windows
+            .iter()
+            .filter(|w| w.used > 0.0 || w.used_percent.unwrap_or(0.0) > 0.0)
+            .filter_map(|w| w.resets_at.as_ref())
+            .cloned()
+            .min()
+            .or_else(|| windows.iter().filter_map(|w| w.resets_at.clone()).min())
+    };
 
-    let status = if events.is_empty() {
+    let status = if idle {
         SnapshotStatus::Degraded
     } else {
         SnapshotStatus::Ok
     };
 
+    // Short UI-safe messages only (no filesystem paths).
     let msg = message.or_else(|| {
-        if events.is_empty() {
-            Some("No recent local usage logs".into())
+        if idle {
+            Some("idle".into())
+        } else if any_over {
+            Some("over limit".into())
         } else {
-            Some("Local estimate from session logs".into())
+            None
         }
     });
 
@@ -197,14 +237,17 @@ mod tests {
     }
 
     #[test]
-    fn percent_clamps() {
+    fn percent_clamps_to_100() {
         assert_eq!(percent(50.0, Some(100.0)), Some(50.0));
         assert_eq!(percent(10.0, None), None);
         assert_eq!(percent(10.0, Some(0.0)), None);
+        assert_eq!(percent(500.0, Some(100.0)), Some(100.0));
+        assert!(is_over_limit(500.0, Some(100.0)));
+        assert!(!is_over_limit(50.0, Some(100.0)));
     }
 
     #[test]
-    fn build_snapshot_empty_is_degraded() {
+    fn build_snapshot_empty_is_idle_without_resets() {
         let limits = PlanLimits {
             five_hour_tokens: 1000.0,
             weekly_tokens: Some(5000.0),
@@ -218,8 +261,9 @@ mod tests {
             None,
         );
         assert_eq!(snap.status, SnapshotStatus::Degraded);
-        assert_eq!(snap.windows.len(), 2);
-        assert!(snap.primary_resets_at.is_some());
+        assert_eq!(snap.message.as_deref(), Some("idle"));
+        assert!(snap.primary_resets_at.is_none());
+        assert!(snap.windows.iter().all(|w| w.resets_at.is_none()));
     }
 
     #[test]
@@ -228,5 +272,28 @@ mod tests {
         assert_eq!(snap.status, SnapshotStatus::Unavailable);
         assert!(snap.windows.is_empty());
         assert_eq!(snap.message.as_deref(), Some("missing"));
+    }
+
+    #[test]
+    fn over_limit_message() {
+        let limits = PlanLimits {
+            five_hour_tokens: 100.0,
+            weekly_tokens: Some(100.0),
+        };
+        let now = Utc::now();
+        let events = vec![UsageEvent {
+            at: now - Duration::minutes(5),
+            tokens: 500.0,
+        }];
+        let snap = build_snapshot_from_events(
+            ProviderId::Codex,
+            events,
+            &limits,
+            now,
+            DataSource::Estimate,
+            None,
+        );
+        assert_eq!(snap.message.as_deref(), Some("over limit"));
+        assert_eq!(snap.primary_used_percent, Some(100.0));
     }
 }

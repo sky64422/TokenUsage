@@ -20,7 +20,8 @@ pub struct OpacityPolicy;
 impl OpacityPolicy {
     pub const MIN: f64 = 0.35;
     pub const MAX: f64 = 1.0;
-    pub const DEFAULT: f64 = 0.92;
+    /// Higher default for glanceable text over busy desktops.
+    pub const DEFAULT: f64 = 0.96;
 }
 
 pub struct HotkeyPolicy;

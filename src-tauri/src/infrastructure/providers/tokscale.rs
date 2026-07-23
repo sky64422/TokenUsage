@@ -17,6 +17,7 @@ struct TokscaleProvider {
     #[serde(default)]
     plan: Option<String>,
     #[serde(default)]
+    #[allow(dead_code)]
     email: Option<String>,
     #[serde(default)]
     metrics: Vec<TokscaleMetric>,
@@ -31,6 +32,7 @@ struct TokscaleMetric {
     #[serde(default)]
     remaining_percent: Option<f64>,
     #[serde(default)]
+    #[allow(dead_code)]
     remaining_label: Option<String>,
     #[serde(default)]
     resets_at: Option<Value>,
@@ -80,9 +82,11 @@ fn snapshot_from_item(
     let mut windows = Vec::new();
     for m in &item.metrics {
         let kind = classify_label(m.label.as_deref().unwrap_or(""));
-        let used_percent = m
+        let raw_pct = m
             .used_percent
             .or_else(|| m.remaining_percent.map(|r| (100.0 - r).clamp(0.0, 100.0)));
+        let over = raw_pct.map(|p| p > 100.0).unwrap_or(false);
+        let used_percent = raw_pct.map(|p| p.clamp(0.0, 100.0));
         let resets_at = parse_resets_at(&m.resets_at);
         let label = m
             .label
@@ -96,7 +100,11 @@ fn snapshot_from_item(
             unit: UsageUnit::Percent,
             resets_at,
             used_percent,
-            label: Some(label),
+            label: Some(if over {
+                format!("{label} · over")
+            } else {
+                label
+            }),
         });
     }
 
@@ -116,14 +124,12 @@ fn snapshot_from_item(
         .map(|d| d.with_timezone(&Utc).to_rfc3339())
         .or_else(|| windows.iter().filter_map(|w| w.resets_at.clone()).min());
 
-    let plan = item.plan.clone().unwrap_or_else(|| "—".into());
-    let mut msg_parts = vec![format!("tokscale · plan {plan}")];
-    if let Some(email) = &item.email {
-        msg_parts.push(email.clone());
-    }
-    if let Some(rem) = item.metrics.iter().find_map(|m| m.remaining_label.as_ref()) {
-        msg_parts.push(rem.clone());
-    }
+    // Short plan only — no email/paths (UI source chip shows "tokscale").
+    let message = item
+        .plan
+        .as_ref()
+        .filter(|p| !p.is_empty())
+        .map(|p| p.clone());
 
     let status = if windows.is_empty() {
         SnapshotStatus::Degraded
@@ -138,7 +144,7 @@ fn snapshot_from_item(
         status,
         source: DataSource::Tokscale,
         as_of: now.to_rfc3339(),
-        message: Some(msg_parts.join(" · ")),
+        message,
         primary_resets_at,
         primary_used_percent,
     }
