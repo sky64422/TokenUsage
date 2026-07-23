@@ -1,9 +1,9 @@
 //! Token Usage — floating agent usage widget.
 
-mod application;
+pub mod application;
 mod commands;
-mod domain;
-mod infrastructure;
+pub mod domain;
+pub mod infrastructure;
 mod state;
 
 use domain::constants::RefreshPolicy;

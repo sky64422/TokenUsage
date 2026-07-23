@@ -28,3 +28,21 @@ regex = "1"
 
 [dev-dependencies]
 tempfile = "3"
+
+# Coverage gate focuses on business logic; GUI bootstrap is excluded via scripts/coverage.sh
+[package.metadata.tarpaulin]
+exclude-files = [
+  "src/main.rs",
+  "src/lib.rs",
+  "src/commands.rs",
+  "src/state.rs",
+  "src/application/*",
+  "src/infrastructure/window_ctl.rs",
+  "src/infrastructure/updater.rs",
+  "src/infrastructure/providers/claude.rs",
+  "src/infrastructure/providers/codex.rs",
+  "src/infrastructure/providers/grok.rs",
+  "src/infrastructure/providers/paths.rs",
+  "src/infrastructure/providers/mod.rs",
+  "src/infrastructure/providers/tokscale_exec.rs",
+]

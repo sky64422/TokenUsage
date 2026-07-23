@@ -3,6 +3,7 @@ pub mod codex;
 pub mod grok;
 pub mod paths;
 pub mod tokscale;
+pub mod tokscale_exec;
 
 use crate::domain::types::{PlanLimits, ProviderId, ProviderSnapshot};
 

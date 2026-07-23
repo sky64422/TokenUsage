@@ -1,0 +1,49 @@
+# Windows verification for MSVC + npm (WarRoom/AssetStocker-inspired).
+# Full NSIS signed release remains local via npm run release:publish.
+
+name: Windows
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-test:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      TOKENUSAGE_SKIP_TOKSCALE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: npm ci + build
+        run: |
+          npm ci
+          npm run build
+
+      - name: cargo test
+        working-directory: src-tauri
+        run: cargo test --all-targets
+
+      - name: cargo build (release lib/bin, not full installer)
+        working-directory: src-tauri
+        run: cargo build --release

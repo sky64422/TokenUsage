@@ -1,6 +1,7 @@
 //! Primary data path: `tokscale usage --json` (vendor-reported quotas).
 //!
-//! Falls back is handled by the caller when this returns Err or partial map.
+//! Process spawn lives in `tokscale_exec` (excluded from coverage gate).
+//! Fallback is handled by the caller when this returns Err or partial map.
 
 use crate::domain::types::{
     DataSource, ProviderId, ProviderSnapshot, SnapshotStatus, UsageUnit, UsageWindow, WindowKind,
@@ -9,9 +10,6 @@ use chrono::{TimeZone, Utc};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::process::Command;
-use std::sync::Mutex;
-use std::time::{Duration, Instant};
 
 #[derive(Debug, Deserialize)]
 struct TokscaleProvider {
@@ -38,17 +36,15 @@ struct TokscaleMetric {
     resets_at: Option<Value>,
 }
 
-struct CacheEntry {
-    at: Instant,
-    raw: String,
-}
-
-static CACHE: Mutex<Option<CacheEntry>> = Mutex::new(None);
-const CACHE_TTL: Duration = Duration::from_secs(45);
-
 /// Run tokscale (or return cached stdout) and map to our providers.
 pub fn fetch_all() -> Result<HashMap<ProviderId, ProviderSnapshot>, String> {
-    let raw = run_tokscale_usage_json()?;
+    if std::env::var("TOKENUSAGE_SKIP_TOKSCALE")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+    {
+        return Err("skipped by TOKENUSAGE_SKIP_TOKSCALE".into());
+    }
+    let raw = super::tokscale_exec::run_tokscale_usage_json()?;
     parse_usage_json(&raw)
 }
 
@@ -173,7 +169,6 @@ fn classify_label(label: &str) -> WindowKind {
     } else if l.contains("week") || l == "7d" || l.contains("7-day") || l.contains("7 day") {
         WindowKind::Weekly
     } else if l.contains("30") || l.contains("month") {
-        // monthly / 30d vendor windows
         WindowKind::Unknown
     } else if l.contains("day") || (l.ends_with('d') && l.chars().any(|c| c.is_ascii_digit())) {
         WindowKind::Daily
@@ -198,14 +193,12 @@ fn parse_resets_at(v: &Option<Value>) -> Option<String> {
         if s.is_empty() {
             return None;
         }
-        // Already RFC3339 or similar
         if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
             return Some(dt.with_timezone(&Utc).to_rfc3339());
         }
         return Some(s.to_string());
     }
     if let Some(n) = v.as_i64() {
-        // unix seconds
         return Utc.timestamp_opt(n, 0).single().map(|d| d.to_rfc3339());
     }
     if let Some(n) = v.as_f64() {
@@ -215,83 +208,6 @@ fn parse_resets_at(v: &Option<Value>) -> Option<String> {
             .map(|d| d.to_rfc3339());
     }
     None
-}
-
-fn run_tokscale_usage_json() -> Result<String, String> {
-    // short-lived process cache
-    {
-        let guard = CACHE.lock().unwrap();
-        if let Some(entry) = guard.as_ref() {
-            if entry.at.elapsed() < CACHE_TTL {
-                return Ok(entry.raw.clone());
-            }
-        }
-    }
-
-    let output = spawn_tokscale()?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!(
-            "tokscale exited {}: {}",
-            output.status.code().unwrap_or(-1),
-            stderr.trim()
-        ));
-    }
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if stdout.is_empty() {
-        return Err("tokscale produced empty stdout".into());
-    }
-    // Must look like JSON array/object
-    if !(stdout.starts_with('[') || stdout.starts_with('{')) {
-        return Err(format!(
-            "tokscale stdout is not JSON: {}",
-            stdout.chars().take(120).collect::<String>()
-        ));
-    }
-
-    {
-        let mut guard = CACHE.lock().unwrap();
-        *guard = Some(CacheEntry {
-            at: Instant::now(),
-            raw: stdout.clone(),
-        });
-    }
-    Ok(stdout)
-}
-
-fn spawn_tokscale() -> Result<std::process::Output, String> {
-    // Prefer PATH binary, then npx (first install may be slow)
-    match run_cmd("tokscale", &["usage", "--json"]) {
-        Ok(out) if out.status.success() => return Ok(out),
-        Ok(out) => {
-            // Binary exists but failed — still try npx only if stdout empty
-            if !out.stdout.is_empty() {
-                return Ok(out);
-            }
-        }
-        Err(_) => {}
-    }
-
-    match run_cmd("npx", &["--yes", "tokscale", "usage", "--json"]) {
-        Ok(out) => Ok(out),
-        Err(e) => Err(format!(
-            "tokscale not available ({e}). Install: npm i -g tokscale"
-        )),
-    }
-}
-
-fn run_cmd(program: &str, args: &[&str]) -> Result<std::process::Output, String> {
-    let mut cmd = Command::new(program);
-    cmd.args(args);
-    // Hide console window on Windows when spawned from GUI app
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
-    cmd.output()
-        .map_err(|e| format!("failed to spawn {program}: {e}"))
 }
 
 #[cfg(test)]
@@ -366,5 +282,22 @@ mod tests {
     fn map_names() {
         assert_eq!(map_provider_name("Grok Build"), Some(ProviderId::Grok));
         assert_eq!(map_provider_name("Claude Code"), Some(ProviderId::Claude));
+    }
+
+    #[test]
+    fn classify_labels() {
+        assert_eq!(classify_label("5h"), WindowKind::Rolling5h);
+        assert_eq!(classify_label("Weekly"), WindowKind::Weekly);
+        assert_eq!(classify_label("30d"), WindowKind::Unknown);
+        assert_eq!(classify_label("1d"), WindowKind::Daily);
+        assert_eq!(classify_label("day"), WindowKind::Daily);
+    }
+
+    #[test]
+    fn remaining_percent_fallback() {
+        let raw = r#"[{"provider":"Codex","metrics":[{"label":"5h","remaining_percent":25.0}]}]"#;
+        let map = parse_usage_json(raw).unwrap();
+        let w = &map.get(&ProviderId::Codex).unwrap().windows[0];
+        assert!((w.used_percent.unwrap() - 75.0).abs() < 0.01);
     }
 }

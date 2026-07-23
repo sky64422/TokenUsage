@@ -46,8 +46,11 @@ npm run tauri dev
 
 ```bash
 npm run tauri build
-cd src-tauri && cargo test
+npm test
+# npm run test:coverage   # tarpaulin gate (bash + cargo-tarpaulin)
 ```
+
+See [docs/testing.md](docs/testing.md).
 
 ### Release / updater
 

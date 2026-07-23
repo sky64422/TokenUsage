@@ -21,13 +21,16 @@ Windows always-on-top glass widget showing **Claude / Codex / Grok** coding-agen
 - Settings: use_tokscale, per-provider enable + local limits
 - In-app updater (Tauri plugin + `npm run release:publish`)
 - Unit tests for parsers / usage math
+- Risk scenarios + tokscale fixture
+- CI: Ubuntu rust/frontend, Windows test/build, security audit, Dependabot
+- Coverage script (`npm run test:coverage`, fail-under 70)
 
 ## Not done
 
 - Notifications / tray alerts
 - Antigravity provider
-- Full Windows UI automation smoke in CI
-- Coverage gate like WarRoom tarpaulin 85%
+- Full NSIS installer CI (signed release remains local `release:publish`)
+- GUI automation smoke
 
 ## Key paths
 

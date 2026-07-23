@@ -200,5 +200,33 @@ mod tests {
     fn percent_clamps() {
         assert_eq!(percent(50.0, Some(100.0)), Some(50.0));
         assert_eq!(percent(10.0, None), None);
+        assert_eq!(percent(10.0, Some(0.0)), None);
+    }
+
+    #[test]
+    fn build_snapshot_empty_is_degraded() {
+        let limits = PlanLimits {
+            five_hour_tokens: 1000.0,
+            weekly_tokens: Some(5000.0),
+        };
+        let snap = build_snapshot_from_events(
+            ProviderId::Claude,
+            vec![],
+            &limits,
+            Utc::now(),
+            DataSource::Estimate,
+            None,
+        );
+        assert_eq!(snap.status, SnapshotStatus::Degraded);
+        assert_eq!(snap.windows.len(), 2);
+        assert!(snap.primary_resets_at.is_some());
+    }
+
+    #[test]
+    fn unavailable_snapshot_shape() {
+        let snap = unavailable_snapshot(ProviderId::Grok, "missing");
+        assert_eq!(snap.status, SnapshotStatus::Unavailable);
+        assert!(snap.windows.is_empty());
+        assert_eq!(snap.message.as_deref(), Some("missing"));
     }
 }
