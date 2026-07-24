@@ -35,12 +35,17 @@ export function mountSettingsPanel(
     onRefreshSecs: (n: number) => void;
     onAutostart: (v: boolean) => void;
     onUseTokscale: (v: boolean) => void;
-    onProviderEnabled: (id: ProviderId, enabled: boolean) => void;
+    onProviderEnabled: (id: ProviderId, enabled: boolean) => void | Promise<void>;
     onLimits: (id: ProviderId, five: number, weekly: number | null) => void;
     onDiagnostics: () => void;
     onQuit: () => void;
   },
-): { show: () => void; hide: () => void; isVisible: () => boolean } {
+): {
+  show: () => void;
+  hide: () => void;
+  isVisible: () => boolean;
+  syncProviderEnabled: (st: AppSettings) => void;
+} {
   let visible = false;
 
   root.innerHTML = `
@@ -79,10 +84,16 @@ export function mountSettingsPanel(
         <input type="checkbox" id="use-tokscale" />
       </div>
 
-      <div class="settings-section-title">Providers & local limits (fallback)</div>
+      <div class="settings-section-title">Providers</div>
+      <div class="settings-hint" style="margin:-4px 0 8px">
+        Uncheck to hide a card. At least one must stay on.
+      </div>
       ${providerLimitBlock("claude", "Claude", settings.claude)}
       ${providerLimitBlock("codex", "Codex", settings.codex)}
       ${providerLimitBlock("grok", "Grok", settings.grok)}
+      <div class="settings-hint" style="margin-top:4px">
+        Token numbers are local-limit fallbacks when tokscale has no data.
+      </div>
 
       <div class="settings-row" style="margin-top:10px">
         <button type="button" class="btn-text" id="btn-diag">Copy diagnostics</button>
@@ -143,11 +154,38 @@ export function mountSettingsPanel(
     handlers.onUseTokscale(useTokscale.checked);
   });
 
+  function updateToggleHint(id: ProviderId, enabled: boolean): void {
+    const en = root.querySelector(`#en-${id}`) as HTMLInputElement | null;
+    const hint = en
+      ?.closest(".provider-toggle")
+      ?.querySelector(".provider-toggle-hint");
+    if (hint) hint.textContent = enabled ? "Visible" : "Hidden";
+  }
+
+  function countEnabled(): number {
+    return (["claude", "codex", "grok"] as ProviderId[]).filter((id) => {
+      const en = root.querySelector(`#en-${id}`) as HTMLInputElement | null;
+      return en?.checked;
+    }).length;
+  }
+
   (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
     const en = root.querySelector(`#en-${id}`) as HTMLInputElement;
     const five = root.querySelector(`#five-${id}`) as HTMLInputElement;
     const weekly = root.querySelector(`#weekly-${id}`) as HTMLInputElement;
-    en?.addEventListener("change", () => handlers.onProviderEnabled(id, en.checked));
+    en?.addEventListener("change", () => {
+      // Soft-block hide-all in the UI (backend also rejects)
+      if (!en.checked && countEnabled() === 0) {
+        en.checked = true;
+        updateToggleHint(id, true);
+        return;
+      }
+      updateToggleHint(id, en.checked);
+      void Promise.resolve(handlers.onProviderEnabled(id, en.checked)).catch(() => {
+        en.checked = !en.checked;
+        updateToggleHint(id, en.checked);
+      });
+    });
     const applyLimits = () => {
       const f = Number(five.value) || 0;
       const wRaw = weekly.value.trim();
@@ -196,6 +234,16 @@ export function mountSettingsPanel(
       sheet.classList.remove("visible");
     },
     isVisible: () => visible,
+    /** Re-apply enabled checkboxes from persisted settings (e.g. after a rejected hide). */
+    syncProviderEnabled(st: AppSettings) {
+      (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
+        const en = root.querySelector(`#en-${id}`) as HTMLInputElement | null;
+        if (!en) return;
+        const on = st[id]?.enabled !== false;
+        en.checked = on;
+        updateToggleHint(id, on);
+      });
+    },
   };
 }
 
@@ -217,14 +265,17 @@ function providerLimitBlock(
   cfg: { enabled: boolean; limits: { five_hour_tokens: number; weekly_tokens: number | null } },
 ): string {
   return `
-    <div class="settings-row">
-      <label class="provider-toggle">
+    <div class="settings-row provider-row">
+      <label class="provider-toggle" title="Show or hide this provider on the widget">
         <input type="checkbox" id="en-${id}" ${cfg.enabled ? "checked" : ""} />
-        ${label}
+        <span class="provider-toggle-label">
+          <span class="provider-toggle-name">${label}</span>
+          <span class="provider-toggle-hint">${cfg.enabled ? "Visible" : "Hidden"}</span>
+        </span>
       </label>
-      <div style="display:flex;gap:6px;align-items:center">
-        <input type="number" id="five-${id}" title="5h token limit" value="${cfg.limits.five_hour_tokens}" />
-        <input type="number" id="weekly-${id}" title="Weekly token limit" value="${cfg.limits.weekly_tokens ?? ""}" placeholder="weekly" />
+      <div class="provider-limits" style="display:flex;gap:6px;align-items:center">
+        <input type="number" id="five-${id}" title="5h token limit (local fallback)" value="${cfg.limits.five_hour_tokens}" />
+        <input type="number" id="weekly-${id}" title="Weekly token limit (local fallback)" value="${cfg.limits.weekly_tokens ?? ""}" placeholder="weekly" />
       </div>
     </div>
   `;

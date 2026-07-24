@@ -70,8 +70,24 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       scheduleContentMin(true);
     },
     onProviderEnabled: async (id, enabled) => {
-      await invoke("set_provider_enabled", { provider: id, enabled });
-      scheduleContentMin(true);
+      try {
+        const snaps = await invoke<ProviderSnapshot[]>("set_provider_enabled", {
+          provider: id,
+          enabled,
+        });
+        providers.setSnapshots(snaps);
+        scheduleContentMin(true);
+      } catch (err) {
+        console.error("set_provider_enabled failed", err);
+        // Re-sync checkboxes from server state if hide-all was rejected
+        try {
+          const st = await invoke<PersistedState>("get_state");
+          settings.syncProviderEnabled?.(st.settings);
+        } catch {
+          /* ignore */
+        }
+        throw err;
+      }
     },
     onLimits: async (id, five, weekly) => {
       const limits: PlanLimits = {

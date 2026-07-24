@@ -90,11 +90,11 @@ pub fn set_provider_enabled(
     state: State<'_, AppHandleState>,
     provider: ProviderId,
     enabled: bool,
-) -> Result<(), String> {
-    state.core.set_provider_enabled(provider, enabled)?;
-    let snaps = state.core.get_snapshots();
+) -> Result<Vec<crate::domain::types::ProviderSnapshot>, String> {
+    // Persist + refresh (disabled providers omitted from list)
+    let snaps = state.core.set_provider_enabled(provider, enabled)?;
     let _ = app.emit("snapshots-updated", &snaps);
-    Ok(())
+    Ok(snaps)
 }
 
 #[tauri::command]

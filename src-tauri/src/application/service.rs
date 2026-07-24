@@ -172,14 +172,26 @@ impl AppCore {
         self.persist()
     }
 
-    pub fn set_provider_enabled(&self, id: ProviderId, enabled: bool) -> Result<(), String> {
+    pub fn set_provider_enabled(
+        &self,
+        id: ProviderId,
+        enabled: bool,
+    ) -> Result<Vec<ProviderSnapshot>, String> {
         {
             let mut guard = self.inner.lock().unwrap();
+            // Keep at least one provider visible so the widget never goes blank by accident
+            if !enabled {
+                let others_on = ProviderId::all().into_iter().any(|other| {
+                    other != id && provider_config(&guard.state.settings, other).enabled
+                });
+                if !others_on {
+                    return Err("Keep at least one provider visible".into());
+                }
+            }
             provider_config_mut(&mut guard.state.settings, id).enabled = enabled;
         }
         self.persist()?;
-        let _ = self.refresh_all();
-        Ok(())
+        Ok(self.refresh_all())
     }
 
     pub fn set_provider_limits(&self, id: ProviderId, limits: PlanLimits) -> Result<(), String> {

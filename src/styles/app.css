@@ -536,6 +536,27 @@ input[type="number"] {
   margin: 10px 0 4px;
 }
 
+.provider-toggle-label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.provider-toggle-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.provider-toggle-hint {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  line-height: 1.2;
+}
+
 .provider-toggle {
   display: flex;
   align-items: center;
