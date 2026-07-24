@@ -49,8 +49,8 @@
   /* Period labels: longest token "WEEK" ≈ 4ch at label font */
   --win-label-min: 4ch;
   --win-pct-min: 3.5ch;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Pretendard,
-    "Segoe UI", system-ui, sans-serif;
+  /* Pretendard bundled via fonts.css; system stack is fallback only */
+  font-family: "Pretendard", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
 html[data-theme="dark"] {
