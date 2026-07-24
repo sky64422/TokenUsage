@@ -347,7 +347,7 @@ body {
 
 /* Graphic pill track — thicker for presence; colors follow --accent-opacity */
 .track {
-  grid-column: 2;
+  /* First column of .window-row (label lives outside in .window-cell grid) */
   min-width: 0;
   width: 100%;
   height: 11px;
