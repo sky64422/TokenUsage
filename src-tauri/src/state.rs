@@ -12,7 +12,7 @@ impl AppHandleState {
     pub fn new(core: Arc<AppCore>) -> Self {
         Self {
             core,
-            content_min_w: AtomicU32::new(280),
+            content_min_w: AtomicU32::new(240),
             content_min_h: AtomicU32::new(160),
         }
     }

@@ -5,7 +5,8 @@
  * with the window, so setMinSize must use unconstrained content height.
  */
 
-const POLICY_MIN_W = 280;
+/** Floor for user resize — content still reads at ~240 (was 280). */
+const POLICY_MIN_W = 240;
 const CHROME_MIN_H = 140;
 
 export function measureContentHugHeight(panel: HTMLElement): number {
