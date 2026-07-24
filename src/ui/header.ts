@@ -19,7 +19,16 @@ export function renderHeader(
   root.querySelector("#btn-hide")?.addEventListener("click", opts.onHide);
 
   root.querySelector(".title")?.addEventListener("dblclick", () => {
-    void invoke<boolean>("check_for_updates").catch(() => undefined);
+    void (async () => {
+      try {
+        const installed = await invoke<boolean>("check_for_updates");
+        if (!installed) {
+          console.info("[updater] already latest");
+        }
+      } catch (err) {
+        console.error("[updater]", err);
+      }
+    })();
   });
 }
 

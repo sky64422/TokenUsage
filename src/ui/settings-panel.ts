@@ -92,6 +92,7 @@ export function mountSettingsPanel(
       <div class="settings-row" style="margin-top:4px">
         <button type="button" class="btn-text" id="btn-update-app">Check for updates</button>
       </div>
+      <div class="settings-hint" id="update-status" style="margin-top:4px" aria-live="polite"></div>
     </div>
   `;
 
@@ -159,8 +160,30 @@ export function mountSettingsPanel(
 
   root.querySelector("#btn-diag")?.addEventListener("click", handlers.onDiagnostics);
   root.querySelector("#btn-quit")?.addEventListener("click", handlers.onQuit);
-  root.querySelector("#btn-update-app")?.addEventListener("click", () => {
-    void invoke<boolean>("check_for_updates").catch(() => undefined);
+
+  const updateBtn = root.querySelector("#btn-update-app") as HTMLButtonElement | null;
+  const updateStatus = root.querySelector("#update-status") as HTMLElement | null;
+  updateBtn?.addEventListener("click", () => {
+    void (async () => {
+      if (!updateBtn) return;
+      updateBtn.disabled = true;
+      if (updateStatus) updateStatus.textContent = "Checking for updates…";
+      try {
+        const installed = await invoke<boolean>("check_for_updates");
+        if (updateStatus) {
+          updateStatus.textContent = installed
+            ? "Update installed. Restart the app if it does not reopen."
+            : "You're on the latest version.";
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (updateStatus) {
+          updateStatus.textContent = formatUpdateError(msg);
+        }
+      } finally {
+        updateBtn.disabled = false;
+      }
+    })();
   });
 
   return {
@@ -174,6 +197,18 @@ export function mountSettingsPanel(
     },
     isVisible: () => visible,
   };
+}
+
+/** Human-readable updater failures (private repo / network / signature). */
+function formatUpdateError(raw: string): string {
+  const s = raw.replace(/^Error:\s*/i, "").trim();
+  if (/404|not found|failed to fetch|error sending request|dns|timed out|cannot reach/i.test(s)) {
+    return "Update check failed: cannot download release (private GitHub repo or network). Make the repo public, or install from Releases manually.";
+  }
+  if (/signature|minisign|key/i.test(s)) {
+    return `Update check failed (signature): ${s}`;
+  }
+  return s ? `Update check failed: ${s}` : "Update check failed.";
 }
 
 function providerLimitBlock(

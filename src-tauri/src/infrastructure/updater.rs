@@ -23,8 +23,12 @@ pub fn spawn_update_check(app: AppHandle) {
 pub async fn check_and_install_update(app: &AppHandle) -> Result<bool, String> {
     note(app, "updater check started");
 
-    let updater = app.updater().map_err(|e| e.to_string())?;
-    match updater.check().await.map_err(|e| e.to_string())? {
+    let updater = app.updater().map_err(|e| map_updater_err(e.to_string()))?;
+    match updater
+        .check()
+        .await
+        .map_err(|e| map_updater_err(e.to_string()))?
+    {
         Some(update) => {
             note(
                 app,
@@ -36,15 +40,34 @@ pub async fn check_and_install_update(app: &AppHandle) -> Result<bool, String> {
             update
                 .download_and_install(|_, _| {}, || {})
                 .await
-                .map_err(|e| e.to_string())?;
-            note(app, "update installed");
-            Ok(true)
+                .map_err(|e| map_updater_err(e.to_string()))?;
+            note(app, "update installed — restarting");
+            // Does not return; process is replaced by the new binary when possible.
+            app.restart();
         }
         None => {
             note(app, "no update available");
             Ok(false)
         }
     }
+}
+
+/// Map raw updater/network errors into actionable messages.
+fn map_updater_err(raw: String) -> String {
+    let lower = raw.to_lowercase();
+    if lower.contains("404")
+        || lower.contains("not found")
+        || lower.contains("failed to fetch")
+        || lower.contains("error sending request")
+        || lower.contains("connection")
+        || lower.contains("timed out")
+    {
+        return format!(
+            "cannot reach update endpoint (private GitHub repo or network). \
+             latest.json must be public. Original: {raw}"
+        );
+    }
+    raw
 }
 
 fn note(app: &AppHandle, message: impl Into<String>) {
