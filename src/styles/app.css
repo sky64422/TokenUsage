@@ -204,11 +204,11 @@ body {
 
 /*
  * Fixed column geometry so track start/end align across cards.
- * --win-label-w / --win-pct-w shared by row + meta indent.
+ * Label hugs track/meta: right-aligned in a tight column + small gap.
  */
 .windows {
-  --win-label-w: 3.25em; /* fits WEEK / 30D / 5H */
-  --win-row-gap: 8px;
+  --win-label-w: 2.6em; /* WEEK / 30D / 5H — right-aligned into track */
+  --win-row-gap: 6px;
   --win-pct-w: 2.6em;
   display: flex;
   flex-direction: column;
@@ -251,7 +251,10 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Vertical mid of track+meta; horizontal hug toward the track */
   align-self: center;
+  justify-self: end;
+  text-align: right;
 }
 
 .window-main {
