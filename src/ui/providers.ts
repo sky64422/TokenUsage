@@ -163,18 +163,21 @@ function windowCell(
            data-over="${over ? "1" : "0"}">${escapeHtml(reset)}</span>`
     : `<span class="window-reset is-empty" aria-hidden="true"></span>`;
 
+  // Label sits beside the full block (track + meta) and is vertically centered.
   return `
     <div class="window-cell${idle ? " is-idle" : ""}${singleWindow ? " is-single" : ""}" title="${escapeAttr(title)}">
-      <div class="window-row">
-        <span class="window-label">${escapeHtml(label)}</span>
-        <div class="track" aria-hidden="true">
-          <div class="track-fill ${lvl}" style="width:${width}%">
-            ${showStop ? `<span class="track-stop"></span>` : ""}
+      <span class="window-label">${escapeHtml(label)}</span>
+      <div class="window-main">
+        <div class="window-row">
+          <div class="track" aria-hidden="true">
+            <div class="track-fill ${lvl}" style="width:${width}%">
+              ${showStop ? `<span class="track-stop"></span>` : ""}
+            </div>
           </div>
+          ${pctCell}
         </div>
-        ${pctCell}
+        <div class="window-meta">${valuesHtml}${resetHtml}</div>
       </div>
-      <div class="window-meta">${valuesHtml}${resetHtml}</div>
     </div>
   `;
 }
