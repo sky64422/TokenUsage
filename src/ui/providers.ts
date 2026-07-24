@@ -59,9 +59,6 @@ function cardHtml(s: ProviderSnapshot): string {
         isOver(w.used_percent, s.message, w.used, w.limit),
       ));
 
-  const pct = idle ? 0 : clampPct(s.primary_used_percent);
-  const lvl = levelClass(pct, over, idle);
-
   const src = sourceLabel(s.source, s.message);
   const metaParts = [src.kind];
   if (src.detail) metaParts.push(src.detail);
@@ -78,10 +75,12 @@ function cardHtml(s: ProviderSnapshot): string {
     .join("");
 
   const single = s.windows.length === 1;
+  // Header %: single → one value; dual (5h / Week) → "a% / b%" (same slot as Codex/Grok)
+  const headPctHtml = headerPctHtml(s, idle, over);
 
   const windows = s.windows.length
     ? `<div class="windows ${single ? "windows-single" : "windows-cols"}">${s.windows
-        .map((w) => windowCell(w, s.message, idle, single))
+        .map((w) => windowCell(w, s.message, idle))
         .join("")}</div>`
     : s.status === "unavailable"
       ? `<div class="window-reset">${escapeHtml(s.message ?? "Unavailable")}</div>`
@@ -96,11 +95,49 @@ function cardHtml(s: ProviderSnapshot): string {
             <span class="provider-meta">${metaHtml}</span>
           </div>
         </div>
-        <div class="provider-pct ${lvl}">${formatPct(pct, over, idle)}</div>
+        ${headPctHtml}
       </div>
       ${windows}
     </div>
   `;
+}
+
+/** Card-head percentage(s). Dual windows → "78% / 12%" with per-leg color. */
+function headerPctHtml(
+  s: ProviderSnapshot,
+  cardIdle: boolean,
+  cardOver: boolean,
+): string {
+  if (s.windows.length === 0) {
+    const pct = cardIdle ? 0 : clampPct(s.primary_used_percent);
+    const lvl = levelClass(pct, cardOver, cardIdle);
+    return `<div class="provider-pct ${lvl}">${escapeHtml(formatPct(pct, cardOver, cardIdle))}</div>`;
+  }
+
+  const parts = s.windows.map((w) => {
+    const wOver = isOver(w.used_percent, s.message, w.used, w.limit);
+    const wIdle =
+      cardIdle ||
+      ((w.used_percent ?? 0) <= 0 && w.used <= 0 && !w.resets_at);
+    const pct = wIdle ? 0 : clampPct(w.used_percent);
+    const lvl = levelClass(pct, wOver, wIdle);
+    return { lvl, text: formatPct(pct, wOver, wIdle) };
+  });
+
+  if (parts.length === 1) {
+    return `<div class="provider-pct ${parts[0].lvl}">${escapeHtml(parts[0].text)}</div>`;
+  }
+
+  // Dual: 5h% / Week% — each colored independently
+  const inner = parts
+    .map((p, i) => {
+      const seg = `<span class="provider-pct-leg ${p.lvl}">${escapeHtml(p.text)}</span>`;
+      return i === 0
+        ? seg
+        : `<span class="provider-pct-sep" aria-hidden="true">/</span>${seg}`;
+    })
+    .join("");
+  return `<div class="provider-pct provider-pct-dual">${inner}</div>`;
 }
 
 function tokenDetail(w: UsageWindow, over: boolean): string | null {
@@ -114,7 +151,6 @@ function windowCell(
   w: UsageWindow,
   cardMessage: string | null,
   cardIdle: boolean,
-  singleWindow: boolean,
 ): string {
   const over = isOver(w.used_percent, cardMessage, w.used, w.limit);
   const idle =
@@ -132,6 +168,7 @@ function windowCell(
   if (label === "Weekly") label = "Week";
 
   const pctText = formatPct(pct, over, idle);
+  // Absolute used/limit is hover-only; % is in the card header (single or dual).
   const detail = tokenDetail(w, over);
 
   const reset = formatWindowReset({
@@ -146,26 +183,19 @@ function windowCell(
   const urgent =
     over || (!idle && formatCountdown(w.resets_at) === "soon");
 
-  // Dual: always reserve row-% column (even idle "—") so track ends align.
-  // Single: % lives in card head only.
-  const pctCell = singleWindow
-    ? ""
-    : `<span class="window-pct ${lvl}">${escapeHtml(pctText)}</span>`;
+  // Meta: reset only (no used/limit pair under the track)
+  const metaHtml = reset
+    ? `<div class="window-meta">
+        <span class="window-reset${urgent ? " urgent" : ""}"
+              data-resets-at="${escapeAttr(w.resets_at ?? "")}"
+              data-idle="${idle ? "1" : "0"}"
+              data-over="${over ? "1" : "0"}">${escapeHtml(reset)}</span>
+      </div>`
+    : "";
 
-  // Meta: tokens left, reset right — always render shell for stable height
-  const valuesHtml = detail
-    ? `<span class="window-values${over ? " over" : ""}">${escapeHtml(detail)}</span>`
-    : `<span class="window-values is-empty" aria-hidden="true"></span>`;
-  const resetHtml = reset
-    ? `<span class="window-reset${urgent ? " urgent" : ""}"
-           data-resets-at="${escapeAttr(w.resets_at ?? "")}"
-           data-idle="${idle ? "1" : "0"}"
-           data-over="${over ? "1" : "0"}">${escapeHtml(reset)}</span>`
-    : `<span class="window-reset is-empty" aria-hidden="true"></span>`;
-
-  // Label sits on the track row only (not mid of track+meta).
+  // Label | track only — % lives in card head (Codex / dual 5h·Week alike)
   return `
-    <div class="window-cell${idle ? " is-idle" : ""}${singleWindow ? " is-single" : ""}" title="${escapeAttr(title)}">
+    <div class="window-cell${idle ? " is-idle" : ""}" title="${escapeAttr(title)}">
       <div class="window-row">
         <span class="window-label">${escapeHtml(label)}</span>
         <div class="track" aria-hidden="true">
@@ -173,9 +203,8 @@ function windowCell(
             ${showStop ? `<span class="track-stop"></span>` : ""}
           </div>
         </div>
-        ${pctCell}
       </div>
-      <div class="window-meta">${valuesHtml}${resetHtml}</div>
+      ${metaHtml}
     </div>
   `;
 }

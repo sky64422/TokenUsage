@@ -183,28 +183,54 @@ body {
   letter-spacing: -0.02em;
   line-height: 1;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
 }
 
-.provider-pct.level-ok {
+/* Dual 5h / Week: "78% / 12%" with independent leg colors */
+.provider-pct-dual {
+  gap: 0;
+}
+
+.provider-pct-leg {
+  font: inherit;
+  font-variant-numeric: inherit;
+  letter-spacing: inherit;
+}
+
+.provider-pct-sep {
+  margin: 0 0.28em;
+  opacity: 0.45;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.provider-pct.level-ok,
+.provider-pct-leg.level-ok {
   color: var(--ok);
 }
-.provider-pct.level-warn {
+.provider-pct.level-warn,
+.provider-pct-leg.level-warn {
   color: var(--warn);
 }
 .provider-pct.level-critical,
-.provider-pct.level-over {
+.provider-pct.level-over,
+.provider-pct-leg.level-critical,
+.provider-pct-leg.level-over {
   color: var(--critical);
 }
 .provider-pct.level-idle,
-.provider-pct.level-na {
+.provider-pct.level-na,
+.provider-pct-leg.level-idle,
+.provider-pct-leg.level-na {
   color: var(--text-tertiary);
   font-weight: 500;
-  font-size: 13px;
 }
 
 /*
  * Window metrics (spacing scale + content-sized label min):
- * Row: label | track | % — label vertically centered on the track only.
+ * Row: label | track — % is only in the card header.
  * Meta under track (indented past label column).
  */
 .windows {
@@ -237,17 +263,13 @@ body {
   min-width: 0;
 }
 
-/* label | track [| %] — same row as the bar */
+/* label | track — % is only in the card header */
 .window-row {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   column-gap: var(--win-row-gap);
   align-items: center;
   min-width: 0;
-}
-
-.windows-cols .window-row {
-  grid-template-columns: max-content minmax(0, 1fr) max-content;
 }
 
 .window-label {
@@ -265,75 +287,15 @@ body {
   align-self: center;
 }
 
-/* Detail band: row % */
-.window-pct {
-  min-width: var(--win-pct-min);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  text-align: right;
-  line-height: 1;
-  justify-self: end;
-  align-self: center;
-}
-
-.window-pct.level-ok {
-  color: var(--ok);
-}
-.window-pct.level-warn {
-  color: var(--warn);
-}
-.window-pct.level-critical,
-.window-pct.level-over {
-  color: var(--critical);
-}
-.window-pct.level-idle,
-.window-pct.level-na {
-  color: var(--text-tertiary);
-  font-weight: 500;
-}
-
-/* Tokens left · reset right — indent under track (past label column) */
+/* Reset under track (past label column). No used/limit pair — % is enough. */
 .window-meta {
   display: flex;
   flex-direction: row;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--space-2);
   padding-left: calc(var(--win-label-min) + var(--win-row-gap));
-  min-height: 1.25em;
   min-width: 0;
-}
-
-/* Dual: also clear the row-% column */
-.windows-cols .window-meta {
-  padding-right: calc(var(--win-pct-min) + var(--win-row-gap));
-}
-
-.window-values {
-  flex: 0 1 auto;
-  font-size: 11px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  letter-spacing: -0.01em;
-}
-
-.window-values.is-empty,
-.window-reset.is-empty {
-  visibility: hidden;
-  min-width: 0;
-  pointer-events: none;
-}
-
-.window-values.over {
-  color: var(--critical);
-  font-weight: 600;
 }
 
 /* Graphic pill track — thicker for presence; colors follow --accent-opacity */
