@@ -203,84 +203,71 @@ body {
 }
 
 /*
- * Fixed column geometry so track start/end align across cards.
- * Label hugs track/meta: right-aligned in a tight column + small gap.
+ * Window metrics (spacing scale + content-sized label min):
+ * Row: label | track | % — label vertically centered on the track only.
+ * Meta under track (indented past label column).
  */
 .windows {
-  --win-label-w: 2.6em; /* WEEK / 30D / 5H — right-aligned into track */
-  --win-row-gap: 6px;
-  --win-pct-w: 2.6em;
+  --win-row-gap: var(--space-2);
+  --win-stack-gap: var(--space-1);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
-  padding-top: 8px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--border-soft);
 }
 
 .windows.windows-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px 14px;
+  gap: var(--space-2) var(--space-3);
 }
 
 .windows.windows-single {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
-/* Label | (track + meta stack) — label vertically centers on both lines */
 .window-cell {
-  display: grid;
-  grid-template-columns: var(--win-label-w) minmax(0, 1fr);
-  column-gap: var(--win-row-gap);
-  align-items: center;
-  min-width: 0;
-}
-
-.window-label {
-  grid-column: 1;
-  width: var(--win-label-w);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  line-height: 1.15;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  /* Vertical mid of track+meta; horizontal hug toward the track */
-  align-self: center;
-  justify-self: end;
-  text-align: right;
-}
-
-.window-main {
-  grid-column: 2;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--win-stack-gap);
   min-width: 0;
 }
 
-/* track | optional row % */
+/* label | track [| %] — same row as the bar */
 .window-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   column-gap: var(--win-row-gap);
   align-items: center;
   min-width: 0;
 }
 
 .windows-cols .window-row {
-  grid-template-columns: minmax(0, 1fr) var(--win-pct-w);
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
 }
 
-/* Detail band: row %, tokens, reset all 11px */
+.window-label {
+  box-sizing: border-box;
+  min-width: var(--win-label-min);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  justify-self: end;
+  text-align: right;
+  align-self: center;
+}
+
+/* Detail band: row % */
 .window-pct {
-  width: var(--win-pct-w);
+  min-width: var(--win-pct-min);
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -307,20 +294,21 @@ body {
   font-weight: 500;
 }
 
-/* Tokens left · reset right (under track; label is already beside both rows) */
+/* Tokens left · reset right — indent under track (past label column) */
 .window-meta {
   display: flex;
   flex-direction: row;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-  min-height: 1.25em; /* keep row height even when empty */
+  gap: var(--space-2);
+  padding-left: calc(var(--win-label-min) + var(--win-row-gap));
+  min-height: 1.25em;
   min-width: 0;
 }
 
-/* Dual: reserve % column so meta lines up with track end */
+/* Dual: also clear the row-% column */
 .windows-cols .window-meta {
-  padding-right: calc(var(--win-pct-w) + var(--win-row-gap));
+  padding-right: calc(var(--win-pct-min) + var(--win-row-gap));
 }
 
 .window-values {
