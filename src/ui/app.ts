@@ -134,9 +134,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
   renderHeader(headerRoot, {
     onSettings: toggleSettings,
-    onRefresh: () => {
-      void doRefresh();
-    },
     onHide: () => {
       void invoke("hide_widget");
     },
@@ -148,6 +145,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   } catch {
     /* empty until first refresh */
   }
+  void doRefresh();
 
   await listen<ProviderSnapshot[]>("snapshots-updated", (ev) => {
     providers.setSnapshots(ev.payload);

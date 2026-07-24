@@ -3,9 +3,9 @@ use crate::domain::types::WindowGeometry;
 pub struct RefreshPolicy;
 impl RefreshPolicy {
     pub const TICK_SECS: u64 = 1;
-    pub const MIN_REFRESH_SECS: u64 = 10;
+    pub const MIN_REFRESH_SECS: u64 = 5;
     pub const MAX_REFRESH_SECS: u64 = 300;
-    pub const DEFAULT_REFRESH_SECS: u64 = 30;
+    pub const DEFAULT_REFRESH_SECS: u64 = 5;
 }
 
 pub struct WindowPolicy;

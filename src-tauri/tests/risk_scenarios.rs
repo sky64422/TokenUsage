@@ -35,7 +35,7 @@ fn risk_empty_state_file_falls_back() {
     let dir = tempdir().unwrap();
     fs::write(state_path(dir.path()), "").unwrap();
     let loaded = load_state(dir.path());
-    assert!(loaded.settings.refresh_secs >= 10);
+    assert!(loaded.settings.refresh_secs >= 5);
 }
 
 #[test]
@@ -73,7 +73,7 @@ fn risk_store_round_trip_clamps_opacity_and_refresh() {
     save_state(dir.path(), &state).unwrap();
     let loaded = load_state(dir.path());
     assert!(loaded.settings.opacity >= 0.35);
-    assert!(loaded.settings.refresh_secs >= 10);
+    assert!(loaded.settings.refresh_secs >= 5);
 }
 
 #[test]

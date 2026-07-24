@@ -167,7 +167,7 @@ pub struct AppSettings {
 }
 
 fn default_refresh_secs() -> u64 {
-    30
+    5
 }
 
 fn default_use_tokscale() -> bool {
@@ -187,7 +187,7 @@ impl Default for AppSettings {
             },
             hotkey: "Ctrl+Shift+U".into(),
             autostart: true,
-            refresh_secs: 30,
+            refresh_secs: 5,
             use_tokscale: true,
             claude: ProviderConfig {
                 enabled: true,

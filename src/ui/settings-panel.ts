@@ -1,5 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
 import type { AppSettings, ProviderId, ThemeMode } from "./types";
+
+const REFRESH_PRESETS = [5, 10, 15, 30, 60] as const;
 
 export function applyThemeToDocument(theme: ThemeMode): void {
   document.documentElement.dataset.theme = theme;
@@ -12,7 +13,6 @@ export function applyThemeToDocument(theme: ThemeMode): void {
  */
 export function applyPanelOpacity(panel: HTMLElement, opacity: number): void {
   const o = Math.min(1, Math.max(0.35, opacity));
-  // Keep type slightly stronger than glass so low opacity stays readable
   const fg = Math.min(1, Math.max(0.62, o * 1.02));
   const accent = Math.min(1, Math.max(0.55, o * 1.05));
   const chrome = Math.min(1, Math.max(0.4, o));
@@ -24,6 +24,11 @@ export function applyPanelOpacity(panel: HTMLElement, opacity: number): void {
     el.style.setProperty("--accent-opacity", String(accent));
     el.style.setProperty("--chrome-opacity", String(chrome));
   }
+}
+
+function formatRefresh(secs: number): string {
+  if (secs < 60) return `${secs}s`;
+  return `${secs / 60}m`;
 }
 
 export function mountSettingsPanel(
@@ -47,71 +52,86 @@ export function mountSettingsPanel(
   syncProviderEnabled: (st: AppSettings) => void;
 } {
   let visible = false;
+  let refreshSecs = settings.refresh_secs ?? 5;
+  if (!REFRESH_PRESETS.includes(refreshSecs as (typeof REFRESH_PRESETS)[number])) {
+    // Snap odd saved values to nearest preset for chip UI
+    refreshSecs = REFRESH_PRESETS.reduce((best, p) =>
+      Math.abs(p - refreshSecs) < Math.abs(best - refreshSecs) ? p : best,
+    );
+  }
 
   root.innerHTML = `
     <div class="settings" id="settings-sheet">
-      <div class="settings-row">
+      <div class="settings-section">
         <div class="settings-label">Theme</div>
-        <div class="segmented" id="theme-seg">
+        <div class="segmented" id="theme-seg" role="group" aria-label="Theme">
           <button type="button" data-theme="system">Auto</button>
           <button type="button" data-theme="light">Light</button>
           <button type="button" data-theme="dark">Dark</button>
         </div>
       </div>
-      <div class="settings-row">
-        <div>
+
+      <div class="settings-section">
+        <div class="settings-label-row">
           <div class="settings-label">Opacity</div>
-          <div class="settings-hint" id="opacity-val"></div>
+          <div class="settings-value" id="opacity-val"></div>
         </div>
-        <input type="range" id="opacity-range" min="0.35" max="1" step="0.01" />
-      </div>
-      <div class="settings-row">
-        <div>
-          <div class="settings-label">Refresh (sec)</div>
-          <div class="settings-hint">Local scan interval</div>
-        </div>
-        <input type="number" id="refresh-secs" min="10" max="300" step="5" />
-      </div>
-      <div class="settings-row">
-        <div class="settings-label">Launch at login</div>
-        <input type="checkbox" id="autostart" />
-      </div>
-      <div class="settings-row">
-        <div>
-          <div class="settings-label">Use tokscale</div>
-          <div class="settings-hint">Vendor quotas via <code>tokscale usage --json</code></div>
-        </div>
-        <input type="checkbox" id="use-tokscale" />
+        <input type="range" id="opacity-range" class="settings-range" min="0.35" max="1" step="0.01" />
       </div>
 
-      <div class="settings-section-title">Providers</div>
-      <div class="settings-hint" style="margin:-4px 0 8px">
-        Uncheck to hide a card. At least one must stay on.
-      </div>
-      ${providerLimitBlock("claude", "Claude", settings.claude)}
-      ${providerLimitBlock("codex", "Codex", settings.codex)}
-      ${providerLimitBlock("grok", "Grok", settings.grok)}
-      <div class="settings-hint" style="margin-top:4px">
-        Token numbers are local-limit fallbacks when tokscale has no data.
+      <div class="settings-section">
+        <div class="settings-label">Refresh</div>
+        <div class="segmented refresh-segmented" id="refresh-seg" role="group" aria-label="Refresh interval">
+          ${REFRESH_PRESETS.map(
+            (s) => `
+            <button type="button" data-refresh="${s}" class="${s === refreshSecs ? "active" : ""}">${formatRefresh(s)}</button>
+          `,
+          ).join("")}
+        </div>
       </div>
 
-      <div class="settings-row" style="margin-top:10px">
-        <button type="button" class="btn-text" id="btn-diag">Copy diagnostics</button>
+      <div class="settings-section">
+        <label class="settings-toggle" for="autostart">
+          <span class="settings-toggle-text">
+            <span class="settings-toggle-title">Launch at login</span>
+            <span class="settings-toggle-hint">Start with Windows</span>
+          </span>
+          <input type="checkbox" id="autostart" class="settings-switch-input" />
+          <span class="settings-switch" aria-hidden="true"></span>
+        </label>
+        <label class="settings-toggle" for="use-tokscale">
+          <span class="settings-toggle-text">
+            <span class="settings-toggle-title">Use tokscale</span>
+            <span class="settings-toggle-hint">Vendor quotas via CLI</span>
+          </span>
+          <input type="checkbox" id="use-tokscale" class="settings-switch-input" />
+          <span class="settings-switch" aria-hidden="true"></span>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Providers</div>
+        <p class="settings-lede">Toggle visibility. At least one stays on. Limits are local fallback.</p>
+        <div class="provider-list-settings">
+          ${providerLimitBlock("claude", "Claude", settings.claude)}
+          ${providerLimitBlock("codex", "Codex", settings.codex)}
+          ${providerLimitBlock("grok", "Grok", settings.grok)}
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <button type="button" class="btn-text" id="btn-diag">Diagnostics</button>
         <button type="button" class="btn-text btn-danger" id="btn-quit">Quit</button>
       </div>
-      <div class="settings-hint" style="margin-top:8px">Hotkey ${settings.hotkey} · Double-click title to check app updates</div>
-      <div class="settings-row" style="margin-top:4px">
-        <button type="button" class="btn-text" id="btn-update-app">Check for updates</button>
-      </div>
-      <div class="settings-hint" id="update-status" style="margin-top:4px" aria-live="polite"></div>
+      <p class="settings-footer">Hotkey ${settings.hotkey} · Updates via header ↻</p>
     </div>
   `;
 
   const sheet = root.querySelector("#settings-sheet") as HTMLElement;
   const themeSeg = root.querySelector("#theme-seg") as HTMLElement;
+  const refreshSeg = root.querySelector("#refresh-seg") as HTMLElement;
   const opacityRange = root.querySelector("#opacity-range") as HTMLInputElement;
   const opacityVal = root.querySelector("#opacity-val") as HTMLElement;
-  const refreshInput = root.querySelector("#refresh-secs") as HTMLInputElement;
   const autostart = root.querySelector("#autostart") as HTMLInputElement;
   const useTokscale = root.querySelector("#use-tokscale") as HTMLInputElement;
 
@@ -121,10 +141,16 @@ export function mountSettingsPanel(
     });
   }
 
+  function markRefresh(secs: number): void {
+    refreshSeg.querySelectorAll("button").forEach((b) => {
+      b.classList.toggle("active", Number((b as HTMLElement).dataset.refresh) === secs);
+    });
+  }
+
   markTheme(settings.theme);
+  markRefresh(refreshSecs);
   opacityRange.value = String(settings.opacity);
   opacityVal.textContent = `${Math.round(settings.opacity * 100)}%`;
-  refreshInput.value = String(settings.refresh_secs);
   autostart.checked = settings.autostart;
   useTokscale.checked = settings.use_tokscale !== false;
 
@@ -136,14 +162,20 @@ export function mountSettingsPanel(
     });
   });
 
+  refreshSeg.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const secs = Number((btn as HTMLElement).dataset.refresh);
+      if (!Number.isFinite(secs)) return;
+      refreshSecs = secs;
+      markRefresh(secs);
+      handlers.onRefreshSecs(secs);
+    });
+  });
+
   opacityRange.addEventListener("input", () => {
     const o = Number(opacityRange.value);
     opacityVal.textContent = `${Math.round(o * 100)}%`;
     handlers.onOpacityChange(o);
-  });
-
-  refreshInput.addEventListener("change", () => {
-    handlers.onRefreshSecs(Number(refreshInput.value) || 30);
   });
 
   autostart.addEventListener("change", () => {
@@ -155,9 +187,7 @@ export function mountSettingsPanel(
   });
 
   function updateToggleHint(id: ProviderId, enabled: boolean): void {
-    const en = root.querySelector(`#en-${id}`) as HTMLInputElement | null;
-    const hint = en
-      ?.closest(".provider-toggle")
+    const hint = root.querySelector(`#en-${id}`)?.closest(".provider-card-settings")
       ?.querySelector(".provider-toggle-hint");
     if (hint) hint.textContent = enabled ? "Visible" : "Hidden";
   }
@@ -174,7 +204,6 @@ export function mountSettingsPanel(
     const five = root.querySelector(`#five-${id}`) as HTMLInputElement;
     const weekly = root.querySelector(`#weekly-${id}`) as HTMLInputElement;
     en?.addEventListener("change", () => {
-      // Soft-block hide-all in the UI (backend also rejects)
       if (!en.checked && countEnabled() === 0) {
         en.checked = true;
         updateToggleHint(id, true);
@@ -199,31 +228,6 @@ export function mountSettingsPanel(
   root.querySelector("#btn-diag")?.addEventListener("click", handlers.onDiagnostics);
   root.querySelector("#btn-quit")?.addEventListener("click", handlers.onQuit);
 
-  const updateBtn = root.querySelector("#btn-update-app") as HTMLButtonElement | null;
-  const updateStatus = root.querySelector("#update-status") as HTMLElement | null;
-  updateBtn?.addEventListener("click", () => {
-    void (async () => {
-      if (!updateBtn) return;
-      updateBtn.disabled = true;
-      if (updateStatus) updateStatus.textContent = "Checking for updates…";
-      try {
-        const installed = await invoke<boolean>("check_for_updates");
-        if (updateStatus) {
-          updateStatus.textContent = installed
-            ? "Update installed. Restart the app if it does not reopen."
-            : "You're on the latest version.";
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (updateStatus) {
-          updateStatus.textContent = formatUpdateError(msg);
-        }
-      } finally {
-        updateBtn.disabled = false;
-      }
-    })();
-  });
-
   return {
     show() {
       visible = true;
@@ -234,7 +238,6 @@ export function mountSettingsPanel(
       sheet.classList.remove("visible");
     },
     isVisible: () => visible,
-    /** Re-apply enabled checkboxes from persisted settings (e.g. after a rejected hide). */
     syncProviderEnabled(st: AppSettings) {
       (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
         const en = root.querySelector(`#en-${id}`) as HTMLInputElement | null;
@@ -247,35 +250,30 @@ export function mountSettingsPanel(
   };
 }
 
-/** Human-readable updater failures (private repo / network / signature). */
-function formatUpdateError(raw: string): string {
-  const s = raw.replace(/^Error:\s*/i, "").trim();
-  if (/404|not found|failed to fetch|error sending request|dns|timed out|cannot reach/i.test(s)) {
-    return "Update check failed: cannot download release (private GitHub repo or network). Make the repo public, or install from Releases manually.";
-  }
-  if (/signature|minisign|key/i.test(s)) {
-    return `Update check failed (signature): ${s}`;
-  }
-  return s ? `Update check failed: ${s}` : "Update check failed.";
-}
-
 function providerLimitBlock(
   id: string,
   label: string,
   cfg: { enabled: boolean; limits: { five_hour_tokens: number; weekly_tokens: number | null } },
 ): string {
   return `
-    <div class="settings-row provider-row">
-      <label class="provider-toggle" title="Show or hide this provider on the widget">
-        <input type="checkbox" id="en-${id}" ${cfg.enabled ? "checked" : ""} />
-        <span class="provider-toggle-label">
-          <span class="provider-toggle-name">${label}</span>
+    <div class="provider-card-settings">
+      <label class="settings-toggle provider-vis-toggle" for="en-${id}" title="Show or hide this provider">
+        <span class="settings-toggle-text">
+          <span class="settings-toggle-title">${label}</span>
           <span class="provider-toggle-hint">${cfg.enabled ? "Visible" : "Hidden"}</span>
         </span>
+        <input type="checkbox" id="en-${id}" class="settings-switch-input" ${cfg.enabled ? "checked" : ""} />
+        <span class="settings-switch" aria-hidden="true"></span>
       </label>
-      <div class="provider-limits" style="display:flex;gap:6px;align-items:center">
-        <input type="number" id="five-${id}" title="5h token limit (local fallback)" value="${cfg.limits.five_hour_tokens}" />
-        <input type="number" id="weekly-${id}" title="Weekly token limit (local fallback)" value="${cfg.limits.weekly_tokens ?? ""}" placeholder="weekly" />
+      <div class="provider-limits">
+        <label class="limit-field">
+          <span class="limit-field-label">5h</span>
+          <input type="number" id="five-${id}" title="5h token limit (local fallback)" value="${cfg.limits.five_hour_tokens}" />
+        </label>
+        <label class="limit-field">
+          <span class="limit-field-label">Week</span>
+          <input type="number" id="weekly-${id}" title="Weekly token limit (local fallback)" value="${cfg.limits.weekly_tokens ?? ""}" placeholder="—" />
+        </label>
       </div>
     </div>
   `;
