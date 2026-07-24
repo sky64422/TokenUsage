@@ -146,6 +146,7 @@ pub fn set_content_min_size(
     if grow_if_needed {
         // Full content-hug: avoid leftover empty glass under cards.
         window_ctl::snap_height_to_content(&window, width, height)?;
+        let _ = window_ctl::apply_clean_glass_edge(&window);
     }
     Ok(())
 }

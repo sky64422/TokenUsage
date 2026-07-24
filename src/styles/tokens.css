@@ -34,8 +34,10 @@
   --accent: rgba(var(--accent-rgb), var(--accent-opacity));
   --track: rgba(0, 0, 0, calc(0.08 * var(--chrome-opacity)));
   --track-inset: rgba(0, 0, 0, calc(0.12 * var(--chrome-opacity)));
-  --radius: 18px;
-  --radius-card: 14px;
+  /* Panel chrome uses OS DWM rounding on Windows (apply_clean_glass_edge).
+     Keep CSS radius 0 so we don't double-AA transparent corners (white fringe). */
+  --radius: 0px;
+  --radius-card: 10px;
   --blur: 36px;
   --header-height: 38px;
   --pad-x: 14px;

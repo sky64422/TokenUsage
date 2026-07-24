@@ -48,6 +48,7 @@ pub fn run() {
                 let _ = window_ctl::apply_always_on_top(&window, true);
                 let _ = window_ctl::apply_geometry(&window, &persisted.settings.window);
                 let _ = window_ctl::apply_opacity(app.handle(), persisted.settings.opacity);
+                let _ = window_ctl::apply_clean_glass_edge(&window);
                 let _ = window_ctl::show_window(&window);
             }
 
@@ -106,6 +107,10 @@ pub fn run() {
                     let _ = window_ctl::clamp_physical_size_to_content_min(
                         window, *size, min_w, min_h,
                     );
+                }
+                // Re-clip rounded HWND after size changes (content-hug, user drag).
+                if let Some(w) = window.app_handle().get_webview_window(window.label()) {
+                    let _ = window_ctl::apply_clean_glass_edge(&w);
                 }
             }
         })
