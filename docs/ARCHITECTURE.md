@@ -9,10 +9,12 @@ Web UI (provider cards, fixed-column tracks, reset stamp, settings)
         │ invoke / events (snapshots-updated)
         │ set_content_min_size (content-hug min + snap height)
 Rust AppCore
-        │ refresh_all()
-tokscale usage --json  ──► map claude/codex/grok
-        │ (fallback)
-Local adapters (Claude / Codex / Grok JSONL + optional Claude rate_limits dump)
+        │ refresh_all()  cascade per provider:
+1) Direct vendor OAuth  ──► source: vendor
+        │ miss / fail
+2) tokscale usage --json  ──► source: tokscale
+        │ miss / fail
+3) Unavailable / AuthRequired card (no local JSONL estimate)
 ```
 
 ## UI layout contracts
@@ -25,26 +27,35 @@ Local adapters (Claude / Codex / Grok JSONL + optional Claude rate_limits dump)
 
 ## Providers
 
-### Primary: tokscale
+### Primary: direct vendor quota (personal OAuth)
+
+Reads local CLI auth only (no in-app login). Cascade when `use_direct_quota` (default true):
+
+| Id | Auth file | Endpoint |
+|----|-----------|----------|
+| `claude` | `~/.claude/.credentials.json` (+ OAuth refresh) | `api.anthropic.com/api/oauth/usage` |
+| `codex` | `~/.codex/auth.json` | `chatgpt.com/backend-api/wham/usage` |
+| `grok` | `~/.grok/auth.json` (+ OIDC refresh) | `cli-chat-proxy.grok.com/v1/billing?format=credits` |
+
+Usage/limit HTTP is metadata only (does not consume coding tokens).  
+`source: vendor`. 45s response cache. Env `TOKENUSAGE_SKIP_DIRECT_QUOTA=1` for tests.
+
+### Secondary: tokscale
 
 `tokscale usage --json` (or `npx` / `npx.cmd` on Windows) once per refresh (45s process cache).  
 Maps vendor `used_percent` + `resets_at` → `ProviderSnapshot` (`source: tokscale`).  
-Setting: `use_tokscale` (default true).
+Setting: `use_tokscale` (default true). Used when direct vendor misses or fails.
 
-### Fallback: local JSONL
+### No local JSONL
 
-| Id | Scanner | Windows |
-|----|---------|---------|
-| `claude` | `~/.claude/projects/**/*.jsonl` usage; optional companion rate_limits JSON | 5h + weekly |
-| `codex` | `~/.codex/sessions/**/*.jsonl` `token_count` deltas | 5h + weekly |
-| `grok` | `~/.grok/sessions/**/updates.jsonl` `totalTokens` deltas | 5h + weekly |
-
-Local percentages use **user-configured token limits**. Tokscale uses vendor %.
+Session log estimates (`~/.claude` / `~/.codex` / `~/.grok` token sums) were removed.  
+If both vendor and tokscale miss, the card shows **Unavailable** / **AuthRequired** with a short hint.
 
 ## Non-goals (v0.1)
 
 - Push notifications / tray alerts  
 - HTTP scraping of vendor dashboards  
+- Local JSONL / plan-limit token estimates  
 - Google Antigravity (AGY) in-widget — tokscale has `antigravity sync` (macOS/Linux); TokenUsage does not surface it yet  
 - Perfect billing parity with official subscription meters  
 

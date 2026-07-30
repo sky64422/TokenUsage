@@ -10,7 +10,7 @@ If you are an automated coding agent in a new session:
 ## Product constraints
 
 - Floating **usage monitor widget**, not a billing dashboard or team admin console.
-- **Primary data:** `tokscale usage --json` (vendor-reported). **Fallback:** local JSONL under `~/.claude`, `~/.codex`, `~/.grok`.
+- **Primary data:** direct vendor OAuth quota (Claude / Codex / Grok). **Fallback:** `tokscale usage --json`. No local JSONL estimates.
 - **No** browser scraping of vendor dashboards without an explicit design decision.
 - **Notifications** are out of scope until requested.
 - **Antigravity (AGY)** deferred in-app; tokscale may support AGY via `antigravity sync` (macOS/Linux) — not wired here yet.

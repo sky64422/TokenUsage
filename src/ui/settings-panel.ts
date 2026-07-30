@@ -40,8 +40,8 @@ export function mountSettingsPanel(
     onRefreshSecs: (n: number) => void;
     onAutostart: (v: boolean) => void;
     onUseTokscale: (v: boolean) => void;
+    onUseDirectQuota: (v: boolean) => void;
     onProviderEnabled: (id: ProviderId, enabled: boolean) => void | Promise<void>;
-    onLimits: (id: ProviderId, five: number, weekly: number | null) => void;
     onDiagnostics: () => void;
     onQuit: () => void;
   },
@@ -99,10 +99,18 @@ export function mountSettingsPanel(
           <input type="checkbox" id="autostart" class="settings-switch-input" />
           <span class="settings-switch" aria-hidden="true"></span>
         </label>
+        <label class="settings-toggle" for="use-direct-quota">
+          <span class="settings-toggle-text">
+            <span class="settings-toggle-title">Direct vendor quota</span>
+            <span class="settings-toggle-hint">Local OAuth → API (Claude / Codex / Grok)</span>
+          </span>
+          <input type="checkbox" id="use-direct-quota" class="settings-switch-input" />
+          <span class="settings-switch" aria-hidden="true"></span>
+        </label>
         <label class="settings-toggle" for="use-tokscale">
           <span class="settings-toggle-text">
             <span class="settings-toggle-title">Use tokscale</span>
-            <span class="settings-toggle-hint">Vendor quotas via CLI</span>
+            <span class="settings-toggle-hint">2nd path when direct vendor fails</span>
           </span>
           <input type="checkbox" id="use-tokscale" class="settings-switch-input" />
           <span class="settings-switch" aria-hidden="true"></span>
@@ -111,11 +119,11 @@ export function mountSettingsPanel(
 
       <div class="settings-section">
         <div class="settings-label">Providers</div>
-        <p class="settings-lede">Toggle visibility. At least one stays on. Limits are local fallback.</p>
+        <p class="settings-lede">Toggle visibility. At least one stays on. Quotas from vendor API, then tokscale.</p>
         <div class="provider-list-settings">
-          ${providerLimitBlock("claude", "Claude", settings.claude)}
-          ${providerLimitBlock("codex", "Codex", settings.codex)}
-          ${providerLimitBlock("grok", "Grok", settings.grok)}
+          ${providerToggleBlock("claude", "Claude", settings.claude)}
+          ${providerToggleBlock("codex", "Codex", settings.codex)}
+          ${providerToggleBlock("grok", "Grok", settings.grok)}
         </div>
       </div>
 
@@ -134,6 +142,7 @@ export function mountSettingsPanel(
   const opacityVal = root.querySelector("#opacity-val") as HTMLElement;
   const autostart = root.querySelector("#autostart") as HTMLInputElement;
   const useTokscale = root.querySelector("#use-tokscale") as HTMLInputElement;
+  const useDirectQuota = root.querySelector("#use-direct-quota") as HTMLInputElement;
 
   function markTheme(t: ThemeMode): void {
     themeSeg.querySelectorAll("button").forEach((b) => {
@@ -153,6 +162,7 @@ export function mountSettingsPanel(
   opacityVal.textContent = `${Math.round(settings.opacity * 100)}%`;
   autostart.checked = settings.autostart;
   useTokscale.checked = settings.use_tokscale !== false;
+  useDirectQuota.checked = settings.use_direct_quota !== false;
 
   themeSeg.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -186,6 +196,10 @@ export function mountSettingsPanel(
     handlers.onUseTokscale(useTokscale.checked);
   });
 
+  useDirectQuota.addEventListener("change", () => {
+    handlers.onUseDirectQuota(useDirectQuota.checked);
+  });
+
   function updateToggleHint(id: ProviderId, enabled: boolean): void {
     const hint = root.querySelector(`#en-${id}`)?.closest(".provider-card-settings")
       ?.querySelector(".provider-toggle-hint");
@@ -201,8 +215,6 @@ export function mountSettingsPanel(
 
   (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
     const en = root.querySelector(`#en-${id}`) as HTMLInputElement;
-    const five = root.querySelector(`#five-${id}`) as HTMLInputElement;
-    const weekly = root.querySelector(`#weekly-${id}`) as HTMLInputElement;
     en?.addEventListener("change", () => {
       if (!en.checked && countEnabled() === 0) {
         en.checked = true;
@@ -215,14 +227,6 @@ export function mountSettingsPanel(
         updateToggleHint(id, en.checked);
       });
     });
-    const applyLimits = () => {
-      const f = Number(five.value) || 0;
-      const wRaw = weekly.value.trim();
-      const w = wRaw === "" ? null : Number(wRaw);
-      handlers.onLimits(id, f, w != null && Number.isFinite(w) ? w : null);
-    };
-    five?.addEventListener("change", applyLimits);
-    weekly?.addEventListener("change", applyLimits);
   });
 
   root.querySelector("#btn-diag")?.addEventListener("click", handlers.onDiagnostics);
@@ -250,10 +254,10 @@ export function mountSettingsPanel(
   };
 }
 
-function providerLimitBlock(
+function providerToggleBlock(
   id: string,
   label: string,
-  cfg: { enabled: boolean; limits: { five_hour_tokens: number; weekly_tokens: number | null } },
+  cfg: { enabled: boolean },
 ): string {
   return `
     <div class="provider-card-settings">
@@ -265,16 +269,6 @@ function providerLimitBlock(
         <input type="checkbox" id="en-${id}" class="settings-switch-input" ${cfg.enabled ? "checked" : ""} />
         <span class="settings-switch" aria-hidden="true"></span>
       </label>
-      <div class="provider-limits">
-        <label class="limit-field">
-          <span class="limit-field-label">5h</span>
-          <input type="number" id="five-${id}" title="5h token limit (local fallback)" value="${cfg.limits.five_hour_tokens}" />
-        </label>
-        <label class="limit-field">
-          <span class="limit-field-label">Week</span>
-          <input type="number" id="weekly-${id}" title="Weekly token limit (local fallback)" value="${cfg.limits.weekly_tokens ?? ""}" placeholder="—" />
-        </label>
-      </div>
     </div>
   `;
 }

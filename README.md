@@ -1,16 +1,16 @@
 # Token Usage
 
-Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent usage vs configurable limits — **local files & CLI data only**, with **reset-time–first** display. Design language follows [EconomyWarRoom](../EconomyWarRoom) (glass, always-on-top, hotkey).
+Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent **quota usage vs reset times** — personal CLI OAuth + optional tokscale, with **reset-time–first** display. Design language follows [EconomyWarRoom](../EconomyWarRoom) (glass, always-on-top, hotkey).
 
 ## Features (v0.1+)
 
 - Always-on-top glass panel (Apple-like light/dark); **opacity slider** tints panel, text, and bar colors together
 - Providers: **Claude Code**, **Codex**, **Grok Build**
-- Primary data: **`tokscale usage --json`** (vendor quotas); local JSONL fallback
+- Primary: **direct vendor OAuth quota**; secondary: **`tokscale usage --json`**
 - **Progress rows:** label + thick pill track; dual limits (5h | Week) side-by-side, single limit full width
 - **Reset stamp:** coral `↻ M/D HH:mm` (no countdown clutter); hover title keeps long form
 - **Content-hug height:** window min size tracks card content (grow + shrink)
-- Settings: theme, opacity, refresh, tokscale toggle, autostart, per-provider limits
+- Settings: theme, opacity, refresh, direct vendor + tokscale toggles, autostart, per-provider visibility
 - Hotkey: `Ctrl+Shift+U` (toggle hide/show)
 - **In-app updates** (Tauri updater; header **⬆** + release startup check)
 - **No notifications yet** (planned later)
@@ -18,26 +18,28 @@ Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent usage
 
 ## Data sources
 
-### Primary — tokscale (default on)
+### 1) Direct vendor (default on)
+
+Uses OAuth already stored by each CLI (no in-app login). Metadata HTTP only — does not spend coding tokens.
+
+| Provider | Auth | Quota API |
+|----------|------|-----------|
+| Claude | `~/.claude/.credentials.json` | Anthropic `api/oauth/usage` |
+| Codex | `~/.codex/auth.json` | ChatGPT `wham/usage` |
+| Grok | `~/.grok/auth.json` | `cli-chat-proxy.grok.com` billing |
+
+### 2) tokscale (default on, secondary)
 
 ```bash
 tokscale usage --json
 # or: npx --yes tokscale usage --json
 ```
 
-Vendor-reported session/weekly quotas (same family of numbers as provider dashboards).  
-Requires [tokscale](https://github.com/junhoyeo/tokscale) on PATH or working `npx`.  
-Results are cached ~45s. Toggle off in Settings → **Use tokscale**.
+Used when direct vendor misses or fails. Cached ~45s. Toggle in Settings.
 
-### Fallback — local JSONL
+### No local JSONL
 
-| Provider | Path / source | Notes |
-|----------|---------------|--------|
-| Claude | `~/.claude/projects/**/*.jsonl` | Sums assistant `usage`; optional rate_limits dump files |
-| Codex | `~/.codex/sessions/**/*.jsonl` | `token_count` deltas |
-| Grok | `~/.grok/sessions/**/updates.jsonl` | `totalTokens` deltas |
-
-Local path uses **user-configured token limits** for %. Tokscale path uses **used_percent + resets_at** from the CLI.
+Session log estimates were removed. If both paths fail, the card shows **Unavailable** / **AuthRequired**.
 
 ## Dev
 

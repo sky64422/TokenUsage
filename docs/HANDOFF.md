@@ -12,13 +12,13 @@ Windows always-on-top glass widget showing **Claude / Codex / Grok** coding-agen
 
 - Tauri 2 + Rust + TypeScript (Vite)
 - Design/shell patterns from **EconomyWarRoom**
-- Optional primary: **tokscale** CLI (`usage --json`)
+- Primary: **direct vendor OAuth** (Claude / Codex / Grok). Secondary: **tokscale** `usage --json`.
 
 ## Done (v0.1 + UI polish)
 
 - Glass panel, hotkey `Ctrl+Shift+U`, theme/opacity/autostart
-- tokscale adapter + local JSONL fallback (claude/codex/grok)
-- Settings: use_tokscale, per-provider enable + local limits
+- Direct vendor quota + tokscale cascade (local JSONL removed)
+- Settings: use_direct_quota, use_tokscale, per-provider visibility
 - In-app updater (Tauri plugin + `npm run release:publish`)
 - Unit tests for parsers / usage math
 - Risk scenarios + tokscale fixture

@@ -16,8 +16,6 @@ import {
 import type {
   DiagnosticsSnapshot,
   PersistedState,
-  PlanLimits,
-  ProviderId,
   ProviderSnapshot,
   ThemeMode,
 } from "./types";
@@ -69,6 +67,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       await invoke("set_use_tokscale", { enabled: v });
       scheduleContentMin(true);
     },
+    onUseDirectQuota: async (v) => {
+      await invoke("set_use_direct_quota", { enabled: v });
+      scheduleContentMin(true);
+    },
     onProviderEnabled: async (id, enabled) => {
       try {
         const snaps = await invoke<ProviderSnapshot[]>("set_provider_enabled", {
@@ -88,16 +90,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         }
         throw err;
       }
-    },
-    onLimits: async (id, five, weekly) => {
-      const limits: PlanLimits = {
-        five_hour_tokens: five,
-        weekly_tokens: weekly,
-      };
-      await invoke("set_provider_limits", {
-        provider: id as ProviderId,
-        limits,
-      });
     },
     onDiagnostics: async () => {
       const diag = await invoke<DiagnosticsSnapshot>("get_diagnostics");

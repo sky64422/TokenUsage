@@ -8,8 +8,9 @@ static SKIP_TOKSCALE: Once = Once::new();
 
 fn ensure_skip_tokscale() {
     SKIP_TOKSCALE.call_once(|| {
-        // Avoid spawning npx/tokscale in unit/integration risk tests.
+        // Avoid spawning npx/tokscale or hitting vendor HTTP in risk tests.
         std::env::set_var("TOKENUSAGE_SKIP_TOKSCALE", "1");
+        std::env::set_var("TOKENUSAGE_SKIP_DIRECT_QUOTA", "1");
     });
 }
 use token_usage_lib::application::service::AppCore;
@@ -28,6 +29,7 @@ fn risk_corrupt_state_json_falls_back_to_default() {
     let loaded = load_state(dir.path());
     assert_eq!(loaded.settings.theme, ThemeMode::System);
     assert!(loaded.settings.use_tokscale);
+    assert!(loaded.settings.use_direct_quota);
 }
 
 #[test]
@@ -61,6 +63,7 @@ fn risk_partial_state_deserializes_with_defaults() {
     assert_eq!(loaded.settings.theme, ThemeMode::Dark);
     assert!((loaded.settings.opacity - 0.5).abs() < 0.001);
     assert!(loaded.settings.use_tokscale); // default true
+    assert!(loaded.settings.use_direct_quota); // default true
     assert!(loaded.settings.claude.enabled);
 }
 
@@ -131,16 +134,17 @@ fn risk_appcore_disable_tokscale_and_visibility() {
     let state = core.get_state();
     assert!(!state.settings.use_tokscale);
 
-    // Local fallback still returns something for enabled providers
+    // Without tokscale (+ skip direct), cards are unavailable — not local estimates
     let snaps = core.refresh_all();
     assert!(!snaps.is_empty());
-    // After refresh without tokscale, sources should not be tokscale (or may be if cache—fresh process so local)
     for s in &snaps {
         assert_ne!(
             s.source,
             DataSource::Tokscale,
-            "expected local path when tokscale disabled"
+            "tokscale disabled should not yield tokscale source"
         );
+        assert_ne!(s.source, DataSource::Estimate);
+        assert_ne!(s.source, DataSource::LocalFile);
     }
 }
 

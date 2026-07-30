@@ -1,16 +1,5 @@
-pub mod claude;
-pub mod codex;
-pub mod grok;
+pub mod credentials;
 pub mod paths;
+pub mod quota;
 pub mod tokscale;
 pub mod tokscale_exec;
-
-use crate::domain::types::{PlanLimits, ProviderId, ProviderSnapshot};
-
-pub fn fetch_provider(id: ProviderId, limits: &PlanLimits) -> ProviderSnapshot {
-    match id {
-        ProviderId::Claude => claude::fetch(limits),
-        ProviderId::Codex => codex::fetch(limits),
-        ProviderId::Grok => grok::fetch(limits),
-    }
-}

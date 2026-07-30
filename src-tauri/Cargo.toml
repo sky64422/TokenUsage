@@ -1,6 +1,6 @@
 [package]
 name = "token-usage"
-version = "0.1.15"
+version = "0.1.16"
 description = "Token Usage floating widget for coding agents"
 authors = ["you"]
 edition = "2021"
@@ -25,6 +25,7 @@ chrono = { version = "0.4", features = ["serde"] }
 dirs = "6"
 walkdir = "2"
 regex = "1"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = [
@@ -46,12 +47,12 @@ exclude-files = [
   "src/application/*",
   "src/infrastructure/window_ctl.rs",
   "src/infrastructure/updater.rs",
-  "src/infrastructure/providers/claude.rs",
-  "src/infrastructure/providers/codex.rs",
-  "src/infrastructure/providers/grok.rs",
   "src/infrastructure/providers/paths.rs",
   "src/infrastructure/providers/mod.rs",
   "src/infrastructure/providers/tokscale_exec.rs",
+  "src/infrastructure/providers/quota/codex_fetch.rs",
+  "src/infrastructure/providers/quota/claude_fetch.rs",
+  "src/infrastructure/providers/quota/grok_fetch.rs",
 ]
 
 

@@ -8,9 +8,10 @@ cd "$ROOT/src-tauri"
 source "${HOME}/.cargo/env" 2>/dev/null || true
 
 export TOKENUSAGE_SKIP_TOKSCALE=1
+export TOKENUSAGE_SKIP_DIRECT_QUOTA=1
 
-# Gate focuses on pure domain + store + tokscale JSON mapping.
-# Local filesystem scanners (claude/codex/grok) and GUI shell are excluded.
+# Gate focuses on pure domain + store + tokscale/quota JSON mapping.
+# GUI shell and network fetch modules are excluded.
 EXCLUDE=(
   --exclude-files 'src/main.rs'
   --exclude-files 'src/lib.rs'
@@ -19,12 +20,12 @@ EXCLUDE=(
   --exclude-files 'src/application/*'
   --exclude-files 'src/infrastructure/window_ctl.rs'
   --exclude-files 'src/infrastructure/updater.rs'
-  --exclude-files 'src/infrastructure/providers/claude.rs'
-  --exclude-files 'src/infrastructure/providers/codex.rs'
-  --exclude-files 'src/infrastructure/providers/grok.rs'
   --exclude-files 'src/infrastructure/providers/paths.rs'
   --exclude-files 'src/infrastructure/providers/mod.rs'
   --exclude-files 'src/infrastructure/providers/tokscale_exec.rs'
+  --exclude-files 'src/infrastructure/providers/quota/codex_fetch.rs'
+  --exclude-files 'src/infrastructure/providers/quota/claude_fetch.rs'
+  --exclude-files 'src/infrastructure/providers/quota/grok_fetch.rs'
 )
 
 echo "== cargo test (lib + risk_scenarios) =="

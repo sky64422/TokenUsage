@@ -39,4 +39,4 @@ Risk tests set this automatically.
 
 - Tool: `cargo tarpaulin`
 - Fail under: **75%** on domain + store + tokscale parse mapping
-- Excludes: GUI shell (`lib`/`commands`/`window_ctl`/`updater`), AppCore service, local JSONL scanners (`claude`/`codex`/`grok`/`paths`)
+- Excludes: GUI shell (`lib`/`commands`/`window_ctl`/`updater`), AppCore service, paths + HTTP fetch modules

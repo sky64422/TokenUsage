@@ -2,7 +2,13 @@ export type ProviderId = "claude" | "codex" | "grok";
 export type ThemeMode = "light" | "dark" | "system";
 export type WindowKind = "rolling_5h" | "weekly" | "daily" | "session" | "unknown";
 export type SnapshotStatus = "ok" | "degraded" | "unavailable" | "auth_required";
-export type DataSource = "local_file" | "cli" | "manual" | "estimate" | "tokscale";
+export type DataSource =
+  | "local_file"
+  | "cli"
+  | "manual"
+  | "estimate"
+  | "tokscale"
+  | "vendor";
 export type UsageUnit = "percent" | "tokens" | "messages" | "credits";
 
 export interface UsageWindow {
@@ -52,6 +58,7 @@ export interface AppSettings {
   autostart: boolean;
   refresh_secs: number;
   use_tokscale: boolean;
+  use_direct_quota: boolean;
   claude: ProviderConfig;
   codex: ProviderConfig;
   grok: ProviderConfig;

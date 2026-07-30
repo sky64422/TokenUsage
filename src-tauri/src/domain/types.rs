@@ -67,6 +67,8 @@ pub enum DataSource {
     Estimate,
     /// `tokscale usage --json` vendor-reported quotas.
     Tokscale,
+    /// Direct OAuth call to the vendor quota endpoint (personal CLI credentials).
+    Vendor,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -155,9 +157,13 @@ pub struct AppSettings {
     /// Seconds between usage refresh (clamped on write).
     #[serde(default = "default_refresh_secs")]
     pub refresh_secs: u64,
-    /// Prefer `tokscale usage --json` (vendor quotas); local JSONL is fallback.
+    /// Prefer `tokscale usage --json` as secondary cascade after direct vendor.
     #[serde(default = "default_use_tokscale")]
     pub use_tokscale: bool,
+    /// Prefer direct vendor quota HTTP using local CLI OAuth (personal).
+    /// Cascade: vendor → tokscale → unavailable.
+    #[serde(default = "default_use_direct_quota")]
+    pub use_direct_quota: bool,
     #[serde(default)]
     pub claude: ProviderConfig,
     #[serde(default)]
@@ -171,6 +177,10 @@ fn default_refresh_secs() -> u64 {
 }
 
 fn default_use_tokscale() -> bool {
+    true
+}
+
+fn default_use_direct_quota() -> bool {
     true
 }
 
@@ -189,6 +199,7 @@ impl Default for AppSettings {
             autostart: true,
             refresh_secs: 5,
             use_tokscale: true,
+            use_direct_quota: true,
             claude: ProviderConfig {
                 enabled: true,
                 limits: PlanLimits {

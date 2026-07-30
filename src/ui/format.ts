@@ -150,11 +150,16 @@ export function sourceLabel(
       message && !/over|idle|estimate/i.test(message) ? message : null;
     return { kind: "tokscale", detail: plan };
   }
-  // Don't surface "idle" in chrome — empty usage is enough
-  if (message === "idle") return { kind: "local", detail: null };
-  if (message && /estimate\s*\(context/i.test(message)) {
-    return { kind: "local", detail: "context est." };
+  if (source === "vendor") {
+    const plan =
+      message && !/over|idle|estimate|auth/i.test(message) ? message : null;
+    return { kind: "vendor", detail: plan };
   }
-  if (message === "over limit") return { kind: "local", detail: "over" };
-  return { kind: "local", detail: null };
+  if (message && /login|auth|expired|credentials/i.test(message)) {
+    return { kind: "auth", detail: null };
+  }
+  if (message && /no \w+ quota|unavailable/i.test(message)) {
+    return { kind: "none", detail: null };
+  }
+  return { kind: "none", detail: null };
 }
