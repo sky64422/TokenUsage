@@ -298,17 +298,18 @@ body {
   min-width: 0;
 }
 
-/* Graphic pill track — thicker for presence; colors follow --accent-opacity */
+/* Graphic pill track — Quiet Luxury: glow + sheen, still a single glance bar */
 .track {
-  /* First column of .window-row (label lives outside in .window-cell grid) */
   min-width: 0;
   width: 100%;
   height: 11px;
   border-radius: 99px;
   background: var(--track);
   box-shadow: inset 0 1px 2px var(--track-inset);
+  /* Visible so end-cap glow can soft-bleed; sheen clips on .track-fill */
   overflow: visible;
   position: relative;
+  isolation: isolate;
 }
 
 .track-fill {
@@ -318,66 +319,110 @@ body {
   width: 0%;
   max-width: 100%;
   background: var(--ok);
-  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, calc(0.14 * var(--accent-opacity)))
-    inset;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, calc(0.14 * var(--accent-opacity))) inset,
+    0 0 10px rgba(var(--ok-rgb), calc(0.22 * var(--accent-opacity)));
   transition:
-    width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    background 0.2s ease;
+    width 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
-/* Soft stop at active end (partial fill only) */
+/* Slow diagonal sheen — depth without motion noise */
+.track-fill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(255, 255, 255, calc(0.28 * var(--accent-opacity))) 50%,
+    transparent 62%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  background-position: 120% 0;
+  animation: track-sheen 4.8s ease-in-out infinite;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* Soft luminous cap at active end (partial fill only) */
 .track-stop {
   position: absolute;
-  top: 50%;
+  top: 0;
   right: 0;
-  width: 2px;
-  height: 14px;
-  margin-top: -7px;
-  border-radius: 1px;
-  background: currentColor;
-  opacity: calc(0.5 * var(--accent-opacity));
+  width: 7px;
+  height: 100%;
+  border-radius: 0 99px 99px 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, calc(0.55 * var(--accent-opacity))) 100%
+  );
+  box-shadow:
+    0 0 6px 1px currentColor,
+    0 0 12px rgba(255, 255, 255, calc(0.2 * var(--accent-opacity)));
+  opacity: calc(0.72 * var(--accent-opacity));
   pointer-events: none;
+  z-index: 1;
 }
 
 .track-fill.level-ok {
   color: var(--ok);
   background: linear-gradient(
       180deg,
-      rgba(255, 255, 255, calc(0.22 * var(--accent-opacity))),
-      transparent 55%
+      rgba(255, 255, 255, calc(0.28 * var(--accent-opacity))) 0%,
+      transparent 52%
     ),
     linear-gradient(
       90deg,
-      rgba(var(--ok-bright-rgb), var(--accent-opacity)),
-      rgba(var(--ok-rgb), var(--accent-opacity))
+      rgba(var(--ok-rgb), calc(0.82 * var(--accent-opacity))) 0%,
+      rgba(var(--ok-bright-rgb), var(--accent-opacity)) 55%,
+      rgba(var(--ok-rgb), var(--accent-opacity)) 100%
     );
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, calc(0.16 * var(--accent-opacity))) inset,
+    0 0 10px rgba(var(--ok-rgb), calc(0.28 * var(--accent-opacity)));
 }
 .track-fill.level-warn {
   color: var(--warn);
   background: linear-gradient(
       180deg,
-      rgba(255, 255, 255, calc(0.2 * var(--accent-opacity))),
-      transparent 55%
+      rgba(255, 255, 255, calc(0.24 * var(--accent-opacity))) 0%,
+      transparent 52%
     ),
     linear-gradient(
       90deg,
-      rgba(var(--warn-bright-rgb), var(--accent-opacity)),
-      rgba(var(--warn-rgb), var(--accent-opacity))
+      rgba(var(--warn-rgb), calc(0.85 * var(--accent-opacity))) 0%,
+      rgba(var(--warn-bright-rgb), var(--accent-opacity)) 55%,
+      rgba(var(--warn-rgb), var(--accent-opacity)) 100%
     );
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, calc(0.14 * var(--accent-opacity))) inset,
+    0 0 11px rgba(var(--warn-rgb), calc(0.32 * var(--accent-opacity)));
 }
 .track-fill.level-critical,
 .track-fill.level-over {
   color: var(--critical);
   background: linear-gradient(
       180deg,
-      rgba(255, 255, 255, calc(0.18 * var(--accent-opacity))),
-      transparent 55%
+      rgba(255, 255, 255, calc(0.22 * var(--accent-opacity))) 0%,
+      transparent 52%
     ),
     linear-gradient(
       90deg,
-      rgba(var(--critical-bright-rgb), var(--accent-opacity)),
-      rgba(var(--critical-rgb), var(--accent-opacity))
+      rgba(var(--critical-rgb), calc(0.88 * var(--accent-opacity))) 0%,
+      rgba(var(--critical-bright-rgb), var(--accent-opacity)) 50%,
+      rgba(var(--critical-rgb), var(--accent-opacity)) 100%
     );
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, calc(0.12 * var(--accent-opacity))) inset,
+    0 0 12px rgba(var(--critical-rgb), calc(0.4 * var(--accent-opacity)));
+  animation: track-critical-breathe 2.4s ease-in-out infinite;
 }
 .track-fill.level-idle,
 .track-fill.level-na {
@@ -385,6 +430,48 @@ body {
   background: var(--text-tertiary);
   opacity: 0.25;
   box-shadow: none;
+  animation: none;
+}
+.track-fill.level-idle::before,
+.track-fill.level-na::before {
+  display: none;
+}
+
+@keyframes track-sheen {
+  0%,
+  28% {
+    background-position: 120% 0;
+  }
+  55%,
+  100% {
+    background-position: -40% 0;
+  }
+}
+
+@keyframes track-critical-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0.5px rgba(255, 255, 255, calc(0.12 * var(--accent-opacity))) inset,
+      0 0 10px rgba(var(--critical-rgb), calc(0.32 * var(--accent-opacity)));
+  }
+  50% {
+    box-shadow:
+      0 0 0 0.5px rgba(255, 255, 255, calc(0.18 * var(--accent-opacity))) inset,
+      0 0 16px rgba(var(--critical-rgb), calc(0.55 * var(--accent-opacity)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track-fill::before {
+    animation: none;
+    opacity: 0.35;
+    background-position: 50% 0;
+  }
+  .track-fill.level-critical,
+  .track-fill.level-over {
+    animation: none;
+  }
 }
 
 /* Idle: keep empty track; soften chrome only */

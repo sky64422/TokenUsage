@@ -112,40 +112,7 @@ pub fn parse_billing_json(raw: &str) -> Result<ProviderSnapshot, String> {
             });
         }
 
-        // Optional per-product windows (GrokBuild, etc.)
-        if let Some(products) = cfg.product_usage.as_ref() {
-            for p in products {
-                let Some(up) = p.usage_percent else { continue };
-                let name = p.product.as_deref().unwrap_or("product");
-                // Skip if same as primary weekly already shown
-                if windows.len() == 1
-                    && name.eq_ignore_ascii_case("GrokBuild")
-                    && windows[0]
-                        .used_percent
-                        .map(|w| (w - up).abs() < 0.05)
-                        .unwrap_or(false)
-                {
-                    continue;
-                }
-                let over = up > 100.0;
-                windows.push(UsageWindow {
-                    kind: WindowKind::Unknown,
-                    used: up.clamp(0.0, 100.0),
-                    limit: Some(100.0),
-                    unit: UsageUnit::Percent,
-                    resets_at: cfg
-                        .current_period
-                        .as_ref()
-                        .and_then(|p| p.end.clone()),
-                    used_percent: Some(up.clamp(0.0, 100.0)),
-                    label: Some(if over {
-                        format!("{name} · over")
-                    } else {
-                        name.into()
-                    }),
-                });
-            }
-        }
+        // productUsage (GrokBuild / GrokChat / …) is ignored — same credit pool.
     }
 
     let plan = resp
@@ -224,8 +191,7 @@ struct BillingConfig {
     used: Option<Cent>,
     #[serde(default)]
     billing_period_end: Option<String>,
-    #[serde(default)]
-    product_usage: Option<Vec<ProductUsage>>,
+    // productUsage is intentionally ignored (same credit pool, too noisy for UI)
 }
 
 #[derive(Debug, Deserialize)]
@@ -244,15 +210,6 @@ struct UsagePeriod {
     start: Option<String>,
     #[serde(default)]
     end: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ProductUsage {
-    #[serde(default)]
-    product: Option<String>,
-    #[serde(default)]
-    usage_percent: Option<f64>,
 }
 
 #[cfg(test)]
@@ -286,6 +243,28 @@ mod tests {
         assert_eq!(snap.windows[0].kind, WindowKind::Weekly);
         assert!((snap.windows[0].used_percent.unwrap() - 4.0).abs() < 0.01);
         assert!(snap.primary_resets_at.as_ref().unwrap().starts_with("2026-08-06"));
+    }
+
+    #[test]
+    fn ignores_product_usage_breakdown() {
+        let raw = r#"{
+          "config": {
+            "currentPeriod": {
+              "type": "USAGE_PERIOD_TYPE_WEEKLY",
+              "end": "2026-08-06T12:00:00Z"
+            },
+            "creditUsagePercent": 12.0,
+            "productUsage": [
+              {"product": "GrokBuild", "usagePercent": 40.0},
+              {"product": "GrokChat", "usagePercent": 8.0}
+            ]
+          }
+        }"#;
+        let snap = parse_billing_json(raw).unwrap();
+        assert_eq!(snap.windows.len(), 1, "product rows must not become windows");
+        assert_eq!(snap.windows[0].kind, WindowKind::Weekly);
+        assert!((snap.windows[0].used_percent.unwrap() - 12.0).abs() < 0.01);
+        assert!((snap.primary_used_percent.unwrap() - 12.0).abs() < 0.01);
     }
 
     #[test]
