@@ -1,15 +1,16 @@
 # Testing & coverage
 
-**Updated:** 2026-07-23
+**Updated:** 2026-08-03
 
 ## Snapshot
 
 | Layer | Location | Purpose |
 |-------|----------|---------|
 | Unit | `src-tauri/src/**` `#[cfg(test)]` | usage_math, claude/codex/grok/tokscale parsers |
+| Grok | `quota/grok.rs` tests | weekly credits, legacy cents, **ignores productUsage breakdown** |
 | Risk | `src-tauri/tests/risk_scenarios.rs` | Corrupt JSON, fixtures, AppCore limits/visibility |
 | Fixture | `src-tauri/tests/fixtures/tokscale_usage.json` | Vendor-shaped tokscale payload |
-| GUI | Manual `npm run tauri dev` / `run:exe` | Glass chrome, hotkey, updater |
+| GUI | Manual `npm run tauri dev` / `run:exe` | Glass chrome, Quiet Luxury tracks, hotkey, updater |
 
 ## Commands
 

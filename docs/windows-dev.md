@@ -1,6 +1,7 @@
 # Windows development (TokenUsage)
 
-Companion to [HANDOFF.md](./HANDOFF.md) and EconomyWarRoom’s windows-dev guide.
+**Updated:** 2026-08-03  
+Companion to [ARCHITECTURE.md](./ARCHITECTURE.md) and EconomyWarRoom’s windows-dev guide.
 
 ## Prerequisites
 
