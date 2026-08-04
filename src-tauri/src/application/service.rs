@@ -1,7 +1,7 @@
 use crate::domain::constants::{clamp_geometry, clamp_opacity, clamp_refresh_secs};
 use crate::domain::types::{
     AppSettings, DataSource, DiagnosticsSnapshot, PersistedState, PlanLimits, ProviderConfig,
-    ProviderId, ProviderSnapshot, SnapshotStatus, ThemeMode, WindowGeometry,
+    ProviderId, ProviderSnapshot, SnapshotStatus, WindowGeometry,
 };
 use crate::infrastructure::store::save_state;
 use chrono::Utc;
@@ -119,14 +119,6 @@ impl AppCore {
     pub fn persist(&self) -> Result<(), String> {
         let guard = self.inner.lock().unwrap();
         save_state(&guard.app_data_dir, &guard.state)
-    }
-
-    pub fn set_theme(&self, theme: ThemeMode) -> Result<(), String> {
-        {
-            let mut guard = self.inner.lock().unwrap();
-            guard.state.settings.theme = theme;
-        }
-        self.persist()
     }
 
     pub fn set_opacity(&self, opacity: f64) -> Result<f64, String> {

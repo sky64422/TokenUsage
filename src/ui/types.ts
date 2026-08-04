@@ -1,5 +1,4 @@
 export type ProviderId = "claude" | "codex" | "grok";
-export type ThemeMode = "light" | "dark" | "system";
 export type WindowKind = "rolling_5h" | "weekly" | "daily" | "session" | "unknown";
 export type SnapshotStatus = "ok" | "degraded" | "unavailable" | "auth_required";
 export type DataSource =
@@ -50,7 +49,6 @@ export interface ProviderConfig {
 }
 
 export interface AppSettings {
-  theme: ThemeMode;
   opacity: number;
   window: WindowGeometry;
   hotkey: string;

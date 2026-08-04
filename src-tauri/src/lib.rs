@@ -126,7 +126,7 @@ pub fn run() {
             commands::get_state,
             commands::get_snapshots,
             commands::refresh_now,
-            commands::set_theme,
+
             commands::set_opacity,
             commands::set_autostart,
             commands::set_refresh_secs,

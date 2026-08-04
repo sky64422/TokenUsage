@@ -1,10 +1,6 @@
-import type { AppSettings, ProviderId, ThemeMode } from "./types";
+import type { AppSettings, ProviderId } from "./types";
 
 const REFRESH_PRESETS = [5, 10, 15, 30, 60] as const;
-
-export function applyThemeToDocument(theme: ThemeMode): void {
-  document.documentElement.dataset.theme = theme;
-}
 
 /**
  * Glass opacity + matching text/graph alpha.
@@ -35,7 +31,6 @@ export function mountSettingsPanel(
   root: HTMLElement,
   settings: AppSettings,
   handlers: {
-    onThemeChange: (t: ThemeMode) => void;
     onOpacityChange: (o: number) => void;
     onRefreshSecs: (n: number) => void;
     onAutostart: (v: boolean) => void;
@@ -60,15 +55,6 @@ export function mountSettingsPanel(
 
   root.innerHTML = `
     <div class="settings" id="settings-sheet">
-      <div class="settings-section">
-        <div class="settings-label">Theme</div>
-        <div class="segmented" id="theme-seg" role="group" aria-label="Theme">
-          <button type="button" data-theme="system">Auto</button>
-          <button type="button" data-theme="light">Light</button>
-          <button type="button" data-theme="dark">Dark</button>
-        </div>
-      </div>
-
       <div class="settings-section">
         <div class="settings-label-row">
           <div class="settings-label">Opacity</div>
@@ -119,17 +105,10 @@ export function mountSettingsPanel(
   `;
 
   const sheet = root.querySelector("#settings-sheet") as HTMLElement;
-  const themeSeg = root.querySelector("#theme-seg") as HTMLElement;
   const refreshSeg = root.querySelector("#refresh-seg") as HTMLElement;
   const opacityRange = root.querySelector("#opacity-range") as HTMLInputElement;
   const opacityVal = root.querySelector("#opacity-val") as HTMLElement;
   const autostart = root.querySelector("#autostart") as HTMLInputElement;
-
-  function markTheme(t: ThemeMode): void {
-    themeSeg.querySelectorAll("button").forEach((b) => {
-      b.classList.toggle("active", (b as HTMLElement).dataset.theme === t);
-    });
-  }
 
   function markRefresh(secs: number): void {
     refreshSeg.querySelectorAll("button").forEach((b) => {
@@ -137,19 +116,10 @@ export function mountSettingsPanel(
     });
   }
 
-  markTheme(settings.theme);
   markRefresh(refreshSecs);
   opacityRange.value = String(settings.opacity);
   opacityVal.textContent = `${Math.round(settings.opacity * 100)}%`;
   autostart.checked = settings.autostart;
-
-  themeSeg.querySelectorAll("button").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const t = (btn as HTMLElement).dataset.theme as ThemeMode;
-      markTheme(t);
-      handlers.onThemeChange(t);
-    });
-  });
 
   refreshSeg.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => {

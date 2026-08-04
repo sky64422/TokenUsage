@@ -97,14 +97,6 @@ pub struct ProviderSnapshot {
     pub primary_used_percent: Option<f64>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ThemeMode {
-    Light,
-    Dark,
-    System,
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WindowGeometry {
     pub x: f64,
@@ -147,7 +139,6 @@ impl Default for ProviderConfig {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppSettings {
-    pub theme: ThemeMode,
     pub opacity: f64,
     pub window: WindowGeometry,
     pub hotkey: String,
@@ -170,7 +161,6 @@ fn default_refresh_secs() -> u64 {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            theme: ThemeMode::System,
             opacity: 0.92,
             window: WindowGeometry {
                 x: 80.0,

@@ -1,5 +1,5 @@
 use crate::domain::types::{
-    DiagnosticsSnapshot, PersistedState, PlanLimits, ProviderId, ProviderSnapshot, ThemeMode,
+    DiagnosticsSnapshot, PersistedState, PlanLimits, ProviderId, ProviderSnapshot,
     WindowGeometry,
 };
 use crate::infrastructure::window_ctl;
@@ -24,11 +24,6 @@ pub fn refresh_now(
     let snaps = state.core.refresh_all();
     let _ = app.emit("snapshots-updated", &snaps);
     Ok(snaps)
-}
-
-#[tauri::command]
-pub fn set_theme(state: State<'_, AppHandleState>, theme: ThemeMode) -> Result<(), String> {
-    state.core.set_theme(theme)
 }
 
 #[tauri::command]

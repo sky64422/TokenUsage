@@ -1,7 +1,7 @@
 # TokenUsage Architecture
 
 **Stack:** Tauri 2 + Rust + TypeScript (Vite), glass floating widget modeled on EconomyWarRoom.  
-**Current ship:** v0.1.19 — release notes: [docs/release.md](./release.md), GitHub [v0.1.19](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.19).
+**Current ship:** v0.1.20 — release notes: [docs/release.md](./release.md), GitHub [v0.1.20](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.20).
 
 ## Runtime
 
@@ -24,7 +24,7 @@ Rust AppCore
 - **Reset:** `formatWindowReset` → `↻ M/D HH:mm` (local); empty when idle / no `resets_at`. Hover title may include token pair + long clock.
 - **Opacity:** `applyPanelOpacity` sets `--panel-opacity`, `--fg-opacity`, `--accent-opacity`, `--chrome-opacity` so glass, text, and bar fills fade together.
 - **Height:** frontend measures unconstrained panel height; Rust `snap_height_to_content` sets size to content floor (not grow-only).
-- **Settings:** absolute overlay over provider cards (list fades out); window height does **not** grow for the sheet. Providers as horizontal on/off chips; footer **Copy Log** / **Quit** (equal half-width).
+- **Settings:** absolute overlay over provider cards (list fades out); window height does **not** grow for the sheet. **Dark-only** (no theme switch). Providers as horizontal on/off chips; footer **Copy Log** / **Quit** (equal half-width).
 
 ## Providers
 
@@ -63,7 +63,7 @@ If vendor quota misses, the card shows **Unavailable** / **AuthRequired** with a
 
 ## Commands
 
-`get_state`, `get_snapshots`, `refresh_now`, `set_theme`, `set_opacity`, `set_autostart`, `set_refresh_secs`, `set_window_geometry`, `set_provider_enabled`, `set_provider_limits`, `hide_widget`, `quit_app`, `get_diagnostics`, `set_content_min_size`, `check_for_updates`
+`get_state`, `get_snapshots`, `refresh_now`, `set_opacity`, `set_autostart`, `set_refresh_secs`, `set_window_geometry`, `set_provider_enabled`, `set_provider_limits`, `hide_widget`, `quit_app`, `get_diagnostics`, `set_content_min_size`, `check_for_updates`
 
 ## Updater
 

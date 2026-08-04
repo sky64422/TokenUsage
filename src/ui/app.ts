@@ -8,16 +8,11 @@ import {
 } from "./content-size";
 import { renderHeader, setSettingsButtonActive } from "./header";
 import { mountProviders } from "./providers";
-import {
-  applyPanelOpacity,
-  applyThemeToDocument,
-  mountSettingsPanel,
-} from "./settings-panel";
+import { applyPanelOpacity, mountSettingsPanel } from "./settings-panel";
 import type {
   DiagnosticsSnapshot,
   PersistedState,
   ProviderSnapshot,
-  ThemeMode,
 } from "./types";
 
 export async function mountApp(root: HTMLElement): Promise<void> {
@@ -39,20 +34,13 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let settingsOpen = false;
 
   const state = await invoke<PersistedState>("get_state");
-  const theme: ThemeMode = state.settings.theme ?? "system";
   const opacity = state.settings.opacity ?? 0.92;
 
-  applyThemeToDocument(theme);
   applyPanelOpacity(panel, opacity);
 
   const providers = mountProviders(providersRoot);
 
   const settings = mountSettingsPanel(settingsRoot, state.settings, {
-    onThemeChange: async (t) => {
-      applyThemeToDocument(t);
-      await invoke("set_theme", { theme: t });
-      scheduleContentMin(true);
-    },
     onOpacityChange: async (o) => {
       applyPanelOpacity(panel, o);
       await invoke("set_opacity", { opacity: o });

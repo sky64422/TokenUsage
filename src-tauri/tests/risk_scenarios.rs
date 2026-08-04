@@ -15,7 +15,7 @@ fn ensure_skip_network() {
 
 use token_usage_lib::application::service::AppCore;
 use token_usage_lib::domain::types::{
-    DataSource, PersistedState, PlanLimits, ProviderId, ThemeMode,
+    DataSource, PersistedState, PlanLimits, ProviderId,
 };
 use token_usage_lib::infrastructure::store::{default_state, load_state, save_state, state_path};
 
@@ -26,7 +26,6 @@ fn risk_corrupt_state_json_falls_back_to_default() {
     let path = state_path(dir.path());
     fs::write(&path, "{ not valid json !!!").unwrap();
     let loaded = load_state(dir.path());
-    assert_eq!(loaded.settings.theme, ThemeMode::System);
     assert!(loaded.settings.autostart);
 }
 
@@ -47,7 +46,6 @@ fn risk_partial_state_deserializes_with_defaults() {
         r#"{
           "version": 1,
           "settings": {
-            "theme": "dark",
             "opacity": 0.5,
             "window": { "x": 1.0, "y": 2.0, "width": 300.0, "height": 400.0 },
             "hotkey": "Ctrl+Shift+U",
@@ -58,15 +56,14 @@ fn risk_partial_state_deserializes_with_defaults() {
     )
     .unwrap();
     let loaded = load_state(dir.path());
-    assert_eq!(loaded.settings.theme, ThemeMode::Dark);
     assert!((loaded.settings.opacity - 0.5).abs() < 0.001);
     assert!(loaded.settings.claude.enabled);
 }
 
 #[test]
-fn risk_legacy_quota_toggles_ignored() {
+fn risk_legacy_fields_ignored() {
     let dir = tempdir().unwrap();
-    // Older installs may still have use_tokscale / use_direct_quota — ignore unknown fields.
+    // Older installs may still have theme / use_tokscale / use_direct_quota.
     fs::write(
         state_path(dir.path()),
         r#"{

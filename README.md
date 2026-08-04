@@ -2,11 +2,11 @@
 
 Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent **quota usage vs reset times** — personal CLI OAuth, with **reset-time–first** display. Design language follows [EconomyWarRoom](../EconomyWarRoom) (glass, always-on-top, hotkey).
 
-**Current release:** [v0.1.19](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.19)
+**Current release:** [v0.1.20](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.20)
 
-## Features (v0.1.19)
+## Features (v0.1.20)
 
-- Always-on-top glass panel (Apple-like light/dark); **opacity slider** tints panel, text, and bar colors together
+- Always-on-top **dark** glass panel; **opacity slider** tints panel, text, and bar colors together
 - Providers: **Claude Code**, **Codex**, **Grok Build**
 - Data: **direct vendor OAuth quota** only (no tokscale / local JSONL)
 - **Progress rows:** label + Quiet Luxury pill track (gradient, glow, sheen, end-cap); dual limits (5h | Week) side-by-side, single limit full width
@@ -15,7 +15,7 @@ Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent **quo
 - **Grok:** one primary period track only (no GrokBuild / GrokChat product rows)
 - **Content-hug height:** window min size tracks card content (grow + shrink)
 - **Settings overlay:** list fades under opaque sheet (no window expand)
-  - Theme · opacity · refresh · launch at login
+  - Opacity · refresh · launch at login
   - Provider chips (horizontal on/off)
   - Footer: **Copy Log** / **Quit** (half-width each)
 - Hotkey: `Ctrl+Shift+U` (toggle hide/show; independent of EconomyWarRoom’s `Ctrl+Shift+Space`)

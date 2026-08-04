@@ -1,13 +1,12 @@
 use crate::domain::constants::{
     clamp_opacity, clamp_refresh_secs, HotkeyPolicy, OpacityPolicy, WindowPolicy,
 };
-use crate::domain::types::{AppSettings, PersistedState, ThemeMode, WindowGeometry};
+use crate::domain::types::{AppSettings, PersistedState, WindowGeometry};
 use std::path::{Path, PathBuf};
 
 pub fn default_state() -> PersistedState {
     PersistedState {
         settings: AppSettings {
-            theme: ThemeMode::System,
             opacity: OpacityPolicy::DEFAULT,
             window: WindowGeometry {
                 x: 80.0,
