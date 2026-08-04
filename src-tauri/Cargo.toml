@@ -1,6 +1,6 @@
 [package]
 name = "token-usage"
-version = "0.1.23"
+version = "0.1.24"
 description = "Token Usage floating widget for coding agents"
 authors = ["you"]
 edition = "2021"
