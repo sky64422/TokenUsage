@@ -10,10 +10,10 @@ If you are an automated coding agent in a new session:
 ## Product constraints
 
 - Floating **usage monitor widget**, not a billing dashboard or team admin console.
-- **Primary data:** direct vendor OAuth quota (Claude / Codex / Grok). **Fallback:** `tokscale usage --json`. No local JSONL estimates.
+- **Primary data:** direct vendor OAuth quota (Claude / Codex / Grok) only. No tokscale, no local JSONL estimates.
 - **No** browser scraping of vendor dashboards without an explicit design decision.
 - **Notifications** are out of scope until requested.
-- **Antigravity (AGY)** deferred in-app; tokscale may support AGY via `antigravity sync` (macOS/Linux) — not wired here yet.
+- **Antigravity (AGY)** deferred in-app.
 - UI: keep **fixed column geometry** for tracks (label width shared across single-limit cards); dual vs single layouts may differ.
 - **Progress:** Quiet Luxury pill bars (glow / sheen / end-cap) — prefer glanceable bars over experimental gauges unless explicitly requested.
 - **Grok:** map primary period credit only; do **not** surface `productUsage` product rows (GrokBuild / GrokChat).

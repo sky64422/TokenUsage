@@ -145,11 +145,6 @@ export function sourceLabel(
   source: string,
   message?: string | null,
 ): { kind: string; detail: string | null } {
-  if (source === "tokscale") {
-    const plan =
-      message && !/over|idle|estimate/i.test(message) ? message : null;
-    return { kind: "tokscale", detail: plan };
-  }
   if (source === "vendor") {
     const plan =
       message && !/over|idle|estimate|auth/i.test(message) ? message : null;

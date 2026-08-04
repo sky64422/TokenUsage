@@ -9,7 +9,7 @@ Companion to [ARCHITECTURE.md](./ARCHITECTURE.md) and EconomyWarRoom’s windows
 2. **Rust** — `stable-x86_64-pc-windows-msvc`  
 3. **Node.js** 18+  
 4. **WebView2** (usually present on Windows 11)  
-5. Optional: **tokscale** (`npm i -g tokscale`) for vendor quota primary path  
+5. Optional: Claude / Codex / Grok CLI logged in so direct vendor quota works  
 
 ## Daily commands
 

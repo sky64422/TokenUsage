@@ -18,8 +18,6 @@ pub fn default_state() -> PersistedState {
             hotkey: HotkeyPolicy::DEFAULT.into(),
             autostart: true,
             refresh_secs: crate::domain::constants::RefreshPolicy::DEFAULT_REFRESH_SECS,
-            use_tokscale: true,
-            use_direct_quota: true,
             ..AppSettings::default()
         },
         version: 1,

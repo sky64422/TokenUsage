@@ -7,10 +7,9 @@ cd "$ROOT/src-tauri"
 # shellcheck disable=SC1090
 source "${HOME}/.cargo/env" 2>/dev/null || true
 
-export TOKENUSAGE_SKIP_TOKSCALE=1
 export TOKENUSAGE_SKIP_DIRECT_QUOTA=1
 
-# Gate focuses on pure domain + store + tokscale/quota JSON mapping.
+# Gate focuses on pure domain + store + quota JSON mapping.
 # GUI shell and network fetch modules are excluded.
 EXCLUDE=(
   --exclude-files 'src/main.rs'
@@ -22,7 +21,6 @@ EXCLUDE=(
   --exclude-files 'src/infrastructure/updater.rs'
   --exclude-files 'src/infrastructure/providers/paths.rs'
   --exclude-files 'src/infrastructure/providers/mod.rs'
-  --exclude-files 'src/infrastructure/providers/tokscale_exec.rs'
   --exclude-files 'src/infrastructure/providers/quota/codex_fetch.rs'
   --exclude-files 'src/infrastructure/providers/quota/claude_fetch.rs'
   --exclude-files 'src/infrastructure/providers/quota/grok_fetch.rs'

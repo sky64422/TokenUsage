@@ -1,5 +1,6 @@
 /**
- * True glass height (header + settings + provider cards), ignoring window clamp.
+ * True glass height (header + provider cards), ignoring window clamp.
+ * Settings is an absolute overlay and must not inflate this measure.
  *
  * Ported from EconomyWarRoom: getBoundingClientRect under max-height:100% shrinks
  * with the window, so setMinSize must use unconstrained content height.
@@ -37,7 +38,6 @@ export function measureContentHugHeight(panel: HTMLElement): number {
     if (hug >= 80) return hug;
 
     const header = panel.querySelector<HTMLElement>("#header-root");
-    const settings = panel.querySelector<HTMLElement>(".settings.visible");
     const list = panel.querySelector<HTMLElement>(".provider-list");
     const empty = panel.querySelector<HTMLElement>(".empty-state");
     const content = panel.querySelector<HTMLElement>(".content");
@@ -50,7 +50,6 @@ export function measureContentHugHeight(panel: HTMLElement): number {
     }
     return Math.ceil(
       (header?.offsetHeight ?? 42) +
-        (settings?.offsetHeight ?? 0) +
         (list?.scrollHeight ?? empty?.scrollHeight ?? 0) +
         pad +
         4,

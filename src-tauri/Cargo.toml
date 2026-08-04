@@ -1,6 +1,6 @@
 [package]
 name = "token-usage"
-version = "0.1.18"
+version = "0.1.19"
 description = "Token Usage floating widget for coding agents"
 authors = ["you"]
 edition = "2021"
@@ -49,7 +49,6 @@ exclude-files = [
   "src/infrastructure/updater.rs",
   "src/infrastructure/providers/paths.rs",
   "src/infrastructure/providers/mod.rs",
-  "src/infrastructure/providers/tokscale_exec.rs",
   "src/infrastructure/providers/quota/codex_fetch.rs",
   "src/infrastructure/providers/quota/claude_fetch.rs",
   "src/infrastructure/providers/quota/grok_fetch.rs",

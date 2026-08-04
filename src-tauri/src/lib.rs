@@ -130,8 +130,6 @@ pub fn run() {
             commands::set_opacity,
             commands::set_autostart,
             commands::set_refresh_secs,
-            commands::set_use_tokscale,
-            commands::set_use_direct_quota,
             commands::set_window_geometry,
             commands::set_provider_enabled,
             commands::set_provider_limits,

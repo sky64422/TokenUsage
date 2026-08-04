@@ -106,9 +106,41 @@ body {
 }
 
 .content {
+  position: relative;
   padding: 2px var(--pad-x) 12px;
   overflow-y: auto;
   min-height: 0;
+}
+
+#providers-root {
+  transition: opacity 0.15s ease;
+}
+
+/* Settings: absolute overlay over providers — no layout growth / window hug. */
+#settings-root {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  pointer-events: auto;
+}
+
+.panel:not(.settings-open) #settings-root {
+  display: none;
+}
+
+.panel.settings-open #settings-root {
+  display: flex;
+}
+
+/* Existing list fully transparent under the opaque settings sheet. */
+.panel.settings-open #providers-root {
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* —— Provider cards: compact height, full info, side-by-side windows —— */
@@ -529,16 +561,25 @@ body {
   font-weight: 500;
 }
 
-/* —— Settings (WarRoom-aligned sheet) —— */
+/* —— Settings overlay card (WarRoom-aligned) —— */
 .settings {
   display: none;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-card);
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  border: none;
+  border-radius: 0;
   padding: 12px 14px 14px;
-  margin-bottom: 10px;
-  background: var(--bg-section);
+  margin: 0;
+  /* Solid relative to the glass: ignore --panel-opacity so controls stay readable. */
+  background: rgba(var(--bg-glass-rgb-active), 1);
   flex-direction: column;
   gap: 14px;
+  box-shadow: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-secondary) transparent;
 }
 
 .settings.visible {
@@ -581,11 +622,99 @@ body {
   color: var(--text-tertiary);
 }
 
-.settings-footer {
-  margin: 0;
+/* Bottom chrome: meta + debug / quit action pair */
+.settings-end {
+  margin-top: auto;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.settings-meta {
   font-size: 10px;
+  font-weight: 500;
   line-height: 1.35;
   color: var(--text-tertiary);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.settings-debug,
+.settings-quit {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  margin: 0;
+  padding: 0 8px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease,
+    filter 0.12s ease;
+}
+
+/* Troubleshooting export — amber/warn, like a triage action */
+.settings-debug {
+  border: 1px solid color-mix(in srgb, var(--warn) 34%, transparent);
+  background: color-mix(in srgb, var(--warn) 11%, transparent);
+  color: color-mix(in srgb, var(--warn) 88%, var(--text));
+}
+
+.settings-debug:hover {
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 48%, transparent);
+}
+
+.settings-debug.is-done {
+  border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+  color: var(--ok);
+}
+
+.settings-debug:active,
+.settings-quit:active {
+  filter: brightness(0.97);
+}
+
+.settings-debug:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--warn) 50%, transparent);
+  outline-offset: 2px;
+}
+
+.settings-quit {
+  border: 1px solid color-mix(in srgb, var(--critical) 28%, transparent);
+  background: color-mix(in srgb, var(--critical) 9%, transparent);
+  color: var(--critical);
+}
+
+.settings-quit:hover {
+  background: color-mix(in srgb, var(--critical) 16%, transparent);
+  border-color: color-mix(in srgb, var(--critical) 42%, transparent);
+}
+
+.settings-quit:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--critical) 45%, transparent);
+  outline-offset: 2px;
 }
 
 .segmented {
@@ -711,30 +840,51 @@ body {
   outline-offset: 2px;
 }
 
-.provider-list-settings {
+/* Compact horizontal provider on/off chips */
+.provider-chip-row {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.provider-card-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 10px 9px;
-  border: 1px solid var(--border-soft);
-  border-radius: 10px;
+.provider-chip {
+  flex: 1 1 0;
+  min-width: 4.5em;
+  height: 30px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.provider-chip.on {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent) inset;
+}
+
+.provider-chip.off {
   background: var(--bg-hover);
-}
-
-.provider-vis-toggle {
-  width: 100%;
-}
-
-.provider-toggle-hint {
-  font-size: 10px;
-  font-weight: 500;
+  border-color: var(--border-soft);
   color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.provider-chip:hover {
+  filter: brightness(1.05);
+}
+
+.provider-chip:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
 }
 
 .provider-limits {
@@ -770,28 +920,4 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.settings-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
 
-.btn-text {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.btn-text:hover {
-  background: var(--bg-hover);
-}
-
-.btn-danger {
-  color: var(--critical);
-  border-color: color-mix(in srgb, var(--critical) 35%, var(--border));
-}

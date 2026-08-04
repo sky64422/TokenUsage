@@ -65,30 +65,6 @@ pub fn set_refresh_secs(state: State<'_, AppHandleState>, secs: u64) -> Result<u
 }
 
 #[tauri::command]
-pub fn set_use_tokscale(
-    app: AppHandle,
-    state: State<'_, AppHandleState>,
-    enabled: bool,
-) -> Result<(), String> {
-    state.core.set_use_tokscale(enabled)?;
-    let snaps = state.core.get_snapshots();
-    let _ = app.emit("snapshots-updated", &snaps);
-    Ok(())
-}
-
-#[tauri::command]
-pub fn set_use_direct_quota(
-    app: AppHandle,
-    state: State<'_, AppHandleState>,
-    enabled: bool,
-) -> Result<(), String> {
-    state.core.set_use_direct_quota(enabled)?;
-    let snaps = state.core.get_snapshots();
-    let _ = app.emit("snapshots-updated", &snaps);
-    Ok(())
-}
-
-#[tauri::command]
 pub fn set_window_geometry(
     state: State<'_, AppHandleState>,
     geometry: WindowGeometry,

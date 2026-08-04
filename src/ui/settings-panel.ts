@@ -39,10 +39,8 @@ export function mountSettingsPanel(
     onOpacityChange: (o: number) => void;
     onRefreshSecs: (n: number) => void;
     onAutostart: (v: boolean) => void;
-    onUseTokscale: (v: boolean) => void;
-    onUseDirectQuota: (v: boolean) => void;
     onProviderEnabled: (id: ProviderId, enabled: boolean) => void | Promise<void>;
-    onDiagnostics: () => void;
+    onDiagnostics: () => void | Promise<void>;
     onQuit: () => void;
   },
 ): {
@@ -99,39 +97,24 @@ export function mountSettingsPanel(
           <input type="checkbox" id="autostart" class="settings-switch-input" />
           <span class="settings-switch" aria-hidden="true"></span>
         </label>
-        <label class="settings-toggle" for="use-direct-quota">
-          <span class="settings-toggle-text">
-            <span class="settings-toggle-title">Direct vendor quota</span>
-            <span class="settings-toggle-hint">Local OAuth → API (Claude / Codex / Grok)</span>
-          </span>
-          <input type="checkbox" id="use-direct-quota" class="settings-switch-input" />
-          <span class="settings-switch" aria-hidden="true"></span>
-        </label>
-        <label class="settings-toggle" for="use-tokscale">
-          <span class="settings-toggle-text">
-            <span class="settings-toggle-title">Use tokscale</span>
-            <span class="settings-toggle-hint">2nd path when direct vendor fails</span>
-          </span>
-          <input type="checkbox" id="use-tokscale" class="settings-switch-input" />
-          <span class="settings-switch" aria-hidden="true"></span>
-        </label>
       </div>
 
       <div class="settings-section">
         <div class="settings-label">Providers</div>
-        <p class="settings-lede">Toggle visibility. At least one stays on. Quotas from vendor API, then tokscale.</p>
-        <div class="provider-list-settings">
-          ${providerToggleBlock("claude", "Claude", settings.claude)}
-          ${providerToggleBlock("codex", "Codex", settings.codex)}
-          ${providerToggleBlock("grok", "Grok", settings.grok)}
+        <div class="provider-chip-row" role="group" aria-label="Providers">
+          ${providerChip("claude", "Claude", settings.claude.enabled !== false)}
+          ${providerChip("codex", "Codex", settings.codex.enabled !== false)}
+          ${providerChip("grok", "Grok", settings.grok.enabled !== false)}
         </div>
       </div>
 
-      <div class="settings-actions">
-        <button type="button" class="btn-text" id="btn-diag">Diagnostics</button>
-        <button type="button" class="btn-text btn-danger" id="btn-quit">Quit</button>
+      <div class="settings-end">
+        <span class="settings-meta">Hotkey ${settings.hotkey} · header ↻ for updates</span>
+        <div class="settings-action-row">
+          <button type="button" class="settings-debug" id="btn-diag" title="Copy diagnostic log for troubleshooting">Copy Log</button>
+          <button type="button" class="settings-quit" id="btn-quit">Quit</button>
+        </div>
       </div>
-      <p class="settings-footer">Hotkey ${settings.hotkey} · Updates via header ↻</p>
     </div>
   `;
 
@@ -141,8 +124,6 @@ export function mountSettingsPanel(
   const opacityRange = root.querySelector("#opacity-range") as HTMLInputElement;
   const opacityVal = root.querySelector("#opacity-val") as HTMLElement;
   const autostart = root.querySelector("#autostart") as HTMLInputElement;
-  const useTokscale = root.querySelector("#use-tokscale") as HTMLInputElement;
-  const useDirectQuota = root.querySelector("#use-direct-quota") as HTMLInputElement;
 
   function markTheme(t: ThemeMode): void {
     themeSeg.querySelectorAll("button").forEach((b) => {
@@ -161,8 +142,6 @@ export function mountSettingsPanel(
   opacityRange.value = String(settings.opacity);
   opacityVal.textContent = `${Math.round(settings.opacity * 100)}%`;
   autostart.checked = settings.autostart;
-  useTokscale.checked = settings.use_tokscale !== false;
-  useDirectQuota.checked = settings.use_direct_quota !== false;
 
   themeSeg.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -192,44 +171,55 @@ export function mountSettingsPanel(
     handlers.onAutostart(autostart.checked);
   });
 
-  useTokscale.addEventListener("change", () => {
-    handlers.onUseTokscale(useTokscale.checked);
-  });
+  function providerBtn(id: ProviderId): HTMLButtonElement | null {
+    return root.querySelector<HTMLButtonElement>(`[data-provider="${id}"]`);
+  }
 
-  useDirectQuota.addEventListener("change", () => {
-    handlers.onUseDirectQuota(useDirectQuota.checked);
-  });
+  function setProviderOn(id: ProviderId, on: boolean): void {
+    const btn = providerBtn(id);
+    if (!btn) return;
+    btn.classList.toggle("on", on);
+    btn.classList.toggle("off", !on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
 
-  function updateToggleHint(id: ProviderId, enabled: boolean): void {
-    const hint = root.querySelector(`#en-${id}`)?.closest(".provider-card-settings")
-      ?.querySelector(".provider-toggle-hint");
-    if (hint) hint.textContent = enabled ? "Visible" : "Hidden";
+  function isProviderOn(id: ProviderId): boolean {
+    return providerBtn(id)?.classList.contains("on") ?? false;
   }
 
   function countEnabled(): number {
-    return (["claude", "codex", "grok"] as ProviderId[]).filter((id) => {
-      const en = root.querySelector(`#en-${id}`) as HTMLInputElement | null;
-      return en?.checked;
-    }).length;
+    return (["claude", "codex", "grok"] as ProviderId[]).filter(isProviderOn).length;
   }
 
   (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
-    const en = root.querySelector(`#en-${id}`) as HTMLInputElement;
-    en?.addEventListener("change", () => {
-      if (!en.checked && countEnabled() === 0) {
-        en.checked = true;
-        updateToggleHint(id, true);
+    const btn = providerBtn(id);
+    btn?.addEventListener("click", () => {
+      const next = !isProviderOn(id);
+      if (!next && countEnabled() <= 1) {
+        // Keep at least one provider on
         return;
       }
-      updateToggleHint(id, en.checked);
-      void Promise.resolve(handlers.onProviderEnabled(id, en.checked)).catch(() => {
-        en.checked = !en.checked;
-        updateToggleHint(id, en.checked);
+      setProviderOn(id, next);
+      void Promise.resolve(handlers.onProviderEnabled(id, next)).catch(() => {
+        setProviderOn(id, !next);
       });
     });
   });
 
-  root.querySelector("#btn-diag")?.addEventListener("click", handlers.onDiagnostics);
+  const diagBtn = root.querySelector("#btn-diag") as HTMLButtonElement | null;
+  const diagLabel = "Copy Log";
+  diagBtn?.addEventListener("click", () => {
+    void Promise.resolve(handlers.onDiagnostics()).then(() => {
+      if (!diagBtn) return;
+      diagBtn.textContent = "Copied";
+      diagBtn.classList.add("is-done");
+      window.setTimeout(() => {
+        if (!diagBtn.isConnected) return;
+        diagBtn.textContent = diagLabel;
+        diagBtn.classList.remove("is-done");
+      }, 1400);
+    });
+  });
   root.querySelector("#btn-quit")?.addEventListener("click", handlers.onQuit);
 
   return {
@@ -244,31 +234,21 @@ export function mountSettingsPanel(
     isVisible: () => visible,
     syncProviderEnabled(st: AppSettings) {
       (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
-        const en = root.querySelector(`#en-${id}`) as HTMLInputElement | null;
-        if (!en) return;
-        const on = st[id]?.enabled !== false;
-        en.checked = on;
-        updateToggleHint(id, on);
+        setProviderOn(id, st[id]?.enabled !== false);
       });
     },
   };
 }
 
-function providerToggleBlock(
-  id: string,
-  label: string,
-  cfg: { enabled: boolean },
-): string {
+function providerChip(id: string, label: string, enabled: boolean): string {
+  const state = enabled ? "on" : "off";
   return `
-    <div class="provider-card-settings">
-      <label class="settings-toggle provider-vis-toggle" for="en-${id}" title="Show or hide this provider">
-        <span class="settings-toggle-text">
-          <span class="settings-toggle-title">${label}</span>
-          <span class="provider-toggle-hint">${cfg.enabled ? "Visible" : "Hidden"}</span>
-        </span>
-        <input type="checkbox" id="en-${id}" class="settings-switch-input" ${cfg.enabled ? "checked" : ""} />
-        <span class="settings-switch" aria-hidden="true"></span>
-      </label>
-    </div>
+    <button type="button"
+      class="provider-chip ${state}"
+      data-provider="${id}"
+      aria-pressed="${enabled ? "true" : "false"}"
+      title="${label}">
+      ${label}
+    </button>
   `;
 }

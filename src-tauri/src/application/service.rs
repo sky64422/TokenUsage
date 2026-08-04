@@ -61,19 +61,7 @@ impl AppCore {
             (guard.state.settings.clone(), guard.app_data_dir.clone())
         };
 
-        // Cascade per provider: direct vendor → tokscale (no local JSONL)
-        let (tokscale_map, tokscale_note) = if settings.use_tokscale {
-            match crate::infrastructure::providers::tokscale::fetch_all() {
-                Ok(m) => {
-                    let n = m.len();
-                    (Some(m), format!("tokscale ok ({n} providers)"))
-                }
-                Err(e) => (None, format!("tokscale fallback: {e}")),
-            }
-        } else {
-            (None, "tokscale disabled".into())
-        };
-
+        // Direct vendor OAuth quota only (no local JSONL / tokscale).
         let mut next = HashMap::new();
         let mut source_notes: Vec<String> = Vec::new();
         for id in ProviderId::all() {
@@ -84,37 +72,24 @@ impl AppCore {
 
             let mut vendor_err: Option<String> = None;
 
-            // 1) Direct vendor OAuth quota (personal CLI credentials)
-            if settings.use_direct_quota {
-                if let Some(result) =
-                    crate::infrastructure::providers::quota::try_fetch(id)
-                {
-                    match result {
-                        Ok(snap) => {
-                            source_notes.push(format!("{}:vendor", id.as_str()));
-                            next.insert(id, snap);
-                            continue;
-                        }
-                        Err(e) => {
-                            let safe = e.replace('\n', " ");
-                            let safe: String = safe.chars().take(120).collect();
-                            source_notes.push(format!("{}:vendor_fail({})", id.as_str(), safe));
-                            vendor_err = Some(safe);
-                        }
+            // Direct vendor OAuth quota (always on; only data path).
+            if let Some(result) = crate::infrastructure::providers::quota::try_fetch(id) {
+                match result {
+                    Ok(snap) => {
+                        source_notes.push(format!("{}:vendor", id.as_str()));
+                        next.insert(id, snap);
+                        continue;
+                    }
+                    Err(e) => {
+                        let safe = e.replace('\n', " ");
+                        let safe: String = safe.chars().take(120).collect();
+                        source_notes.push(format!("{}:vendor_fail({})", id.as_str(), safe));
+                        vendor_err = Some(safe);
                     }
                 }
             }
 
-            // 2) tokscale vendor-reported quotas
-            if let Some(ref map) = tokscale_map {
-                if let Some(snap) = map.get(&id) {
-                    source_notes.push(format!("{}:tokscale", id.as_str()));
-                    next.insert(id, snap.clone());
-                    continue;
-                }
-            }
-
-            // Both paths missed — surface unavailable / auth (no local estimate)
+            // Vendor missed — surface unavailable / auth (no secondary path)
             source_notes.push(format!("{}:unavailable", id.as_str()));
             next.insert(id, missing_quota_snapshot(id, vendor_err.as_deref()));
         }
@@ -124,10 +99,9 @@ impl AppCore {
         guard.snapshots = next;
         let sources = source_notes.join(" ");
         guard.diag.push(format!(
-            "{} refreshed {} providers · {} · [{}] (dir={})",
+            "{} refreshed {} providers · [{}] (dir={})",
             chrono::Utc::now().to_rfc3339(),
             count,
-            tokscale_note,
             sources,
             app_data_dir.display()
         ));
@@ -140,26 +114,6 @@ impl AppCore {
             .into_iter()
             .filter_map(|id| guard.snapshots.get(&id).cloned())
             .collect()
-    }
-
-    pub fn set_use_tokscale(&self, enabled: bool) -> Result<(), String> {
-        {
-            let mut guard = self.inner.lock().unwrap();
-            guard.state.settings.use_tokscale = enabled;
-        }
-        self.persist()?;
-        let _ = self.refresh_all();
-        Ok(())
-    }
-
-    pub fn set_use_direct_quota(&self, enabled: bool) -> Result<(), String> {
-        {
-            let mut guard = self.inner.lock().unwrap();
-            guard.state.settings.use_direct_quota = enabled;
-        }
-        self.persist()?;
-        let _ = self.refresh_all();
-        Ok(())
     }
 
     pub fn persist(&self) -> Result<(), String> {
@@ -290,7 +244,7 @@ fn provider_config_mut(settings: &mut AppSettings, id: ProviderId) -> &mut Provi
     }
 }
 
-/// When vendor + tokscale both miss: show a card, not a local token estimate.
+/// When vendor quota misses: show a card, not a local token estimate.
 fn missing_quota_snapshot(id: ProviderId, vendor_err: Option<&str>) -> ProviderSnapshot {
     let err = vendor_err.unwrap_or("");
     let auth = err.to_ascii_lowercase().contains("auth")
@@ -301,9 +255,9 @@ fn missing_quota_snapshot(id: ProviderId, vendor_err: Option<&str>) -> ProviderS
         err.to_string()
     } else {
         match id {
-            ProviderId::Claude => "No Claude quota — login (`claude`) or enable tokscale".into(),
-            ProviderId::Codex => "No Codex quota — login (`codex`) or enable tokscale".into(),
-            ProviderId::Grok => "No Grok quota — login (`grok`) or enable tokscale".into(),
+            ProviderId::Claude => "No Claude quota — login with `claude` CLI".into(),
+            ProviderId::Codex => "No Codex quota — login with `codex` CLI".into(),
+            ProviderId::Grok => "No Grok quota — login with `grok` CLI".into(),
         }
     };
     ProviderSnapshot {

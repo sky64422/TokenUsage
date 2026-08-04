@@ -63,14 +63,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     onAutostart: async (v) => {
       await invoke("set_autostart", { enabled: v });
     },
-    onUseTokscale: async (v) => {
-      await invoke("set_use_tokscale", { enabled: v });
-      scheduleContentMin(true);
-    },
-    onUseDirectQuota: async (v) => {
-      await invoke("set_use_direct_quota", { enabled: v });
-      scheduleContentMin(true);
-    },
     onProviderEnabled: async (id, enabled) => {
       try {
         const snaps = await invoke<ProviderSnapshot[]>("set_provider_enabled", {
@@ -107,6 +99,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
   function toggleSettings(): void {
     settingsOpen = !settingsOpen;
+    // Overlay only: providers fade under an opaque settings sheet. Window size
+    // stays put (no content-hug grow/shrink for the sheet).
     if (settingsOpen) {
       settings.show();
       panel.classList.add("settings-open");
@@ -115,7 +109,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       panel.classList.remove("settings-open");
     }
     setSettingsButtonActive(headerRoot, settingsOpen);
-    scheduleContentMin(true);
   }
 
   async function doRefresh(): Promise<void> {
@@ -155,7 +148,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       const grew = minHeight > lastContentMinH + 0.5;
       const shrank = minHeight < lastContentMinH - 0.5;
       const changed = Math.abs(minHeight - lastContentMinH) >= 1;
-      // Snap height when content grew/shrank, or explicit fit (boot/refresh/settings).
+      // Snap when content grew/shrank (provider cards), or explicit fit (boot).
       const fit = opts.growIfNeeded || grew || shrank;
       if (!changed && !opts.growIfNeeded) return;
       lastContentMinH = minHeight;

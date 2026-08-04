@@ -7,7 +7,6 @@ export type DataSource =
   | "cli"
   | "manual"
   | "estimate"
-  | "tokscale"
   | "vendor";
 export type UsageUnit = "percent" | "tokens" | "messages" | "credits";
 
@@ -57,8 +56,6 @@ export interface AppSettings {
   hotkey: string;
   autostart: boolean;
   refresh_secs: number;
-  use_tokscale: boolean;
-  use_direct_quota: boolean;
   claude: ProviderConfig;
   codex: ProviderConfig;
   grok: ProviderConfig;

@@ -1,7 +1,7 @@
 # TokenUsage Architecture
 
 **Stack:** Tauri 2 + Rust + TypeScript (Vite), glass floating widget modeled on EconomyWarRoom.  
-**Current ship:** v0.1.17 — release notes: [docs/release.md](./release.md), GitHub [v0.1.17](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.17).
+**Current ship:** v0.1.19 — release notes: [docs/release.md](./release.md), GitHub [v0.1.19](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.19).
 
 ## Runtime
 
@@ -10,12 +10,10 @@ Web UI (provider cards, Quiet Luxury tracks, reset stamp, settings)
         │ invoke / events (snapshots-updated)
         │ set_content_min_size (content-hug min + snap height)
 Rust AppCore
-        │ refresh_all()  cascade per provider:
+        │ refresh_all()  per provider:
 1) Direct vendor OAuth  ──► source: vendor
         │ miss / fail
-2) tokscale usage --json  ──► source: tokscale
-        │ miss / fail
-3) Unavailable / AuthRequired card (no local JSONL estimate)
+2) Unavailable / AuthRequired card (no local JSONL / tokscale)
 ```
 
 ## UI layout contracts
@@ -26,12 +24,13 @@ Rust AppCore
 - **Reset:** `formatWindowReset` → `↻ M/D HH:mm` (local); empty when idle / no `resets_at`. Hover title may include token pair + long clock.
 - **Opacity:** `applyPanelOpacity` sets `--panel-opacity`, `--fg-opacity`, `--accent-opacity`, `--chrome-opacity` so glass, text, and bar fills fade together.
 - **Height:** frontend measures unconstrained panel height; Rust `snap_height_to_content` sets size to content floor (not grow-only).
+- **Settings:** absolute overlay over provider cards (list fades out); window height does **not** grow for the sheet. Providers as horizontal on/off chips; footer **Copy Log** / **Quit** (equal half-width).
 
 ## Providers
 
 ### Primary: direct vendor quota (personal OAuth)
 
-Reads local CLI auth only (no in-app login). Cascade when `use_direct_quota` (default true):
+Reads local CLI auth only (no in-app login). Always on:
 
 | Id | Auth file | Endpoint |
 |----|-----------|----------|
@@ -47,29 +46,24 @@ Usage/limit HTTP is metadata only (does not consume coding tokens).
 - **Shown:** one primary period window from `creditUsagePercent` (or legacy cents) + period end → typically **Week** (or Monthly/Daily if API says so).
 - **Ignored:** `productUsage` array (GrokBuild, GrokChat, …) — same credit pool detail; too noisy for a glance widget. Tests: `ignores_product_usage_breakdown` in `quota/grok.rs`.
 
-### Secondary: tokscale
+### No local JSONL / tokscale
 
-`tokscale usage --json` (or `npx` / `npx.cmd` on Windows) once per refresh (45s process cache).  
-Maps vendor `used_percent` + `resets_at` → `ProviderSnapshot` (`source: tokscale`).  
-Setting: `use_tokscale` (default true). Used when direct vendor misses or fails.
-
-### No local JSONL
-
-Session log estimates (`~/.claude` / `~/.codex` / `~/.grok` token sums) were removed.  
-If both vendor and tokscale miss, the card shows **Unavailable** / **AuthRequired** with a short hint.
+Session log estimates and tokscale were removed.  
+If vendor quota misses, the card shows **Unavailable** / **AuthRequired** with a short hint.
 
 ## Non-goals (v0.1+)
 
 - Push notifications / tray alerts  
 - HTTP scraping of vendor dashboards  
 - Local JSONL / plan-limit token estimates  
-- Google Antigravity (AGY) in-widget — tokscale has `antigravity sync` (macOS/Linux); TokenUsage does not surface it yet  
+- tokscale / `npx tokscale` integration  
+- Google Antigravity (AGY) in-widget  
 - Perfect billing parity with official subscription meters  
 - Per-product Grok breakdown (GrokBuild vs GrokChat) in the UI  
 
 ## Commands
 
-`get_state`, `get_snapshots`, `refresh_now`, `set_theme`, `set_opacity`, `set_autostart`, `set_refresh_secs`, `set_use_tokscale`, `set_window_geometry`, `set_provider_enabled`, `set_provider_limits`, `hide_widget`, `quit_app`, `get_diagnostics`, `set_content_min_size`, `check_for_updates`
+`get_state`, `get_snapshots`, `refresh_now`, `set_theme`, `set_opacity`, `set_autostart`, `set_refresh_secs`, `set_window_geometry`, `set_provider_enabled`, `set_provider_limits`, `hide_widget`, `quit_app`, `get_diagnostics`, `set_content_min_size`, `check_for_updates`
 
 ## Updater
 
