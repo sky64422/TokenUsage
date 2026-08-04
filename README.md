@@ -2,9 +2,9 @@
 
 Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent **quota usage vs reset times** — personal CLI OAuth, with **reset-time–first** display. Design language follows [EconomyWarRoom](../EconomyWarRoom) (glass, always-on-top, hotkey).
 
-**Current release:** [v0.1.20](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.20)
+**Current release:** [v0.1.21](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.21)
 
-## Features (v0.1.20)
+## Features (v0.1.21)
 
 - Always-on-top **dark** glass panel; **opacity slider** tints panel, text, and bar colors together
 - Providers: **Claude Code**, **Codex**, **Grok Build**
@@ -19,7 +19,7 @@ Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent **quo
   - Provider chips (horizontal on/off)
   - Footer: **Copy Log** / **Quit** (half-width each)
 - Hotkey: `Ctrl+Shift+U` (toggle hide/show; independent of EconomyWarRoom’s `Ctrl+Shift+Space`)
-- **In-app updates** (Tauri updater; header **⬆** + release startup check)
+- **In-app updates** (header ↻ badge + background download → click to restart; release startup check)
 - **No notifications yet** (planned later)
 - **Antigravity (AGY)** not in app yet — deferred for Windows widget
 

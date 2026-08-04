@@ -1,7 +1,7 @@
 # Release & in-app updates
 
 **Updated:** 2026-08-04  
-**Current public tag:** v0.1.20  
+**Current public tag:** v0.1.21  
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -89,8 +89,9 @@ npm run run:exe
 
 | Path | Behavior |
 |------|----------|
-| Startup (release) | After ~30s, check + download/install if newer |
-| Header **⬆** | Manual `check_for_updates` (same install path) |
+| Startup (release) | After ~30s, check + **background download**; badge ↻; ready → “click to restart” |
+| Header **↻** (ready) | Install cached package + restart |
+| Header **↻** (idle) | Full check → download → install if newer |
 | `tauri dev` | Startup check skipped; manual check may still fail without a published `latest.json` |
 
 ## Pre-release verification matrix

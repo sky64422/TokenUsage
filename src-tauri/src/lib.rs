@@ -81,6 +81,7 @@ pub fn run() {
             let _ = app.emit("snapshots-updated", &snaps);
 
             app.manage(handle_state);
+            app.manage(updater::PendingUpdateState::default());
 
             // In-app updates (release builds only; skipped under debug_assertions)
             updater::spawn_update_check(app.handle().clone());
