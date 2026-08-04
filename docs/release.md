@@ -1,7 +1,7 @@
 # Release & in-app updates
 
 **Updated:** 2026-08-04  
-**Current public tag:** v0.1.21  
+**Current public tag:** v0.1.22  
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)

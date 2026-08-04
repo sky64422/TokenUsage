@@ -1,7 +1,7 @@
 # TokenUsage Architecture
 
 **Stack:** Tauri 2 + Rust + TypeScript (Vite), glass floating widget modeled on EconomyWarRoom.  
-**Current ship:** v0.1.21 — release notes: [docs/release.md](./release.md), GitHub [v0.1.21](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.21).
+**Current ship:** v0.1.22 — release notes: [docs/release.md](./release.md), GitHub [v0.1.22](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.22).
 
 ## Runtime
 

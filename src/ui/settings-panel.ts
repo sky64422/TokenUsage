@@ -2,6 +2,38 @@ import type { AppSettings, ProviderId } from "./types";
 
 const REFRESH_PRESETS = [5, 10, 15, 30, 60] as const;
 
+/** Opacity slider uses whole percent steps of 5 (35%…100%). */
+const OPACITY_MIN_PCT = 35;
+const OPACITY_MAX_PCT = 100;
+const OPACITY_STEP_PCT = 5;
+
+function snapOpacityPct(pct: number): number {
+  const clamped = Math.min(OPACITY_MAX_PCT, Math.max(OPACITY_MIN_PCT, pct));
+  return Math.round(clamped / OPACITY_STEP_PCT) * OPACITY_STEP_PCT;
+}
+
+function opacityToPct(o: number): number {
+  return snapOpacityPct(Math.round(o * 100));
+}
+
+function pctToOpacity(pct: number): number {
+  return snapOpacityPct(pct) / 100;
+}
+
+function meterFillPct(pct: number): number {
+  const snapped = snapOpacityPct(pct);
+  return ((snapped - OPACITY_MIN_PCT) / (OPACITY_MAX_PCT - OPACITY_MIN_PCT)) * 100;
+}
+
+function opacityTicksHtml(): string {
+  const parts: string[] = [];
+  for (let p = OPACITY_MIN_PCT; p <= OPACITY_MAX_PCT; p += OPACITY_STEP_PCT) {
+    const major = p % 10 === 0 || p === OPACITY_MIN_PCT || p === OPACITY_MAX_PCT;
+    parts.push(`<span class="opacity-tick${major ? " major" : ""}"></span>`);
+  }
+  return parts.join("");
+}
+
 /**
  * Glass opacity + matching text/graph alpha.
  * Background uses --panel-opacity; fg/accent/chrome track the slider so bars
@@ -53,14 +85,21 @@ export function mountSettingsPanel(
     );
   }
 
+  const initialPct = opacityToPct(settings.opacity);
   root.innerHTML = `
     <div class="settings" id="settings-sheet">
       <div class="settings-section">
-        <div class="settings-label-row">
+        <div class="settings-label-row opacity-label-row">
           <div class="settings-label">Opacity</div>
-          <div class="settings-value" id="opacity-val"></div>
+          <div class="settings-value opacity-value" id="opacity-val">${initialPct}%</div>
         </div>
-        <input type="range" id="opacity-range" class="settings-range" min="0.35" max="1" step="0.01" />
+        <div class="opacity-meter" style="--opacity-fill: ${meterFillPct(initialPct)}%">
+          <div class="opacity-meter-fill" aria-hidden="true"></div>
+          <div class="opacity-meter-ticks" aria-hidden="true">${opacityTicksHtml()}</div>
+          <input type="range" id="opacity-range" class="opacity-meter-input"
+            min="${OPACITY_MIN_PCT}" max="${OPACITY_MAX_PCT}" step="${OPACITY_STEP_PCT}"
+            value="${initialPct}" aria-label="Opacity" />
+        </div>
       </div>
 
       <div class="settings-section">
@@ -117,9 +156,23 @@ export function mountSettingsPanel(
   }
 
   markRefresh(refreshSecs);
-  opacityRange.value = String(settings.opacity);
-  opacityVal.textContent = `${Math.round(settings.opacity * 100)}%`;
   autostart.checked = settings.autostart;
+
+  const opacityMeter = root.querySelector(".opacity-meter") as HTMLElement;
+
+  const paintOpacity = (pct: number) => {
+    const snapped = snapOpacityPct(pct);
+    const o = pctToOpacity(snapped);
+    opacityRange.value = String(snapped);
+    opacityVal.textContent = `${snapped}%`;
+    opacityMeter.style.setProperty("--opacity-fill", `${meterFillPct(snapped)}%`);
+    handlers.onOpacityChange(o);
+  };
+
+  // Persist snapped value if legacy 1% step was stored
+  if (Math.abs(settings.opacity - pctToOpacity(initialPct)) > 0.001) {
+    paintOpacity(initialPct);
+  }
 
   refreshSeg.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -132,9 +185,11 @@ export function mountSettingsPanel(
   });
 
   opacityRange.addEventListener("input", () => {
-    const o = Number(opacityRange.value);
-    opacityVal.textContent = `${Math.round(o * 100)}%`;
-    handlers.onOpacityChange(o);
+    paintOpacity(Number(opacityRange.value));
+  });
+
+  opacityRange.addEventListener("change", () => {
+    paintOpacity(Number(opacityRange.value));
   });
 
   autostart.addEventListener("change", () => {
