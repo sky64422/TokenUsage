@@ -60,15 +60,8 @@ pub fn run() {
                 eprintln!("system tray setup failed: {e}");
             }
 
-            {
-                use tauri_plugin_autostart::ManagerExt;
-                let autostart = app.autolaunch();
-                if persisted.settings.autostart {
-                    let _ = autostart.enable();
-                } else {
-                    let _ = autostart.disable();
-                }
-            }
+            // Prefer release binary for OS login items (see commands::sync_os_autostart).
+            let _ = commands::sync_os_autostart(app.handle(), persisted.settings.autostart);
 
             // Register hotkey
             let hotkey = persisted.settings.hotkey.clone();

@@ -37,6 +37,31 @@ pub fn set_opacity(
     Ok(o)
 }
 
+/// Sync login-item registration with the OS.
+///
+/// **Release only for enable:** `tauri dev` runs `target/debug/token-usage.exe`,
+/// which loads the Vite `devUrl`. If that path is registered for boot, login
+/// starts a broken widget (no Vite) and overwrites a good install-path entry.
+/// Preference is still persisted; OS registration is applied on the next
+/// release/install run. Disable is always applied so a bad entry can be cleared
+/// from a debug session.
+pub(crate) fn sync_os_autostart(app: &AppHandle, enabled: bool) -> Result<(), String> {
+    use tauri_plugin_autostart::ManagerExt;
+    let autostart = app.autolaunch();
+    if cfg!(debug_assertions) {
+        if !enabled {
+            let _ = autostart.disable();
+        }
+        return Ok(());
+    }
+    if enabled {
+        autostart.enable().map_err(|e| e.to_string())?;
+    } else {
+        autostart.disable().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub fn set_autostart(
     app: AppHandle,
@@ -44,14 +69,7 @@ pub fn set_autostart(
     enabled: bool,
 ) -> Result<(), String> {
     state.core.set_autostart(enabled)?;
-    use tauri_plugin_autostart::ManagerExt;
-    let autostart = app.autolaunch();
-    if enabled {
-        autostart.enable().map_err(|e| e.to_string())?;
-    } else {
-        autostart.disable().map_err(|e| e.to_string())?;
-    }
-    Ok(())
+    sync_os_autostart(&app, enabled)
 }
 
 #[tauri::command]
