@@ -26,18 +26,18 @@
   --background: transparent;
   --foreground: rgba(var(--text-rgb), var(--fg-opacity));
   --muted: rgba(255, 255, 255, calc(0.045 * var(--chrome-opacity)));
-  /* Floors keep secondary copy readable when --fg-opacity is lowered with glass */
+  /* Soft floors — still readable, but track --fg-opacity with the glass slider */
   --muted-foreground: rgba(
     255,
     255,
     255,
-    max(0.52, calc(0.55 * var(--fg-opacity)))
+    max(0.30, calc(0.55 * var(--fg-opacity)))
   );
   --subtle-foreground: rgba(
     255,
     255,
     255,
-    max(0.44, calc(0.4 * var(--fg-opacity)))
+    max(0.24, calc(0.4 * var(--fg-opacity)))
   );
   --card: var(--muted);
   --card-foreground: var(--foreground);
@@ -52,15 +52,15 @@
   --destructive-foreground: rgba(255, 255, 255, 0.98);
   --success: rgba(var(--ok-rgb), var(--accent-opacity));
   --warning: rgba(var(--warn-rgb), var(--accent-opacity));
-  --border: rgba(255, 255, 255, max(0.12, calc(0.1 * var(--chrome-opacity))));
+  --border: rgba(255, 255, 255, max(0.06, calc(0.1 * var(--chrome-opacity))));
   --border-soft: rgba(
     255,
     255,
     255,
-    max(0.09, calc(0.07 * var(--chrome-opacity)))
+    max(0.05, calc(0.07 * var(--chrome-opacity)))
   );
   --input: var(--border);
-  --ring: rgba(var(--accent-rgb), max(0.45, calc(0.55 * var(--accent-opacity))));
+  --ring: rgba(var(--accent-rgb), max(0.28, calc(0.55 * var(--accent-opacity))));
   --ring-offset: rgba(var(--bg-glass-rgb-active), 0.9);
 
   /* Status (legacy names kept for tracks / levels) */
@@ -72,12 +72,12 @@
   --critical: var(--destructive);
   --reset: rgba(
     var(--reset-rgb),
-    max(0.72, calc(0.88 * var(--accent-opacity)))
+    max(0.36, calc(0.88 * var(--accent-opacity)))
   );
   --accent: var(--primary);
   --bg-hover: var(--secondary);
   --bg-section: var(--muted);
-  --track: rgba(255, 255, 255, max(0.12, calc(0.14 * var(--chrome-opacity))));
+  --track: rgba(255, 255, 255, max(0.07, calc(0.14 * var(--chrome-opacity))));
   --track-inset: rgba(0, 0, 0, calc(0.28 * var(--chrome-opacity)));
 
   /*

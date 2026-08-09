@@ -52,10 +52,11 @@ function opacityTicksHtml(): string {
  */
 export function applyPanelOpacity(panel: HTMLElement, opacity: number): void {
   const o = Math.min(1, Math.max(0.35, opacity));
-  // Slightly above panel alpha so type stays scannable when glass is thin.
-  const fg = Math.min(1, Math.max(0.74, o * 1.04 + 0.06));
-  const accent = Math.min(1, Math.max(0.7, o * 1.06 + 0.04));
-  const chrome = Math.min(1, Math.max(0.55, o * 0.95 + 0.12));
+  // Track panel glass closely so type / green-amber-red fade with opacity.
+  // Mild boost + soft floors (not ~0.7 solid on thin glass).
+  const fg = Math.min(1, Math.max(0.40, o * 0.94 + 0.04));
+  const accent = Math.min(1, Math.max(0.36, o * 0.96 + 0.02));
+  const chrome = Math.min(1, Math.max(0.28, o * 0.90 + 0.04));
 
   const root = document.documentElement;
   for (const el of [panel, root]) {

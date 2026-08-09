@@ -4,7 +4,7 @@ If you are an automated coding agent in a new session:
 
 1. **Code map / product shape:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 2. **Product brief (Operate mode):** [`PRODUCT.md`](PRODUCT.md)
-3. **Visual system / UI contracts:** [`DESIGN.md`](DESIGN.md)
+3. **Visual system / UI contracts:** [`DESIGN.md`](DESIGN.md) — external refs: [ui.shadcn.com](https://ui.shadcn.com), [impeccable.style](https://impeccable.style)
 4. **On Windows:** [`docs/windows-dev.md`](docs/windows-dev.md)
 5. **Releases / updater:** [`docs/release.md`](docs/release.md)
 6. **Tests:** [`docs/testing.md`](docs/testing.md)

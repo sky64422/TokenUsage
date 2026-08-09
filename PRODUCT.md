@@ -1,6 +1,6 @@
 # PRODUCT.md — TokenUsage
 
-**Updated:** 2026-08-09 · **Ship:** v0.1.26  
+**Updated:** 2026-08-09 · **Ship:** v0.1.27  
 **Platform:** desktop (Tauri 2 / Windows primary; WebView UI)  
 **Mode (Impeccable):** **Operate** — scan and act quickly; brand lives in precise details, not persuasion.
 
@@ -68,5 +68,6 @@ A floating **usage monitor widget** that shows personal vendor OAuth quota (Clau
 
 - Architecture & layout contracts: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)  
 - Visual system: [`DESIGN.md`](DESIGN.md)  
+- UI references: [ui.shadcn.com](https://ui.shadcn.com), [impeccable.style](https://impeccable.style) (also listed in `DESIGN.md`)  
 - Agent rules: [`AGENTS.md`](AGENTS.md)  
 - Releases: [`docs/release.md`](docs/release.md)  

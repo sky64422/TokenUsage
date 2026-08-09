@@ -1,10 +1,21 @@
 # DESIGN.md — TokenUsage
 
-**Updated:** 2026-08-09 · **Ship:** v0.1.26  
+**Updated:** 2026-08-09 · **Ship:** v0.1.27  
 
 Visual system for the floating usage widget. Source of truth for tokens: [`src/styles/tokens.css`](src/styles/tokens.css). Layout contracts also live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 **Surface mode:** Operate (scanability over expression).
+
+## UI references (external)
+
+Canonical external design references for this product family (floating glass widgets — TokenUsage and sibling EconomyWarRoom):
+
+| Site | URL | How we use it |
+|------|-----|----------------|
+| **shadcn/ui** | [ui.shadcn.com](https://ui.shadcn.com) | Control primitives & patterns: focus rings, segmented controls, switches, chips, dialogs/sheets, semantic token names (`--primary`, `--muted-foreground`, …). Adapt — do not paste full React/shadcn stacks into the vanilla TS widget. |
+| **Impeccable** | [impeccable.style](https://impeccable.style) | Taste / density / anti-slop: Operate-mode restraint, hierarchy, no cardocalypse, no decorative motion. Aligns with “Quiet Luxury” progress and distilled chrome. |
+
+When UI diverges, prefer **product constraints** in [`PRODUCT.md`](PRODUCT.md) over generic landing-page patterns from either site.
 
 ## Principles
 
@@ -143,11 +154,11 @@ Motion only for **live state** (usage risk, update download) — no decorative i
 
 ## Low opacity
 
-`applyPanelOpacity` floors `--fg-opacity` / `--accent-opacity` / `--chrome-opacity` so type and tracks stay scannable when glass is thin. Semantic text/border tokens also use `max(...)` alpha floors.
+`applyPanelOpacity` maps `--fg-opacity` / `--accent-opacity` / `--chrome-opacity` **close to the panel glass** so type and green/amber/red fade with the slider (soft floors ~0.28–0.40, not ~0.7 solid on thin glass). Token `max(...)` floors for muted/border are similarly soft.
 
 ## Anti-patterns (Impeccable-aligned)
 
-Reject or fix if introduced:
+See [impeccable.style](https://impeccable.style). Reject or fix if introduced:
 
 - Nested cards, side-tab borders, cardocalypse  
 - Pulsing dots without live download/state  
