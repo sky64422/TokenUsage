@@ -58,7 +58,7 @@ Legacy aliases (`--text`, `--accent`, `--ok`, …) map to the semantic layer —
 | Provider name | ~12.5px semibold |
 | Header % | 11px semibold, tabular nums |
 | Window label | 10px semibold uppercase (short: `5h`, `Week`) |
-| Reset / meta | 10px; keep functional text ≥10px; avoid long all-caps body |
+| Reset / meta / window label | 11px; functional text ≥11px; avoid long all-caps body |
 
 Hierarchy must stay stepped (name → % → label → reset). No display serif heroes.
 
@@ -136,7 +136,12 @@ Motion only for **live state** (usage risk, update download) — no decorative i
 
 - Short: `Usage`, `5h`, `Week`, `over`, `Copy Log`, `Quit`.  
 - Reset: `↻ M/D HH:mm` local; empty when idle / no `resets_at`.  
+- Settings footer: `{hotkey} · ↻ update` (distilled).  
 - No em-dash cadences, no SaaS buzzwords.
+
+## Low opacity
+
+`applyPanelOpacity` floors `--fg-opacity` / `--accent-opacity` / `--chrome-opacity` so type and tracks stay scannable when glass is thin. Semantic text/border tokens also use `max(...)` alpha floors.
 
 ## Anti-patterns (Impeccable-aligned)
 

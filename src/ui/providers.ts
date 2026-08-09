@@ -199,7 +199,7 @@ function windowCell(
       <div class="window-row">
         <span class="window-label">${escapeHtml(label)}</span>
         <div class="track" aria-hidden="true">
-          <div class="track-fill ${lvl}" style="width:${width}%">
+          <div class="track-fill ${lvl}${width > 0 && !idle ? " is-active" : ""}" style="width:${width}%">
             ${showStop ? `<span class="track-stop"></span>` : ""}
           </div>
         </div>

@@ -48,12 +48,14 @@ function opacityTicksHtml(): string {
  * Glass opacity + matching text/graph alpha.
  * Background uses --panel-opacity; fg/accent/chrome track the slider so bars
  * and labels don't stay fully solid while the panel goes transparent.
+ * Floors keep muted/reset text readable on glass at the low end of the range.
  */
 export function applyPanelOpacity(panel: HTMLElement, opacity: number): void {
   const o = Math.min(1, Math.max(0.35, opacity));
-  const fg = Math.min(1, Math.max(0.62, o * 1.02));
-  const accent = Math.min(1, Math.max(0.55, o * 1.05));
-  const chrome = Math.min(1, Math.max(0.4, o));
+  // Slightly above panel alpha so type stays scannable when glass is thin.
+  const fg = Math.min(1, Math.max(0.74, o * 1.04 + 0.06));
+  const accent = Math.min(1, Math.max(0.7, o * 1.06 + 0.04));
+  const chrome = Math.min(1, Math.max(0.55, o * 0.95 + 0.12));
 
   const root = document.documentElement;
   for (const el of [panel, root]) {
@@ -144,7 +146,7 @@ export function mountSettingsPanel(
       </div>
 
       <div class="settings-end">
-        <span class="settings-meta">Hotkey ${settings.hotkey} · header ↻ for updates</span>
+        <span class="settings-meta">${settings.hotkey} · ↻ update</span>
         <div class="settings-action-row">
           <button type="button" class="settings-debug" id="btn-diag" title="Copy diagnostic log for troubleshooting">Copy Log</button>
           <button type="button" class="settings-quit" id="btn-quit">Quit</button>

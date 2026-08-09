@@ -262,9 +262,9 @@ body {
 }
 
 .provider-meta {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
-  color: var(--text-tertiary);
+  color: var(--muted-foreground);
   letter-spacing: -0.01em;
 }
 
@@ -378,9 +378,9 @@ body {
 .window-label {
   box-sizing: border-box;
   min-width: var(--win-label-min);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   line-height: 1;
@@ -432,7 +432,7 @@ body {
     box-shadow 0.25s ease;
 }
 
-/* Slow diagonal sheen — depth without motion noise */
+/* Sheen only on live fills (.is-active) — no idle decoration */
 .track-fill::before {
   content: "";
   position: absolute;
@@ -447,9 +447,15 @@ body {
     transparent 100%
   );
   background-size: 220% 100%;
+  background-position: 50% 0;
+  animation: none;
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.track-fill.is-active::before {
   background-position: 120% 0;
   animation: track-sheen 4.8s ease-in-out infinite;
-  pointer-events: none;
   opacity: 0.85;
 }
 
@@ -525,6 +531,10 @@ body {
   box-shadow:
     0 0 0 0.5px rgba(255, 255, 255, calc(0.12 * var(--accent-opacity))) inset,
     0 0 12px rgba(var(--critical-rgb), calc(0.4 * var(--accent-opacity)));
+}
+/* Breathe only when usage is live and critical/over */
+.track-fill.is-active.level-critical,
+.track-fill.is-active.level-over {
   animation: track-critical-breathe 2.4s ease-in-out infinite;
 }
 .track-fill.level-idle,
@@ -566,13 +576,13 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .track-fill::before {
+  .track-fill.is-active::before {
     animation: none;
     opacity: 0.35;
     background-position: 50% 0;
   }
-  .track-fill.level-critical,
-  .track-fill.level-over {
+  .track-fill.is-active.level-critical,
+  .track-fill.is-active.level-over {
     animation: none;
   }
 }
@@ -595,7 +605,7 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--reset);
@@ -706,10 +716,10 @@ body {
 }
 
 .settings-meta {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.35;
-  color: var(--text-tertiary);
+  color: var(--muted-foreground);
   letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
