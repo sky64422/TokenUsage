@@ -1,6 +1,8 @@
 :root {
   /* Dark-only UI (theme setting removed). */
   color-scheme: dark;
+
+  /* —— Channels (opacity-linked surfaces / fills) —— */
   --bg-glass-rgb: 28, 28, 30;
   --bg-glass-rgb-active: var(--bg-glass-rgb);
   --panel-opacity: 0.92;
@@ -20,35 +22,76 @@
   --reset-rgb: 255, 105, 97;
   --accent-rgb: 10, 132, 255;
 
-  --bg-hover: rgba(255, 255, 255, calc(0.06 * var(--chrome-opacity)));
-  --bg-section: rgba(255, 255, 255, calc(0.045 * var(--chrome-opacity)));
+  /* —— Semantic tokens (shadcn-inspired names, Quiet Luxury values) —— */
+  --background: transparent;
+  --foreground: rgba(var(--text-rgb), var(--fg-opacity));
+  --muted: rgba(255, 255, 255, calc(0.045 * var(--chrome-opacity)));
+  --muted-foreground: rgba(255, 255, 255, calc(0.55 * var(--fg-opacity)));
+  --subtle-foreground: rgba(255, 255, 255, calc(0.38 * var(--fg-opacity)));
+  --card: var(--muted);
+  --card-foreground: var(--foreground);
+  --popover: rgba(var(--bg-glass-rgb-active), 1);
+  --popover-foreground: var(--foreground);
+  --primary: rgba(var(--accent-rgb), var(--accent-opacity));
+  --primary-foreground: rgba(255, 255, 255, 0.98);
+  --secondary: rgba(255, 255, 255, calc(0.06 * var(--chrome-opacity)));
+  --secondary-foreground: var(--foreground);
+  --accent-bg: rgba(255, 255, 255, calc(0.06 * var(--chrome-opacity)));
+  --destructive: rgba(var(--critical-rgb), var(--accent-opacity));
+  --destructive-foreground: rgba(255, 255, 255, 0.98);
+  --success: rgba(var(--ok-rgb), var(--accent-opacity));
+  --warning: rgba(var(--warn-rgb), var(--accent-opacity));
   --border: rgba(255, 255, 255, calc(0.1 * var(--chrome-opacity)));
   --border-soft: rgba(255, 255, 255, calc(0.07 * var(--chrome-opacity)));
-  --text: rgba(var(--text-rgb), var(--fg-opacity));
-  --text-secondary: rgba(255, 255, 255, calc(0.55 * var(--fg-opacity)));
-  --text-tertiary: rgba(255, 255, 255, calc(0.38 * var(--fg-opacity)));
-  --ok: rgba(var(--ok-rgb), var(--accent-opacity));
-  --warn: rgba(var(--warn-rgb), var(--accent-opacity));
-  --critical: rgba(var(--critical-rgb), var(--accent-opacity));
+  --input: var(--border);
+  --ring: rgba(var(--accent-rgb), calc(0.55 * var(--accent-opacity)));
+  --ring-offset: rgba(var(--bg-glass-rgb-active), 0.9);
+
+  /* Status (legacy names kept for tracks / levels) */
+  --text: var(--foreground);
+  --text-secondary: var(--muted-foreground);
+  --text-tertiary: var(--subtle-foreground);
+  --ok: var(--success);
+  --warn: var(--warning);
+  --critical: var(--destructive);
   --reset: rgba(var(--reset-rgb), var(--accent-opacity));
-  --accent: rgba(var(--accent-rgb), var(--accent-opacity));
+  --accent: var(--primary);
+  --bg-hover: var(--secondary);
+  --bg-section: var(--muted);
   --track: rgba(255, 255, 255, calc(0.14 * var(--chrome-opacity)));
   --track-inset: rgba(0, 0, 0, calc(0.28 * var(--chrome-opacity)));
-  /* Panel chrome uses OS DWM rounding on Windows (apply_clean_glass_edge).
-     Keep CSS radius 0 so we don't double-AA transparent corners (white fringe). */
+
+  /*
+   * Radii: panel chrome uses OS DWM on Windows (apply_clean_glass_edge).
+   * Keep panel --radius 0 so we don't double-AA transparent corners.
+   */
   --radius: 0px;
-  --radius-card: 10px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-card: var(--radius-xl);
+  --radius-full: 9999px;
+
   --blur: 36px;
   --header-height: 38px;
+
   /* Spacing scale (4px base) — prefer steps over ad-hoc px */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --pad-x: var(--space-3);
+
   /* Period labels: longest token "WEEK" ≈ 4ch at label font */
   --win-label-min: 4ch;
   --win-pct-min: 3.5ch;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 0.12s;
+  --duration-normal: 0.15s;
+
   /* Pretendard bundled via fonts.css; system stack is fallback only */
   font-family: "Pretendard", "Segoe UI", system-ui, -apple-system, sans-serif;
 }

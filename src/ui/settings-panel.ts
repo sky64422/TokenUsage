@@ -117,7 +117,7 @@ export function mountSettingsPanel(
         <div class="segmented refresh-segmented" id="refresh-seg" role="group" aria-label="Refresh interval">
           ${REFRESH_PRESETS.map(
             (s) => `
-            <button type="button" data-refresh="${s}" class="${s === refreshSecs ? "active" : ""}">${formatRefresh(s)}</button>
+            <button type="button" data-refresh="${s}" class="${s === refreshSecs ? "active" : ""}" aria-pressed="${s === refreshSecs ? "true" : "false"}">${formatRefresh(s)}</button>
           `,
           ).join("")}
         </div>
@@ -161,7 +161,9 @@ export function mountSettingsPanel(
 
   function markRefresh(secs: number): void {
     refreshSeg.querySelectorAll("button").forEach((b) => {
-      b.classList.toggle("active", Number((b as HTMLElement).dataset.refresh) === secs);
+      const on = Number((b as HTMLElement).dataset.refresh) === secs;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
     });
   }
 
@@ -216,6 +218,7 @@ export function mountSettingsPanel(
     btn.classList.toggle("on", on);
     btn.classList.toggle("off", !on);
     btn.setAttribute("aria-pressed", on ? "true" : "false");
+    syncProviderLocks();
   }
 
   function isProviderOn(id: ProviderId): boolean {
@@ -224,6 +227,23 @@ export function mountSettingsPanel(
 
   function countEnabled(): number {
     return (["claude", "codex", "grok"] as ProviderId[]).filter(isProviderOn).length;
+  }
+
+  /** Last remaining provider cannot be turned off — visual + a11y lock. */
+  function syncProviderLocks(): void {
+    const onlyOne = countEnabled() <= 1;
+    (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
+      const btn = providerBtn(id);
+      if (!btn) return;
+      const locked = onlyOne && isProviderOn(id);
+      btn.classList.toggle("is-locked", locked);
+      btn.disabled = locked;
+      if (locked) {
+        btn.title = `${btn.textContent?.trim() ?? id} (required)`;
+      } else {
+        btn.title = btn.textContent?.trim() ?? id;
+      }
+    });
   }
 
   (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
@@ -240,6 +260,8 @@ export function mountSettingsPanel(
       });
     });
   });
+
+  syncProviderLocks();
 
   const diagBtn = root.querySelector("#btn-diag") as HTMLButtonElement | null;
   const diagLabel = "Copy Log";
@@ -269,8 +291,14 @@ export function mountSettingsPanel(
     isVisible: () => visible,
     syncProviderEnabled(st: AppSettings) {
       (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
-        setProviderOn(id, st[id]?.enabled !== false);
+        const btn = providerBtn(id);
+        const on = st[id]?.enabled !== false;
+        if (!btn) return;
+        btn.classList.toggle("on", on);
+        btn.classList.toggle("off", !on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
       });
+      syncProviderLocks();
     },
   };
 }

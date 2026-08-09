@@ -12,12 +12,22 @@ body {
   height: 100%;
   overflow: hidden;
   background: transparent;
-  color: var(--text);
+  color: var(--foreground);
   font-family: inherit;
   font-size: 13px;
   line-height: 1.35;
   -webkit-font-smoothing: antialiased;
   user-select: none;
+}
+
+/* Keyboard focus only — shadcn-style ring (no mouse outline clutter) */
+:where(button, [role="button"], input, select, textarea, a, [tabindex]):focus {
+  outline: none;
+}
+
+:where(button, [role="button"], input, select, textarea, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 #app {
@@ -55,7 +65,7 @@ body {
   align-items: center;
   justify-content: space-between;
   height: var(--header-height);
-  padding: 0 8px 0 var(--pad-x);
+  padding: 0 var(--space-2) 0 var(--pad-x);
   flex-shrink: 0;
   -webkit-app-region: drag;
   app-region: drag;
@@ -65,7 +75,7 @@ body {
   font-weight: 600;
   font-size: 13px;
   letter-spacing: -0.02em;
-  color: var(--text);
+  color: var(--foreground);
 }
 
 .header-actions {
@@ -75,31 +85,40 @@ body {
   app-region: no-drag;
 }
 
+/* Icon button primitive */
 .icon-btn {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
-  color: var(--text-tertiary);
+  color: var(--subtle-foreground);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 13px;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background var(--duration-normal) ease,
+    color var(--duration-normal) ease,
+    box-shadow var(--duration-normal) ease;
 }
 
 .icon-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text);
+  background: var(--secondary);
+  color: var(--foreground);
+}
+
+.icon-btn:active {
+  background: color-mix(in srgb, var(--secondary) 80%, transparent);
 }
 
 .icon-btn.active {
-  color: var(--accent);
-  background: var(--bg-hover);
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
 }
 
+.icon-btn:disabled,
 .icon-btn.busy {
   opacity: 0.45;
   pointer-events: none;
@@ -108,7 +127,7 @@ body {
 /* Soft update badge on header ↻ — downloading pulse, ready solid. */
 .icon-btn.update-available {
   position: relative;
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .icon-btn.update-available::after {
@@ -119,8 +138,8 @@ body {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 35%, transparent);
+  background: var(--primary);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--primary) 35%, transparent);
   pointer-events: none;
 }
 
@@ -129,8 +148,8 @@ body {
 }
 
 .icon-btn.update-ready {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
 }
 
 .icon-btn.update-ready::after {
@@ -202,15 +221,16 @@ body {
 }
 
 .provider-card {
-  border-radius: 12px;
-  background: var(--bg-section);
+  border-radius: var(--radius-card);
+  background: var(--card);
   border: 1px solid var(--border-soft);
-  padding: 10px 12px 9px;
-  transition: background 0.15s ease;
+  padding: 10px var(--space-3) 9px;
+  transition: background var(--duration-normal) ease, border-color var(--duration-normal) ease;
 }
 
 .provider-card:hover {
-  background: var(--bg-hover);
+  background: var(--secondary);
+  border-color: var(--border);
 }
 
 .provider-head {
@@ -238,7 +258,7 @@ body {
   font-weight: 600;
   font-size: 12.5px;
   letter-spacing: -0.02em;
-  color: var(--text);
+  color: var(--card-foreground);
 }
 
 .provider-meta {
@@ -622,15 +642,16 @@ body {
   overflow-y: auto;
   border: none;
   border-radius: 0;
-  padding: 12px 14px 14px;
+  padding: var(--space-3) 14px 14px;
   margin: 0;
   /* Solid relative to the glass: ignore --panel-opacity so controls stay readable. */
-  background: rgba(var(--bg-glass-rgb-active), 1);
+  background: var(--popover);
+  color: var(--popover-foreground);
   flex-direction: column;
   gap: 14px;
   box-shadow: none;
   scrollbar-width: thin;
-  scrollbar-color: var(--text-secondary) transparent;
+  scrollbar-color: var(--muted-foreground) transparent;
 }
 
 .settings.visible {
@@ -640,7 +661,7 @@ body {
 .settings-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -649,21 +670,21 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
 }
 
 .settings-label-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .settings-value {
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--text);
+  color: var(--foreground);
 }
 
 .settings-lede {
@@ -703,6 +724,7 @@ body {
   min-width: 0;
 }
 
+/* Action button base (settings footer pair) */
 .settings-debug,
 .settings-quit {
   box-sizing: border-box;
@@ -710,8 +732,8 @@ body {
   min-width: 0;
   height: 34px;
   margin: 0;
-  padding: 0 8px;
-  border-radius: 10px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-lg);
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -720,26 +742,30 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease,
-    filter 0.12s ease;
+  transition:
+    background var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    filter var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
 }
 
 /* Troubleshooting export — amber/warn, like a triage action */
 .settings-debug {
-  border: 1px solid color-mix(in srgb, var(--warn) 34%, transparent);
-  background: color-mix(in srgb, var(--warn) 11%, transparent);
-  color: color-mix(in srgb, var(--warn) 88%, var(--text));
+  border: 1px solid color-mix(in srgb, var(--warning) 34%, transparent);
+  background: color-mix(in srgb, var(--warning) 11%, transparent);
+  color: color-mix(in srgb, var(--warning) 88%, var(--foreground));
 }
 
 .settings-debug:hover {
-  background: color-mix(in srgb, var(--warn) 18%, transparent);
-  border-color: color-mix(in srgb, var(--warn) 48%, transparent);
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  border-color: color-mix(in srgb, var(--warning) 48%, transparent);
 }
 
 .settings-debug.is-done {
-  border-color: color-mix(in srgb, var(--ok) 40%, transparent);
-  background: color-mix(in srgb, var(--ok) 12%, transparent);
-  color: var(--ok);
+  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
 }
 
 .settings-debug:active,
@@ -748,55 +774,65 @@ body {
 }
 
 .settings-debug:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--warn) 50%, transparent);
-  outline-offset: 2px;
+  outline-color: color-mix(in srgb, var(--warning) 55%, transparent);
 }
 
 .settings-quit {
-  border: 1px solid color-mix(in srgb, var(--critical) 28%, transparent);
-  background: color-mix(in srgb, var(--critical) 9%, transparent);
-  color: var(--critical);
+  border: 1px solid color-mix(in srgb, var(--destructive) 28%, transparent);
+  background: color-mix(in srgb, var(--destructive) 9%, transparent);
+  color: var(--destructive);
 }
 
 .settings-quit:hover {
-  background: color-mix(in srgb, var(--critical) 16%, transparent);
-  border-color: color-mix(in srgb, var(--critical) 42%, transparent);
+  background: color-mix(in srgb, var(--destructive) 16%, transparent);
+  border-color: color-mix(in srgb, var(--destructive) 42%, transparent);
 }
 
 .settings-quit:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--critical) 45%, transparent);
-  outline-offset: 2px;
+  outline-color: color-mix(in srgb, var(--destructive) 50%, transparent);
 }
 
+/* Segmented control (TabsList-like) */
 .segmented {
   display: flex;
   padding: 3px;
-  border-radius: 10px;
-  background: var(--bg-hover);
+  border-radius: var(--radius-lg);
+  background: var(--secondary);
+  border: 1px solid var(--border-soft);
   gap: 2px;
   min-width: 0;
 }
 
 .segmented button {
   flex: 1;
-  height: 24px;
+  height: 26px;
   margin: 0;
   padding: 0 6px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font: inherit;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+}
+
+.segmented button:hover:not(.active) {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
 }
 
 .segmented button.active {
-  background: rgba(var(--bg-glass-rgb-active, 28, 28, 30), 0.92);
-  color: var(--text);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  background: color-mix(in srgb, var(--popover) 92%, transparent);
+  color: var(--foreground);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.18),
+    0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent);
   font-weight: 600;
 }
 
@@ -821,7 +857,7 @@ body {
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--foreground);
   min-width: 2.75em;
   text-align: right;
 }
@@ -831,11 +867,16 @@ body {
   position: relative;
   box-sizing: border-box;
   height: 12px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  background: var(--bg-section);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--input);
+  background: var(--muted);
   overflow: hidden;
   user-select: none;
+}
+
+.opacity-meter:focus-within {
+  border-color: color-mix(in srgb, var(--ring) 70%, var(--input));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ring) 35%, transparent);
 }
 
 .opacity-meter-fill {
@@ -845,7 +886,7 @@ body {
   bottom: 0;
   /* Exact 5% cell steps (N/13), not continuous lerp */
   width: var(--opacity-fill);
-  background: color-mix(in srgb, var(--accent) 32%, transparent);
+  background: color-mix(in srgb, var(--primary) 32%, transparent);
   pointer-events: none;
   transition: width 0.06s linear;
 }
@@ -893,14 +934,20 @@ body {
   background: transparent;
 }
 
-/* iOS-like toggle */
+/* Switch primitive (Radix/shadcn Switch-like) */
 .settings-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   cursor: pointer;
   user-select: none;
+  border-radius: var(--radius-md);
+  padding: 2px 0;
+}
+
+.settings-toggle:hover .settings-toggle-title {
+  color: var(--foreground);
 }
 
 .settings-toggle-text {
@@ -913,14 +960,14 @@ body {
 .settings-toggle-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--foreground);
   line-height: 1.2;
 }
 
 .settings-toggle-hint {
   font-size: 11px;
   font-weight: 500;
-  color: var(--text-tertiary);
+  color: var(--subtle-foreground);
   line-height: 1.25;
 }
 
@@ -936,10 +983,10 @@ body {
   flex: 0 0 auto;
   width: 40px;
   height: 24px;
-  border-radius: 99px;
+  border-radius: var(--radius-full);
   background: var(--track);
   position: relative;
-  transition: background 0.15s ease;
+  transition: background var(--duration-normal) ease;
   box-shadow: inset 0 1px 2px var(--track-inset);
 }
 
@@ -951,13 +998,13 @@ body {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: transform 0.15s ease;
+  background: var(--primary-foreground);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  transition: transform var(--duration-normal) var(--ease-out);
 }
 
 .settings-switch-input:checked + .settings-switch {
-  background: var(--accent);
+  background: var(--primary);
 }
 
 .settings-switch-input:checked + .settings-switch::after {
@@ -965,11 +1012,11 @@ body {
 }
 
 .settings-switch-input:focus-visible + .settings-switch {
-  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
-/* Compact horizontal provider on/off chips */
+/* Toggle chip primitive (provider on/off) */
 .provider-chip-row {
   display: flex;
   flex-wrap: wrap;
@@ -983,37 +1030,43 @@ body {
   margin: 0;
   padding: 0 10px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font: inherit;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: -0.01em;
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease,
-    box-shadow 0.12s ease;
+  transition:
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease,
+    opacity var(--duration-fast) ease;
 }
 
 .provider-chip.on {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  color: var(--accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent) inset;
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 42%, transparent);
+  color: var(--primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 10%, transparent) inset;
 }
 
 .provider-chip.off {
-  background: var(--bg-hover);
+  background: var(--secondary);
   border-color: var(--border-soft);
-  color: var(--text-tertiary);
+  color: var(--subtle-foreground);
   font-weight: 500;
 }
 
-.provider-chip:hover {
-  filter: brightness(1.05);
+.provider-chip:hover:not(:disabled) {
+  filter: brightness(1.06);
 }
 
-.provider-chip:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  outline-offset: 2px;
+.provider-chip:disabled,
+.provider-chip.is-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: none;
 }
 
 .provider-limits {
