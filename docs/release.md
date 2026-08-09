@@ -1,16 +1,26 @@
 # Release & in-app updates
 
-**Updated:** 2026-08-04  
-**Current public tag:** v0.1.25  
+**Updated:** 2026-08-09  
+**Current public tag:** v0.1.26  
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
 
 ---
 
+## Recent releases
+
+| Tag | Highlights |
+|-----|------------|
+| **v0.1.26** | UI polish: semantic tokens, focus rings, low-opacity contrast floors, 11px meta, live-only track motion, settings copy distill; PRODUCT/DESIGN docs |
+| v0.1.25 | Autostart: never register `tauri dev` / debug exe as Windows login item |
+| v0.1.24 | Opacity meter ticks; denser refresh chips |
+
+---
+
 ## What “publish” means
 
-In-app **Check for updates** (header **⬆**) does **not** read git `main`.  
+In-app **Check for updates** (header **↻**) does **not** read git `main`.  
 It downloads:
 
 ```text
@@ -21,10 +31,10 @@ That file must list a **higher semver** than the installed app, a signed install
 
 | Step | Purpose |
 |------|---------|
-| Bump version | `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` |
+| Bump version | `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` (+ `Cargo.lock` package version) |
 | Signed `tauri build` | Produces NSIS/MSI + `.sig` (`createUpdaterArtifacts`) |
 | GitHub Release | Hosts installer + **`latest.json`** as release assets |
-| Users on prior release builds | Header ⬆ / startup check installs the new package |
+| Users on prior release builds | Header ↻ / startup check installs the new package |
 
 `npm run tauri dev` **skips** startup auto-check (`debug_assertions`). Prefer a **release** install when testing updates.
 
@@ -60,7 +70,7 @@ Put the new public key into `src-tauri/tauri.conf.json` → `plugins.updater.pub
 ```powershell
 cd C:\dev\TokenUsage
 
-# 1) Bump version in package.json + tauri.conf.json + Cargo.toml
+# 1) Bump version in package.json + tauri.conf.json + Cargo.toml (+ Cargo.lock)
 # 2) Commit & push main
 
 $env:TAURI_SIGNING_PRIVATE_KEY_PATH = "C:\dev\TokenUsage\tmp\updater.key"
@@ -104,6 +114,6 @@ npm run run:exe
 | Clippy | `cd src-tauri && cargo clippy --all-targets -- -D warnings` |
 | Signed dry-run | `npm run release:publish -- --dry-run` |
 | Publish | `npm run release:publish` (GitHub token + key) |
-| Updater smoke | Install older signed NSIS → ⬆ / wait for auto-check |
+| Updater smoke | Install older signed NSIS → ↻ / wait for auto-check |
 
 **Note:** Full NSIS/MSI CI is not on GitHub Actions (signing key must stay local). Windows workflow runs `cargo test` + `cargo build --release` only.

@@ -1,7 +1,9 @@
 # TokenUsage Architecture
 
 **Stack:** Tauri 2 + Rust + TypeScript (Vite), glass floating widget modeled on EconomyWarRoom.  
-**Current ship:** v0.1.24 — release notes: [docs/release.md](./release.md), GitHub [v0.1.24](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.24).
+**Current ship:** v0.1.26 — release notes: [docs/release.md](./release.md), GitHub [v0.1.26](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.26).
+
+**Product / visual context:** [PRODUCT.md](../PRODUCT.md) (Operate mode), [DESIGN.md](../DESIGN.md) (tokens + contracts).
 
 ## Runtime
 
@@ -20,11 +22,19 @@ Rust AppCore
 
 - **Dual windows** (e.g. Claude/Codex 5h + Week): CSS grid `1fr 1fr`; each cell is `label | track` with shared `--win-label-min` (4ch). **% is only in the card header** (`a% / b%`, per-leg level color).
 - **Single window** (e.g. Codex 30D, Grok Week): full-width track; `%` only in card header.
-- **Progress (Quiet Luxury):** `.track` / `.track-fill` pill — gradient fill by risk level, soft outer glow, slow diagonal sheen, partial-fill luminous end-cap; critical/over soft breathe. Respect `prefers-reduced-motion`.
-- **Reset:** `formatWindowReset` → `↻ M/D HH:mm` (local); empty when idle / no `resets_at`. Hover title may include token pair + long clock.
-- **Opacity:** `applyPanelOpacity` sets `--panel-opacity`, `--fg-opacity`, `--accent-opacity`, `--chrome-opacity` so glass, text, and bar fills fade together.
+- **Progress (Quiet Luxury):** `.track` / `.track-fill` pill — gradient fill by risk level, soft outer glow; **sheen + critical breathe only when `.is-active`** (live usage). Respect `prefers-reduced-motion`.
+- **Reset / meta:** ~11px; `formatWindowReset` → `↻ M/D HH:mm` (local); empty when idle / no `resets_at`. Hover title may include token pair + long clock.
+- **Opacity:** `applyPanelOpacity` sets `--panel-opacity`, `--fg-opacity`, `--accent-opacity`, `--chrome-opacity` with **readability floors**; semantic tokens use `max(...)` alpha floors (see `tokens.css`).
+- **Tokens:** shadcn-inspired semantic names (`--foreground`, `--primary`, `--ring`, …) with Quiet Luxury values; legacy aliases (`--text`, `--accent`, `--ok`) kept for tracks.
 - **Height:** frontend measures unconstrained panel height; Rust `snap_height_to_content` sets size to content floor (not grow-only).
-- **Settings:** absolute overlay over provider cards (list fades out); window height does **not** grow for the sheet. **Dark-only** (no theme switch). Providers as horizontal on/off chips; footer **Copy Log** / **Quit** (equal half-width).
+- **Settings:** absolute overlay over provider cards (list fades out); window height does **not** grow for the sheet. **Dark-only**. Provider chips (last enabled locked); footer **Copy Log** / **Quit**; meta `{hotkey} · ↻ update`.
+- **Focus:** `:focus-visible` + `--ring` on interactive controls.
+
+## Autostart
+
+- Preference persisted in app state; OS login item via `tauri-plugin-autostart`.
+- **`enable` only in release builds** (`sync_os_autostart`) so `tauri dev` never registers `target/debug/token-usage.exe` (Vite `devUrl` would fail at boot).
+- Disable still runs in debug so a bad Run key can be cleared.
 
 ## Providers
 
@@ -70,7 +80,7 @@ If vendor quota misses, the card shows **Unavailable** / **AuthRequired** with a
 - Plugin: `tauri-plugin-updater`
 - Endpoint: GitHub `releases/latest/download/latest.json`
 - Startup auto-check in release builds (`infrastructure/updater.rs`)
-- Manual: header **⬆** → `check_for_updates`
+- Manual: header **↻** → `check_for_updates`
 - Publish: `npm run release:publish` — see [release.md](./release.md)
 
 ## Hotkey

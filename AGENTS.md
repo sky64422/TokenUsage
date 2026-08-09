@@ -17,7 +17,9 @@ If you are an automated coding agent in a new session:
 - **Notifications** are out of scope until requested.
 - **Antigravity (AGY)** deferred in-app.
 - UI: keep **fixed column geometry** for tracks (label width shared across single-limit cards); dual vs single layouts may differ.
-- **Progress:** Quiet Luxury pill bars (glow / sheen / end-cap) — prefer glanceable bars over experimental gauges unless explicitly requested.
+- **Progress:** Quiet Luxury pill bars (glow / sheen / end-cap) — sheen & critical breathe only on **live** fills (`.is-active`); prefer glanceable bars over experimental gauges unless explicitly requested.
+- **Opacity:** preserve readability floors in `applyPanelOpacity` + token `max(...)` alphas; do not let glass wipe out meta/reset text.
+- **Autostart:** never call OS `enable` from debug/`tauri dev` (see `sync_os_autostart`).
 - **Grok:** map primary period credit only; do **not** surface `productUsage` product rows (GrokBuild / GrokChat).
 - Prefer thin `commands.rs`; put logic in `application` / `domain` / provider adapters.
 - Keep `tmp/updater.key` **out of git** (signing private key).

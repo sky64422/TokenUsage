@@ -1,5 +1,7 @@
 # DESIGN.md — TokenUsage
 
+**Updated:** 2026-08-09 · **Ship:** v0.1.26  
+
 Visual system for the floating usage widget. Source of truth for tokens: [`src/styles/tokens.css`](src/styles/tokens.css). Layout contracts also live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 **Surface mode:** Operate (scanability over expression).

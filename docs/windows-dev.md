@@ -1,7 +1,7 @@
 # Windows development (TokenUsage)
 
-**Updated:** 2026-08-03  
-Companion to [ARCHITECTURE.md](./ARCHITECTURE.md) and EconomyWarRoom’s windows-dev guide.
+**Updated:** 2026-08-09  
+Companion to [ARCHITECTURE.md](./ARCHITECTURE.md), [PRODUCT.md](../PRODUCT.md), [DESIGN.md](../DESIGN.md).
 
 ## Prerequisites
 
@@ -21,6 +21,12 @@ npm test
 npm run build
 ```
 
+## Autostart note
+
+- Settings **Launch at login** is stored always.
+- OS `HKCU\...\Run` is updated **only by release builds** so `npm run tauri dev` does not point boot at `target\debug\token-usage.exe` (no Vite → blank UI).
+- To fix a machine that already has a bad Run key: run the **installed** app once with autostart on, or set Run to `%LocalAppData%\TokenUsage\token-usage.exe`.
+
 ## Updater signing (local)
 
 ```powershell
@@ -33,3 +39,4 @@ npm run release:publish -- --dry-run
 
 - Transparent + always-on-top chrome behaves best on real Windows (not WSL GUI).
 - Hotkey and autostart need a packaged/dev Tauri process, not plain `vite` alone.
+- Design tokens: `src/styles/tokens.css`; UI primitives: `src/styles/app.css`.

@@ -1,6 +1,6 @@
 # Testing & coverage
 
-**Updated:** 2026-08-04
+**Updated:** 2026-08-09
 
 ## Snapshot
 
@@ -9,7 +9,7 @@
 | Unit | `src-tauri/src/**` `#[cfg(test)]` | usage_math, claude/codex/grok quota parsers |
 | Grok | `quota/grok.rs` tests | weekly credits, legacy cents, **ignores productUsage breakdown** |
 | Risk | `src-tauri/tests/risk_scenarios.rs` | Corrupt JSON, AppCore limits/visibility, legacy settings |
-| GUI | Manual `npm run tauri dev` / `run:exe` | Glass chrome, Quiet Luxury tracks, hotkey, updater |
+| GUI | Manual `npm run tauri dev` / `run:exe` | Glass chrome, Quiet Luxury tracks, hotkey, updater, opacity floors |
 
 ## Commands
 
@@ -35,8 +35,27 @@ cargo test --test risk_scenarios
 
 Risk tests set this automatically.
 
+## Manual UI smoke (pre-release)
+
+| Check | How |
+|-------|-----|
+| Low opacity | Settings opacity → 35–50%; meta/reset/labels still readable |
+| Live motion | Idle track static; active fill may sheen; critical+active may breathe |
+| Provider lock | One provider on → chip disabled |
+| Autostart (release only) | Install build; Run key should be install path, not `target\debug` |
+| Updater | Prior signed build → header ↻ / auto-check to newer `latest.json` |
+
 ## Coverage gate
 
 - Tool: `cargo tarpaulin`
-- Fail under: **75%** on domain + store + quota JSON mapping
-- Excludes: GUI shell (`lib`/`commands`/`window_ctl`/`updater`), AppCore service, paths + HTTP fetch modules
+- Script: `scripts/coverage.sh` (bash); fail-under threshold for business logic packages
+- Optional on Windows: WSL or Git Bash with tarpaulin installed
+
+## Verify before claiming done
+
+```text
+npm test
+npm run build
+# optional: npm run test:coverage
+# UI: npm run tauri dev  (Windows preferred)
+```
