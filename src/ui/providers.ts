@@ -7,7 +7,6 @@ import {
   formatWindowReset,
   isOver,
   levelClass,
-  sourceLabel,
 } from "./format";
 import type { ProviderSnapshot, UsageWindow } from "./types";
 
@@ -59,20 +58,7 @@ function cardHtml(s: ProviderSnapshot): string {
         isOver(w.used_percent, s.message, w.used, w.limit),
       ));
 
-  const src = sourceLabel(s.source, s.message);
-  const metaParts = [src.kind];
-  if (src.detail) metaParts.push(src.detail);
-  if (over) metaParts.push("over");
-
-  const metaHtml = metaParts
-    .map((p, i) =>
-      i === 0
-        ? escapeHtml(p)
-        : p === "over"
-          ? `<span class="dot">·</span><span class="over-tag">over</span>`
-          : `<span class="dot">·</span>${escapeHtml(p)}`,
-    )
-    .join("");
+  const metaHtml = over ? `<span class="over-tag">over</span>` : "";
 
   const single = s.windows.length === 1;
   // Header %: single → one value; dual (5h / Week) → "a% / b%" (same slot as Codex/Grok)
@@ -92,7 +78,7 @@ function cardHtml(s: ProviderSnapshot): string {
         <div class="provider-head-left">
           <div class="provider-title-line">
             <span class="provider-name">${escapeHtml(s.display_name)}</span>
-            <span class="provider-meta">${metaHtml}</span>
+            ${metaHtml ? `<span class="provider-meta">${metaHtml}</span>` : ""}
           </div>
         </div>
         ${headPctHtml}

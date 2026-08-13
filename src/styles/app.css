@@ -359,45 +359,44 @@ body {
   gap: var(--space-2);
 }
 
-.window-cell {
-  display: flex;
-  flex-direction: column;
-  gap: var(--win-stack-gap);
-  min-width: 0;
-}
-
 /* label | track — % is only in the card header */
-.window-row {
+.window-cell {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   column-gap: var(--win-row-gap);
-  align-items: center;
+  row-gap: var(--win-stack-gap);
   min-width: 0;
+}
+
+.window-row {
+  display: contents;
 }
 
 .window-label {
   box-sizing: border-box;
-  min-width: var(--win-label-min);
-  font-size: 11px;
+  /* letter-spacing is often excluded from intrinsic width in WebView — keep it in-box */
+  padding-inline-end: 0.16em;
+  font-size: 9px;
   font-weight: 600;
   color: var(--muted-foreground);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   line-height: 1;
   white-space: nowrap;
-  justify-self: end;
-  text-align: right;
+  justify-self: start;
+  text-align: left;
   align-self: center;
 }
 
-/* Reset under track (past label column). No used/limit pair — % is enough. */
+/* Reset under the track (same column), not under a reserved WEEK gutter */
 .window-meta {
+  grid-column: 2;
   display: flex;
   flex-direction: row;
   align-items: baseline;
   justify-content: flex-start;
   gap: var(--space-2);
-  padding-left: calc(var(--win-label-min) + var(--win-row-gap));
+  padding-left: 0;
   min-width: 0;
 }
 
@@ -405,12 +404,12 @@ body {
 .track {
   min-width: 0;
   width: 100%;
-  height: 9px;
-  border-radius: 99px;
+  height: 10px;
+  align-self: center;
+  border-radius: 9999px;
   background: var(--track);
   box-shadow: inset 0 1px 2px var(--track-inset);
-  /* Visible so end-cap glow can soft-bleed; sheen clips on .track-fill */
-  overflow: visible;
+  overflow: hidden;
   position: relative;
   isolation: isolate;
 }
@@ -418,7 +417,7 @@ body {
 .track-fill {
   position: relative;
   height: 100%;
-  border-radius: 99px;
+  border-radius: 9999px;
   width: 0%;
   max-width: 100%;
   background: var(--ok);
@@ -466,7 +465,7 @@ body {
   right: 0;
   width: 7px;
   height: 100%;
-  border-radius: 0 99px 99px 0;
+  border-radius: 0 9999px 9999px 0;
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -605,7 +604,7 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--reset);

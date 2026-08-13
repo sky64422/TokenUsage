@@ -1,7 +1,7 @@
 # TokenUsage Architecture
 
 **Stack:** Tauri 2 + Rust + TypeScript (Vite), glass floating widget modeled on EconomyWarRoom.  
-**Current ship:** v0.1.28 — release notes: [docs/release.md](./release.md), GitHub [v0.1.28](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.28).
+**Current ship:** v0.1.29 — release notes: [docs/release.md](./release.md), GitHub [v0.1.29](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.29).
 
 **Product / visual context:** [PRODUCT.md](../PRODUCT.md) (Operate mode), [DESIGN.md](../DESIGN.md) (tokens + contracts).
 
@@ -20,7 +20,7 @@ Rust AppCore
 
 ## UI layout contracts
 
-- **Dual windows** (e.g. Claude/Codex 5h + Week): CSS grid `1fr 1fr`; each cell is `label | track` with shared `--win-label-min` (4ch). **% is only in the card header** (`a% / b%`, per-leg level color).
+- **Dual windows** (e.g. Claude/Codex 5h + Week): CSS grid `1fr 1fr`; each cell is `label | track` with shared `--win-label-min` (fits uppercase WEEK). **% is only in the card header** (`a% / b%`, per-leg level color).
 - **Single window** (e.g. Codex 30D, Grok Week): full-width track; `%` only in card header.
 - **Progress (Quiet Luxury):** `.track` / `.track-fill` pill — gradient fill by risk level, soft outer glow; **sheen + critical breathe only when `.is-active`** (live usage). Respect `prefers-reduced-motion`.
 - **Reset / meta:** ~11px; `formatWindowReset` → `↻ M/D HH:mm` (local); empty when idle / no `resets_at`. Hover title may include token pair + long clock.

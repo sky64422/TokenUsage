@@ -102,8 +102,8 @@
   --space-4: 16px;
   --pad-x: var(--space-3);
 
-  /* Period labels: longest token "WEEK" ≈ 4ch at label font */
-  --win-label-min: 4ch;
+  /* Period labels hug their text; tracks start immediately after */
+  --win-label-min: max-content;
   --win-pct-min: 3.5ch;
 
   /* Motion */
