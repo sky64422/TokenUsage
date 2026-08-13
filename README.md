@@ -2,12 +2,13 @@
 
 Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent **quota usage vs reset times** — personal CLI OAuth, with **reset-time–first** display. Design language follows [EconomyWarRoom](../EconomyWarRoom) (glass, always-on-top, hotkey).
 
-**Current release:** [v0.1.27](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.27)
+**Current release:** [v0.1.28](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.28)
 
-## Features (v0.1.27)
+## Features (v0.1.28)
 
 - Always-on-top **dark** glass panel; **opacity slider** tints panel, text, and bar colors together (readable floors at low opacity)
 - Providers: **Claude Code**, **Codex**, **Grok**
+- **Codex:** refreshes expired ChatGPT OAuth tokens (same client as `codex` CLI)
 - Data: **direct vendor OAuth quota** only (no tokscale / local JSONL)
 - **Progress rows:** label + Quiet Luxury pill track (gradient, glow, sheen, end-cap); dual limits (5h | Week) side-by-side, single limit full width
 - **Live-only motion:** sheen / critical breathe only on active fills; update badge pulse while downloading

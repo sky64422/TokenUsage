@@ -3,12 +3,13 @@
 use crate::domain::types::{
     DataSource, ProviderId, ProviderSnapshot, SnapshotStatus, UsageUnit, UsageWindow, WindowKind,
 };
-use chrono::{TimeZone, Utc};
+use chrono::{Duration, TimeZone, Utc};
 use serde::Deserialize;
 use serde_json::Value;
 
 use super::codex_fetch;
 use crate::infrastructure::providers::credentials::codex as codex_creds;
+use crate::infrastructure::providers::credentials::codex::CodexCredentials;
 
 const USAGE_URL: &str = "https://chatgpt.com/backend-api/wham/usage";
 
@@ -19,9 +20,58 @@ pub fn fetch() -> Result<ProviderSnapshot, String> {
     {
         return Err("skipped by TOKENUSAGE_SKIP_DIRECT_QUOTA".into());
     }
-    let creds = codex_creds::load()?;
-    let raw = codex_fetch::get_usage_json(USAGE_URL, &creds.access_token, creds.account_id.as_deref())?;
+    let mut creds = codex_creds::load()?;
+    if codex_creds::needs_refresh(&creds, Duration::minutes(2)) {
+        refresh_creds(&mut creds)?;
+    }
+    let raw = match codex_fetch::get_usage_json(
+        USAGE_URL,
+        &creds.access_token,
+        creds.account_id.as_deref(),
+    ) {
+        Ok(body) => body,
+        Err(e) if is_auth_error(&e) && creds.refresh_token.is_some() => {
+            refresh_creds(&mut creds)?;
+            codex_fetch::get_usage_json(
+                USAGE_URL,
+                &creds.access_token,
+                creds.account_id.as_deref(),
+            )?
+        }
+        Err(e) => return Err(e),
+    };
     parse_wham_usage(&raw)
+}
+
+fn is_auth_error(err: &str) -> bool {
+    let lower = err.to_ascii_lowercase();
+    lower.contains("auth rejected") || lower.contains("401") || lower.contains("403")
+}
+
+fn refresh_creds(creds: &mut CodexCredentials) -> Result<(), String> {
+    let rt = creds
+        .refresh_token
+        .clone()
+        .ok_or_else(|| "codex token expired; run `codex` login again".to_string())?;
+    match codex_fetch::refresh_access_token(&rt) {
+        Ok(tok) => {
+            let new_rt = tok.refresh_token.as_deref().or(Some(rt.as_str()));
+            let _ = codex_creds::write_refreshed(
+                &creds.path,
+                &tok.access_token,
+                new_rt,
+                tok.id_token.as_deref(),
+            );
+            creds.access_token = tok.access_token;
+            if let Some(r) = tok.refresh_token {
+                creds.refresh_token = Some(r);
+            }
+            Ok(())
+        }
+        Err(e) => Err(format!(
+            "codex token expired ({e}); run `codex` login again"
+        )),
+    }
 }
 
 /// Pure parse of wham/usage JSON (unit-tested).

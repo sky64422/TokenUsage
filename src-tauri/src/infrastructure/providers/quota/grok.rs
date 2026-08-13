@@ -118,6 +118,11 @@ pub fn parse_billing_json(raw: &str) -> Result<ProviderSnapshot, String> {
     let plan = resp
         .subscription_tier
         .filter(|s| !s.is_empty());
+    let unified = resp
+        .config
+        .as_ref()
+        .and_then(|c| c.is_unified_billing_user)
+        .unwrap_or(false);
 
     let primary_used_percent = windows
         .iter()
@@ -140,6 +145,11 @@ pub fn parse_billing_json(raw: &str) -> Result<ProviderSnapshot, String> {
     } else {
         SnapshotStatus::Ok
     };
+    let message = if windows.is_empty() && unified {
+        Some("unified billing — vendor omitted weekly %".into())
+    } else {
+        plan
+    };
 
     Ok(ProviderSnapshot {
         provider_id: ProviderId::Grok,
@@ -148,7 +158,7 @@ pub fn parse_billing_json(raw: &str) -> Result<ProviderSnapshot, String> {
         status,
         source: DataSource::Vendor,
         as_of: now.to_rfc3339(),
-        message: plan,
+        message,
         primary_resets_at,
         primary_used_percent,
     })
@@ -191,6 +201,8 @@ struct BillingConfig {
     used: Option<Cent>,
     #[serde(default)]
     billing_period_end: Option<String>,
+    #[serde(default)]
+    is_unified_billing_user: Option<bool>,
     // productUsage is intentionally ignored (same credit pool, too noisy for UI)
 }
 
@@ -287,5 +299,33 @@ mod tests {
         let snap = parse_billing_json(r#"{"config":null}"#).unwrap();
         assert_eq!(snap.status, SnapshotStatus::Degraded);
         assert!(snap.windows.is_empty());
+    }
+
+    #[test]
+    fn unified_billing_without_percent_is_degraded_with_hint() {
+        // Live shape as of 2026-08-13: credits format omits creditUsagePercent.
+        let raw = r#"{
+          "config": {
+            "currentPeriod": {
+              "type": "USAGE_PERIOD_TYPE_WEEKLY",
+              "start": "2026-08-06T12:00:00Z",
+              "end": "2026-08-13T12:00:00Z"
+            },
+            "isUnifiedBillingUser": true,
+            "prepaidBalance": {"val": 0},
+            "onDemandCap": {"val": 0},
+            "onDemandUsed": {"val": 0},
+            "billingPeriodEnd": "2026-08-13T12:00:00Z"
+          }
+        }"#;
+        let snap = parse_billing_json(raw).unwrap();
+        assert_eq!(snap.status, SnapshotStatus::Degraded);
+        assert!(snap.windows.is_empty());
+        let msg = snap.message.as_deref().unwrap_or("");
+        assert!(
+            msg.to_ascii_lowercase().contains("unified")
+                || msg.to_ascii_lowercase().contains("no weekly"),
+            "expected hint, got {msg:?}"
+        );
     }
 }
