@@ -122,10 +122,16 @@ impl Default for PlanLimits {
     }
 }
 
+fn default_card_tint() -> String {
+    "none".into()
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProviderConfig {
     pub enabled: bool,
     pub limits: PlanLimits,
+    #[serde(default = "default_card_tint")]
+    pub card_tint: String,
 }
 
 impl Default for ProviderConfig {
@@ -133,6 +139,7 @@ impl Default for ProviderConfig {
         Self {
             enabled: true,
             limits: PlanLimits::default(),
+            card_tint: default_card_tint(),
         }
     }
 }
@@ -177,6 +184,7 @@ impl Default for AppSettings {
                     five_hour_tokens: 88_000.0,
                     weekly_tokens: Some(500_000.0),
                 },
+                card_tint: default_card_tint(),
             },
             codex: ProviderConfig {
                 enabled: true,
@@ -184,6 +192,7 @@ impl Default for AppSettings {
                     five_hour_tokens: 200_000.0,
                     weekly_tokens: Some(1_000_000.0),
                 },
+                card_tint: default_card_tint(),
             },
             grok: ProviderConfig {
                 enabled: true,
@@ -191,6 +200,7 @@ impl Default for AppSettings {
                     five_hour_tokens: 200_000.0,
                     weekly_tokens: Some(1_000_000.0),
                 },
+                card_tint: default_card_tint(),
             },
         }
     }

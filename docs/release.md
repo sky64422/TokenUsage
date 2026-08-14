@@ -1,7 +1,7 @@
 # Release & in-app updates
 
-**Updated:** 2026-08-13  
-**Current public tag:** v0.1.29  
+**Updated:** 2026-08-14  
+**Current public tag:** v0.1.30  
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,7 +12,8 @@
 
 | Tag | Highlights |
 |-----|------------|
-| **v0.1.29** | Smaller WEEK/30D + refill type; hide vendor/auth/free chips; label hugs track |
+| **v0.1.30** | Settings: fixed 5s refresh + app version; DWM-matched corners; quiet opacity slider; right-aligned period labels |
+| v0.1.29 | Smaller WEEK/30D + refill type; hide vendor/auth/free chips; label hugs track |
 | v0.1.28 | Codex: refresh expired ChatGPT OAuth tokens; Grok: hint when unified billing omits weekly % |
 | v0.1.27 | Opacity: type/status colors track glass (softer floors); shadcn/Impeccable refs in DESIGN |
 | v0.1.26 | UI polish: semantic tokens, focus rings, low-opacity contrast floors, 11px meta, live-only track motion, settings copy distill; PRODUCT/DESIGN docs |

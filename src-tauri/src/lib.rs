@@ -126,6 +126,7 @@ pub fn run() {
             commands::set_refresh_secs,
             commands::set_window_geometry,
             commands::set_provider_enabled,
+            commands::set_provider_tint,
             commands::set_provider_limits,
             commands::hide_widget,
             commands::quit_app,

@@ -99,6 +99,15 @@ pub fn set_provider_enabled(
 }
 
 #[tauri::command]
+pub fn set_provider_tint(
+    state: State<'_, AppHandleState>,
+    provider: ProviderId,
+    tint: String,
+) -> Result<(), String> {
+    state.core.set_provider_tint(provider, tint)
+}
+
+#[tauri::command]
 pub fn set_provider_limits(
     app: AppHandle,
     state: State<'_, AppHandleState>,

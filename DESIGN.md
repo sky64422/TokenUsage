@@ -1,6 +1,6 @@
 # DESIGN.md — TokenUsage
 
-**Updated:** 2026-08-13 · **Ship:** v0.1.29  
+**Updated:** 2026-08-14 · **Ship:** v0.1.30  
 
 Visual system for the floating usage widget. Source of truth for tokens: [`src/styles/tokens.css`](src/styles/tokens.css). Layout contracts also live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
@@ -27,7 +27,7 @@ When UI diverges, prefer **product constraints** in [`PRODUCT.md`](PRODUCT.md) o
 
 ## Color
 
-Dark-only. Opacity slider drives `--panel-opacity`, `--fg-opacity`, `--accent-opacity`, `--chrome-opacity` together.
+Dark-only. Header opacity slider (bar + square thumb, 5% steps) drives `--panel-opacity`, `--fg-opacity`, `--accent-opacity`, `--chrome-opacity` together.
 
 ### Channels (RGB)
 
@@ -36,9 +36,9 @@ Dark-only. Opacity slider drives `--panel-opacity`, `--fg-opacity`, `--accent-op
 | `--bg-glass-rgb` | 28, 28, 30 | Panel / popover base |
 | `--text-rgb` | 245, 245, 247 | Primary text |
 | `--accent-rgb` | 10, 132, 255 | Primary / ring / interactive |
-| `--ok-rgb` / bright | 48,209,88 / 52,199,89 | Safe usage fill |
+| `--ok-rgb` / bright | 83,212,118 / 100,213,129 | Safe usage fill (mid chroma) |
 | `--warn-rgb` / bright | 255,159,10 / 255,214,10 | Elevated usage |
-| `--critical-rgb` / bright | 255,69,58 / 255,105,97 | High / over |
+| `--critical-rgb` / bright | 255,99,89 / 255,132,124 | High / over (mid chroma) |
 | `--reset-rgb` | 255, 105, 97 | Reset stamp (warm coral) |
 
 ### Semantic (prefer these in new CSS)
@@ -58,6 +58,7 @@ Legacy aliases (`--text`, `--accent`, `--ok`, …) map to the semantic layer —
 ### Do / don't
 
 - **Do** use level colors only on % text and track fills.  
+- **Do** keep header title as `--foreground`; soft `--primary` mix is for the opacity slider (and settings On chips), not labels.  
 - **Don't** purple–cyan AI gradients, gradient text headings, cream/beige “tasteful” marketing surfaces.  
 - **Don't** side-tab thick accent borders on cards.
 
@@ -67,13 +68,13 @@ Legacy aliases (`--text`, `--accent`, `--ok`, …) map to the semantic layer —
 |------|------|
 | Family | **Pretendard** (bundled), fallback Segoe UI / system-ui |
 | Base | 13px / line-height ~1.35 |
-| Title (header) | 13px semibold, slight negative tracking |
-| Provider name | ~12.5px semibold |
-| Header % | 11px semibold, tabular nums |
-| Window label | 10px semibold uppercase (short: `5h`, `Week`) |
-| Reset / meta / window label | 11px; functional text ≥11px; avoid long all-caps body |
+| Title (header) | 13px semibold, slight negative tracking, `--foreground` |
+| Provider name | 12px semibold |
+| Usage % | **12px bold**, tabular nums (same size as the name, heavier weight) |
+| Window label | 9px semibold uppercase (short: `5h`, `Week`, `30D`) |
+| Reset stamp | 9px semibold coral; secondary to % |
 
-Hierarchy must stay stepped (name → % → label → reset). No display serif heroes.
+Hierarchy: **% (loudest)** → name → reset → period label. No display serif heroes. Period/reset stay small so the bar can stay long.
 
 ## Spacing & radius
 
@@ -82,7 +83,7 @@ Hierarchy must stay stepped (name → % → label → reset). No display serif h
 | `--space-1` … `--space-4` | 4 / 8 / 12 / 16 px |
 | `--pad-x` | 12px |
 | `--header-height` | 38px |
-| `--radius` (panel) | **0** — OS DWM rounds HWND; avoid double AA fringe |
+| `--radius` (panel) | **8px** — match Win11 `DWMWCP_ROUND` so the 1px border follows the clip |
 | `--radius-sm` … `--radius-xl` | 6 / 8 / 10 / 12 |
 | `--radius-card` | 12px |
 | `--radius-full` | pills / switches |
@@ -93,20 +94,23 @@ Prefer spacing scale over one-off px.
 
 ### Provider card
 
-- Card: `--card` fill, soft border, `--radius-card`.
-- Head: name + source meta left; **% only in header** (dual: `a% / b%` with per-leg level color).
-- Windows block under hairline: dual `1fr 1fr` or single stack.
+- Card: `--card` fill, soft border, `--radius-card`. No source chips (`vendor` / `auth` / plan).
+- **Two lines per quota window** (not a header + divider + stack):
+  - Row 1: provider name (left) · refill stamp (right, may span the bar column).
+  - Row 2: period label (`5h` / `Week` / `30D`) · capsule track · **%**.
+- Dual windows (e.g. Claude 5h + Week): two stacked two-line blocks; name only on the first.
 
 ### Window row
 
-- Grid: `max-content | 1fr` with `--win-label-min` (4ch) shared.
-- Meta under track indented past label column; **reset only** (no used/limit under bar).
+- Head grid: `name | refill` (`fr` shares; text ellipsizes, does not steal columns).
+- Metrics grid: **fixed `em` label** · `1fr` bar · **fixed `em` %** so `WEEK` vs `30D` and `11%` vs `100%` do not shift the rail.
+- Same pattern as EconomyWarRoom: `minmax(0, Nfr)` / fixed chrome; content length must not change column widths.
 
 ### Settings
 
 - Absolute overlay; providers fade out; **window height does not grow**.
 - Solid `--popover` background.
-- Controls: opacity meter (5% steps), segmented refresh, switch, provider chips (last enabled locked).
+- Controls: switch, provider chips (last enabled locked). Opacity lives in the header pad, not here. Refresh interval is fixed (5s). Footer shows app version.
 - Footer: equal **Copy Log** / **Quit**.
 
 ### Height
@@ -118,7 +122,8 @@ Frontend measures content; Rust snaps window height to content floor (not grow-o
 | Primitive | Class / area | Notes |
 |-----------|--------------|--------|
 | Icon button | `.icon-btn` | 28×28, `--radius-md`, focus ring |
-| Segmented | `.segmented` | Refresh presets; `aria-pressed` |
+| Opacity slider | `.opacity-slider` | Header bar + square thumb; 5% steps |
+| App version | `.settings-version` | Footer `vX.Y.Z` from Tauri `getVersion()` |
 | Switch | `.settings-switch` | Autostart; ring on focus-visible |
 | Chip | `.provider-chip` | on/off; last-on locked |
 | Progress track | `.track` / `.track-fill` | Quiet Luxury only |
@@ -136,7 +141,7 @@ Motion only for **live state** (usage risk, update download) — no decorative i
 ## Focus & a11y
 
 - Focus ring: `2px solid var(--ring)`, offset 2px; **focus-visible only**.  
-- Opacity meter: `:focus-within` border/ring.  
+- Opacity slider: focus-visible ring on the header bar.  
 - Reduced transparency: blur off, opacities → 1.
 
 ## Elevation & glass
@@ -164,7 +169,7 @@ See [impeccable.style](https://impeccable.style). Reject or fix if introduced:
 - Pulsing dots without live download/state  
 - Layout thrash from animating height of the window for settings  
 - Flat type (everything same size/weight)  
-- Functional text &lt; 10px for primary actions  
+- Functional text &lt; 10px for **primary** actions (`%` and name stay ≥12px; period/reset may be 9px)  
 - Registering `target/debug` as OS autostart  
 
 ## File map

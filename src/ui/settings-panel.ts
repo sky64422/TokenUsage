@@ -1,88 +1,15 @@
 import type { AppSettings, ProviderId } from "./types";
 
-const REFRESH_PRESETS = [5, 10, 15, 30, 60] as const;
-
-/** Opacity slider uses whole percent steps of 5 (35%…100%). */
-const OPACITY_MIN_PCT = 35;
-const OPACITY_MAX_PCT = 100;
-const OPACITY_STEP_PCT = 5;
-/** Intervals between min and max (35→40 … 95→100). Ticks + fill share this count. */
-const OPACITY_INTERVALS = (OPACITY_MAX_PCT - OPACITY_MIN_PCT) / OPACITY_STEP_PCT; // 13
-
-function snapOpacityPct(pct: number): number {
-  const clamped = Math.min(OPACITY_MAX_PCT, Math.max(OPACITY_MIN_PCT, pct));
-  return Math.round(clamped / OPACITY_STEP_PCT) * OPACITY_STEP_PCT;
-}
-
-function opacityToPct(o: number): number {
-  return snapOpacityPct(Math.round(o * 100));
-}
-
-function pctToOpacity(pct: number): number {
-  return snapOpacityPct(pct) / 100;
-}
-
-/** How many 5% steps above min (35% → 0, 40% → 1, …, 100% → 13). */
-function opacityStepIndex(pct: number): number {
-  return (snapOpacityPct(pct) - OPACITY_MIN_PCT) / OPACITY_STEP_PCT;
-}
-
-/** Fill width aligned to 5% cells (same geometry as tick columns). */
-function meterFillPct(pct: number): number {
-  return (opacityStepIndex(pct) / OPACITY_INTERVALS) * 100;
-}
-
-/** One flex cell per 5% interval so borders line up with fill edges. */
-function opacityTicksHtml(): string {
-  const parts: string[] = [];
-  for (let i = 0; i < OPACITY_INTERVALS; i++) {
-    const leftPct = OPACITY_MIN_PCT + i * OPACITY_STEP_PCT;
-    const rightPct = leftPct + OPACITY_STEP_PCT;
-    const major = rightPct % 10 === 0;
-    parts.push(`<span class="opacity-tick${major ? " major" : ""}"></span>`);
-  }
-  return parts.join("");
-}
-
-/**
- * Glass opacity + matching text/graph alpha.
- * Background uses --panel-opacity; fg/accent/chrome track the slider so bars
- * and labels don't stay fully solid while the panel goes transparent.
- * Floors keep muted/reset text readable on glass at the low end of the range.
- */
-export function applyPanelOpacity(panel: HTMLElement, opacity: number): void {
-  const o = Math.min(1, Math.max(0.35, opacity));
-  // Track panel glass closely so type / green-amber-red fade with opacity.
-  // Mild boost + soft floors (not ~0.7 solid on thin glass).
-  const fg = Math.min(1, Math.max(0.40, o * 0.94 + 0.04));
-  const accent = Math.min(1, Math.max(0.36, o * 0.96 + 0.02));
-  const chrome = Math.min(1, Math.max(0.28, o * 0.90 + 0.04));
-
-  const root = document.documentElement;
-  for (const el of [panel, root]) {
-    el.style.setProperty("--panel-opacity", String(o));
-    el.style.setProperty("--fg-opacity", String(fg));
-    el.style.setProperty("--accent-opacity", String(accent));
-    el.style.setProperty("--chrome-opacity", String(chrome));
-  }
-}
-
-function formatRefresh(secs: number): string {
-  if (secs < 60) return `${secs}s`;
-  return `${secs / 60}m`;
-}
-
 export function mountSettingsPanel(
   root: HTMLElement,
   settings: AppSettings,
   handlers: {
-    onOpacityChange: (o: number) => void;
-    onRefreshSecs: (n: number) => void;
     onAutostart: (v: boolean) => void;
     onProviderEnabled: (id: ProviderId, enabled: boolean) => void | Promise<void>;
     onDiagnostics: () => void | Promise<void>;
     onQuit: () => void;
   },
+  appVersion = "",
 ): {
   show: () => void;
   hide: () => void;
@@ -90,42 +17,10 @@ export function mountSettingsPanel(
   syncProviderEnabled: (st: AppSettings) => void;
 } {
   let visible = false;
-  let refreshSecs = settings.refresh_secs ?? 5;
-  if (!REFRESH_PRESETS.includes(refreshSecs as (typeof REFRESH_PRESETS)[number])) {
-    // Snap odd saved values to nearest preset for chip UI
-    refreshSecs = REFRESH_PRESETS.reduce((best, p) =>
-      Math.abs(p - refreshSecs) < Math.abs(best - refreshSecs) ? p : best,
-    );
-  }
+  const versionLabel = appVersion ? `v${appVersion.replace(/^v/i, "")}` : "";
 
-  const initialPct = opacityToPct(settings.opacity);
   root.innerHTML = `
     <div class="settings" id="settings-sheet">
-      <div class="settings-section">
-        <div class="settings-label-row opacity-label-row">
-          <div class="settings-label">Opacity</div>
-          <div class="settings-value opacity-value" id="opacity-val">${initialPct}%</div>
-        </div>
-        <div class="opacity-meter" style="--opacity-fill: ${meterFillPct(initialPct)}%">
-          <div class="opacity-meter-fill" aria-hidden="true"></div>
-          <div class="opacity-meter-ticks" aria-hidden="true">${opacityTicksHtml()}</div>
-          <input type="range" id="opacity-range" class="opacity-meter-input"
-            min="${OPACITY_MIN_PCT}" max="${OPACITY_MAX_PCT}" step="${OPACITY_STEP_PCT}"
-            value="${initialPct}" aria-label="Opacity" />
-        </div>
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-label">Refresh</div>
-        <div class="segmented refresh-segmented" id="refresh-seg" role="group" aria-label="Refresh interval">
-          ${REFRESH_PRESETS.map(
-            (s) => `
-            <button type="button" data-refresh="${s}" class="${s === refreshSecs ? "active" : ""}" aria-pressed="${s === refreshSecs ? "true" : "false"}">${formatRefresh(s)}</button>
-          `,
-          ).join("")}
-        </div>
-      </div>
-
       <div class="settings-section">
         <label class="settings-toggle" for="autostart">
           <span class="settings-toggle-text">
@@ -152,60 +47,15 @@ export function mountSettingsPanel(
           <button type="button" class="settings-debug" id="btn-diag" title="Copy diagnostic log for troubleshooting">Copy Log</button>
           <button type="button" class="settings-quit" id="btn-quit">Quit</button>
         </div>
+        ${versionLabel ? `<span class="settings-version">${versionLabel}</span>` : ""}
       </div>
     </div>
   `;
 
   const sheet = root.querySelector("#settings-sheet") as HTMLElement;
-  const refreshSeg = root.querySelector("#refresh-seg") as HTMLElement;
-  const opacityRange = root.querySelector("#opacity-range") as HTMLInputElement;
-  const opacityVal = root.querySelector("#opacity-val") as HTMLElement;
   const autostart = root.querySelector("#autostart") as HTMLInputElement;
 
-  function markRefresh(secs: number): void {
-    refreshSeg.querySelectorAll("button").forEach((b) => {
-      const on = Number((b as HTMLElement).dataset.refresh) === secs;
-      b.classList.toggle("active", on);
-      b.setAttribute("aria-pressed", on ? "true" : "false");
-    });
-  }
-
-  markRefresh(refreshSecs);
   autostart.checked = settings.autostart;
-
-  const opacityMeter = root.querySelector(".opacity-meter") as HTMLElement;
-
-  const paintOpacity = (pct: number) => {
-    const snapped = snapOpacityPct(pct);
-    const o = pctToOpacity(snapped);
-    opacityRange.value = String(snapped);
-    opacityVal.textContent = `${snapped}%`;
-    opacityMeter.style.setProperty("--opacity-fill", `${meterFillPct(snapped)}%`);
-    handlers.onOpacityChange(o);
-  };
-
-  // Persist snapped value if legacy 1% step was stored
-  if (Math.abs(settings.opacity - pctToOpacity(initialPct)) > 0.001) {
-    paintOpacity(initialPct);
-  }
-
-  refreshSeg.querySelectorAll("button").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const secs = Number((btn as HTMLElement).dataset.refresh);
-      if (!Number.isFinite(secs)) return;
-      refreshSecs = secs;
-      markRefresh(secs);
-      handlers.onRefreshSecs(secs);
-    });
-  });
-
-  opacityRange.addEventListener("input", () => {
-    paintOpacity(Number(opacityRange.value));
-  });
-
-  opacityRange.addEventListener("change", () => {
-    paintOpacity(Number(opacityRange.value));
-  });
 
   autostart.addEventListener("change", () => {
     handlers.onAutostart(autostart.checked);

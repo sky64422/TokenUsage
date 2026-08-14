@@ -10,14 +10,15 @@
   --fg-opacity: 0.92;
   --accent-opacity: 0.95;
   --chrome-opacity: 0.92;
+  --tint-strength: 0.92;
 
   --text-rgb: 245, 245, 247;
-  --ok-rgb: 48, 209, 88;
-  --ok-bright-rgb: 52, 199, 89;
+  --ok-rgb: 83, 212, 118;
+  --ok-bright-rgb: 100, 213, 129;
   --warn-rgb: 255, 159, 10;
   --warn-bright-rgb: 255, 214, 10;
-  --critical-rgb: 255, 69, 58;
-  --critical-bright-rgb: 255, 105, 97;
+  --critical-rgb: 255, 99, 89;
+  --critical-bright-rgb: 255, 132, 124;
   /* Warm coral for reset countdown — readable without full alarm red */
   --reset-rgb: 255, 105, 97;
   --accent-rgb: 10, 132, 255;
@@ -81,10 +82,10 @@
   --track-inset: rgba(0, 0, 0, calc(0.28 * var(--chrome-opacity)));
 
   /*
-   * Radii: panel chrome uses OS DWM on Windows (apply_clean_glass_edge).
-   * Keep panel --radius 0 so we don't double-AA transparent corners.
+   * Match Win11 DWMWCP_ROUND (~8px). Radius 0 left a square CSS border
+   * inside the rounded HWND clip (right-angle lines at the bottom corners).
    */
-  --radius: 0px;
+  --radius: 8px;
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 10px;
@@ -102,9 +103,13 @@
   --space-4: 16px;
   --pad-x: var(--space-3);
 
-  /* Period labels hug their text; tracks start immediately after */
-  --win-label-min: max-content;
-  --win-pct-min: 3.5ch;
+  /*
+   * Two-line usage row — fr shares (EconomyWarRoom pattern).
+   * Row 1: name | refill (own grid)
+   * Row 2: label | bar | pct — label is a fixed em so WEEK sits next to the bar
+   */
+  --row-col-gap: 4px;
+  --row-row-gap: 7px;
 
   /* Motion */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -122,5 +127,6 @@
     --fg-opacity: 1;
     --accent-opacity: 1;
     --chrome-opacity: 1;
+    --tint-strength: 1;
   }
 }

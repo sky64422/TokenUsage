@@ -1,6 +1,6 @@
 # PRODUCT.md — TokenUsage
 
-**Updated:** 2026-08-13 · **Ship:** v0.1.29  
+**Updated:** 2026-08-14 · **Ship:** v0.1.30  
 **Platform:** desktop (Tauri 2 / Windows primary; WebView UI)  
 **Mode (Impeccable):** **Operate** — scan and act quickly; brand lives in precise details, not persuasion.
 
@@ -53,7 +53,7 @@ A floating **usage monitor widget** that shows personal vendor OAuth quota (Clau
 | Surface | Mode | Job |
 |---------|------|-----|
 | Main widget (provider cards) | Operate | See % used / risk / reset at a glance |
-| Settings overlay | Operate | Opacity, refresh, autostart, providers, quit — no window growth |
+| Settings overlay | Operate | Opacity, autostart, providers, version, quit — no window growth |
 | System tray | Operate | Show / hide / quit affordances |
 
 ## Anti-references

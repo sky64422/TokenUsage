@@ -11,7 +11,7 @@ impl RefreshPolicy {
 pub struct WindowPolicy;
 impl WindowPolicy {
     pub const MIN_WIDTH: f64 = 240.0;
-    pub const MIN_HEIGHT: f64 = 160.0;
+    pub const MIN_HEIGHT: f64 = 120.0;
     pub const DEFAULT_WIDTH: f64 = 320.0;
     /// Tall enough for 3 cards; content-hug snaps down on boot.
     pub const DEFAULT_HEIGHT: f64 = 360.0;

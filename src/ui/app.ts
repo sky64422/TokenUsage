@@ -1,3 +1,4 @@
+import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -7,8 +8,9 @@ import {
   POLICY_MIN_W,
 } from "./content-size";
 import { renderHeader, setSettingsButtonActive } from "./header";
+import { applyPanelOpacity } from "./opacity";
 import { mountProviders } from "./providers";
-import { applyPanelOpacity, mountSettingsPanel } from "./settings-panel";
+import { mountSettingsPanel } from "./settings-panel";
 import type {
   DiagnosticsSnapshot,
   PersistedState,
@@ -39,15 +41,20 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   applyPanelOpacity(panel, opacity);
 
   const providers = mountProviders(providersRoot);
+  providers.setTints({
+    claude: state.settings.claude.card_tint,
+    codex: state.settings.codex.card_tint,
+    grok: state.settings.grok.card_tint,
+  });
+
+  let appVersion = "";
+  try {
+    appVersion = await getVersion();
+  } catch {
+    /* packaged/dev metadata unavailable */
+  }
 
   const settings = mountSettingsPanel(settingsRoot, state.settings, {
-    onOpacityChange: async (o) => {
-      applyPanelOpacity(panel, o);
-      await invoke("set_opacity", { opacity: o });
-    },
-    onRefreshSecs: async (n) => {
-      await invoke("set_refresh_secs", { secs: n });
-    },
     onAutostart: async (v) => {
       await invoke("set_autostart", { enabled: v });
     },
@@ -83,7 +90,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     onQuit: async () => {
       await invoke("quit_app");
     },
-  });
+  }, appVersion);
 
   function toggleSettings(): void {
     settingsOpen = !settingsOpen;
@@ -109,6 +116,11 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     onSettings: toggleSettings,
     onHide: () => {
       void invoke("hide_widget");
+    },
+    opacity,
+    onOpacityChange: (o) => {
+      applyPanelOpacity(panel, o);
+      void invoke("set_opacity", { opacity: o });
     },
   });
 

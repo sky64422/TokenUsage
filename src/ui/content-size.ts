@@ -8,7 +8,7 @@
 
 /** Floor for user resize — content still reads at ~240 (was 280). */
 const POLICY_MIN_W = 240;
-const CHROME_MIN_H = 140;
+const CHROME_MIN_H = 110;
 
 export function measureContentHugHeight(panel: HTMLElement): number {
   const liftSelectors = [
@@ -33,27 +33,35 @@ export function measureContentHugHeight(panel: HTMLElement): number {
       el.style.overflow = "visible";
     }
     void panel.offsetHeight;
-    // ceil + 1px slack: avoids subpixel overflow / scrollbar at min size
-    const hug = Math.ceil(panel.getBoundingClientRect().height) + 1;
-    if (hug >= 80) return hug;
-
+    // Sum pieces. Do not use the panel rect — it stretches to the HWND.
+    // Include panel border + slack: missing 1–2px makes .content overflow-y
+    // paint a scrollbar (inner box = window − header − borders − padding).
     const header = panel.querySelector<HTMLElement>("#header-root");
     const list = panel.querySelector<HTMLElement>(".provider-list");
     const empty = panel.querySelector<HTMLElement>(".empty-state");
     const content = panel.querySelector<HTMLElement>(".content");
-    let pad = 20;
+    const panelCs = getComputedStyle(panel);
+    const panelChrome =
+      (parseFloat(panelCs.borderTopWidth) || 0) +
+      (parseFloat(panelCs.borderBottomWidth) || 0);
+    let pad = 10;
     if (content) {
       const cs = getComputedStyle(content);
       pad =
         (parseFloat(cs.paddingTop) || 0) +
         (parseFloat(cs.paddingBottom) || 0);
     }
-    return Math.ceil(
-      (header?.offsetHeight ?? 42) +
-        (list?.scrollHeight ?? empty?.scrollHeight ?? 0) +
-        pad +
-        4,
+    const bodyH = Math.ceil(
+      list?.scrollHeight ||
+        empty?.scrollHeight ||
+        list?.getBoundingClientRect().height ||
+        0,
     );
+    const headerH = Math.ceil(
+      header?.getBoundingClientRect().height ?? header?.offsetHeight ?? 38,
+    );
+    const hug = headerH + bodyH + Math.ceil(pad) + Math.ceil(panelChrome) + 2;
+    return hug >= 80 ? hug : headerH + bodyH + Math.ceil(pad) + 6;
   } finally {
     for (const s of saved) {
       s.el.style.maxHeight = s.maxHeight;

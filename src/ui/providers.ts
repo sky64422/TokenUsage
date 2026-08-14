@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import {
   clampPct,
   formatCountdown,
@@ -8,20 +9,114 @@ import {
   isOver,
   levelClass,
 } from "./format";
-import type { ProviderSnapshot, UsageWindow } from "./types";
+import type { CardTint, ProviderId, ProviderSnapshot, UsageWindow } from "./types";
+import { CARD_TINTS } from "./types";
+
+function normalizeTint(raw: string | null | undefined): CardTint {
+  return CARD_TINTS.some((t) => t.value === raw) ? (raw as CardTint) : "none";
+}
 
 export function mountProviders(root: HTMLElement): {
   setSnapshots: (snaps: ProviderSnapshot[]) => void;
+  setTint: (id: ProviderId, tint: CardTint) => void;
+  setTints: (tints: Partial<Record<ProviderId, CardTint>>) => void;
 } {
   let snaps: ProviderSnapshot[] = [];
+  const tints: Record<ProviderId, CardTint> = {
+    claude: "none",
+    codex: "none",
+    grok: "none",
+  };
+  let tintMenuEl: HTMLElement | null = null;
+
+  function closeTintMenu(): void {
+    if (tintMenuEl) {
+      tintMenuEl.remove();
+      tintMenuEl = null;
+    }
+  }
+
+  function openTintMenu(id: ProviderId, clientX: number, clientY: number): void {
+    closeTintMenu();
+    const current = tints[id];
+    const menu = document.createElement("div");
+    menu.className = "tint-menu";
+    menu.setAttribute("role", "menu");
+    menu.innerHTML = `
+      <div class="tint-menu-label">Card color</div>
+      <div class="tint-swatches">
+        ${CARD_TINTS.map(
+          (t) => `
+          <button type="button" class="tint-swatch tint-${t.value}${t.value === current ? " active" : ""}"
+            data-tint="${t.value}" title="${t.label}" aria-label="${t.label}"></button>`,
+        ).join("")}
+      </div>
+    `;
+    document.body.appendChild(menu);
+    const pad = 8;
+    const rect = menu.getBoundingClientRect();
+    let left = clientX;
+    let top = clientY;
+    if (left + rect.width > window.innerWidth - pad) {
+      left = window.innerWidth - rect.width - pad;
+    }
+    if (top + rect.height > window.innerHeight - pad) {
+      top = window.innerHeight - rect.height - pad;
+    }
+    menu.style.left = `${Math.max(pad, left)}px`;
+    menu.style.top = `${Math.max(pad, top)}px`;
+    tintMenuEl = menu;
+
+    menu.querySelectorAll<HTMLButtonElement>("[data-tint]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const tint = normalizeTint(btn.dataset.tint);
+        closeTintMenu();
+        tints[id] = tint;
+        applyTintClass(id, tint);
+        void invoke("set_provider_tint", { provider: id, tint }).catch((err) => {
+          console.error("set_provider_tint failed", err);
+        });
+      });
+    });
+  }
+
+  function applyTintClass(id: ProviderId, tint: CardTint): void {
+    const el = root.querySelector<HTMLElement>(`[data-provider="${id}"]`);
+    if (!el) return;
+    for (const t of CARD_TINTS) {
+      if (t.value === "none") continue;
+      el.classList.toggle(`tint-${t.value}`, t.value === tint);
+    }
+  }
+
+  function bindTintMenus(): void {
+    root.querySelectorAll<HTMLElement>("[data-provider]").forEach((card) => {
+      card.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = card.dataset.provider as ProviderId | undefined;
+        if (!id) return;
+        openTintMenu(id, e.clientX, e.clientY);
+      });
+    });
+  }
 
   function render(): void {
+    closeTintMenu();
     if (snaps.length === 0) {
       root.innerHTML = `<div class="empty-state">Waiting for usage…</div>`;
       return;
     }
-    root.innerHTML = `<div class="provider-list">${snaps.map(cardHtml).join("")}</div>`;
+    root.innerHTML = `<div class="provider-list">${snaps.map((s) => cardHtml(s, tints[s.provider_id])).join("")}</div>`;
+    bindTintMenus();
   }
+
+  document.addEventListener("pointerdown", (e) => {
+    if (tintMenuEl && !tintMenuEl.contains(e.target as Node)) {
+      closeTintMenu();
+    }
+  });
 
   setInterval(() => {
     root.querySelectorAll<HTMLElement>("[data-resets-at]").forEach((el) => {
@@ -39,10 +134,20 @@ export function mountProviders(root: HTMLElement): {
       snaps = next;
       render();
     },
+    setTint(id, tint) {
+      tints[id] = normalizeTint(tint);
+      applyTintClass(id, tints[id]);
+    },
+    setTints(next) {
+      (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
+        if (next[id] != null) tints[id] = normalizeTint(next[id]);
+      });
+      render();
+    },
   };
 }
 
-function cardHtml(s: ProviderSnapshot): string {
+function cardHtml(s: ProviderSnapshot, tint: CardTint): string {
   const hasUsage = s.windows.some(
     (w) => (w.used_percent ?? 0) > 0 || w.used > 0,
   );
@@ -58,72 +163,49 @@ function cardHtml(s: ProviderSnapshot): string {
         isOver(w.used_percent, s.message, w.used, w.limit),
       ));
 
-  const metaHtml = over ? `<span class="over-tag">over</span>` : "";
+  const rows = s.windows.length
+    ? s.windows
+        .map((w, i) =>
+          usageRow({
+            name: i === 0 ? s.display_name : "",
+            nameHidden: i > 0,
+            window: w,
+            cardMessage: s.message,
+            cardIdle: idle,
+          }),
+        )
+        .join("")
+    : emptyUsageRow(s, idle, over);
 
-  const single = s.windows.length === 1;
-  // Header %: single → one value; dual (5h / Week) → "a% / b%" (same slot as Codex/Grok)
-  const headPctHtml = headerPctHtml(s, idle, over);
-
-  const windows = s.windows.length
-    ? `<div class="windows ${single ? "windows-single" : "windows-cols"}">${s.windows
-        .map((w) => windowCell(w, s.message, idle))
-        .join("")}</div>`
-    : s.status === "unavailable"
-      ? `<div class="window-reset">${escapeHtml(s.message ?? "Unavailable")}</div>`
-      : "";
-
+  const tintClass = tint !== "none" ? ` tint-${tint}` : "";
   return `
-    <div class="provider-card${idle ? " is-idle" : ""}" data-provider="${s.provider_id}">
-      <div class="provider-head">
-        <div class="provider-head-left">
-          <div class="provider-title-line">
-            <span class="provider-name">${escapeHtml(s.display_name)}</span>
-            ${metaHtml ? `<span class="provider-meta">${metaHtml}</span>` : ""}
-          </div>
-        </div>
-        ${headPctHtml}
-      </div>
-      ${windows}
+    <div class="provider-card${idle ? " is-idle" : ""}${tintClass}" data-provider="${s.provider_id}">
+      ${rows}
     </div>
   `;
 }
 
-/** Card-head percentage(s). Dual windows → "78% / 12%" with per-leg color. */
-function headerPctHtml(
+function emptyUsageRow(
   s: ProviderSnapshot,
-  cardIdle: boolean,
-  cardOver: boolean,
+  idle: boolean,
+  over: boolean,
 ): string {
-  if (s.windows.length === 0) {
-    const pct = cardIdle ? 0 : clampPct(s.primary_used_percent);
-    const lvl = levelClass(pct, cardOver, cardIdle);
-    return `<div class="provider-pct ${lvl}">${escapeHtml(formatPct(pct, cardOver, cardIdle))}</div>`;
-  }
-
-  const parts = s.windows.map((w) => {
-    const wOver = isOver(w.used_percent, s.message, w.used, w.limit);
-    const wIdle =
-      cardIdle ||
-      ((w.used_percent ?? 0) <= 0 && w.used <= 0 && !w.resets_at);
-    const pct = wIdle ? 0 : clampPct(w.used_percent);
-    const lvl = levelClass(pct, wOver, wIdle);
-    return { lvl, text: formatPct(pct, wOver, wIdle) };
-  });
-
-  if (parts.length === 1) {
-    return `<div class="provider-pct ${parts[0].lvl}">${escapeHtml(parts[0].text)}</div>`;
-  }
-
-  // Dual: 5h% / Week% — each colored independently
-  const inner = parts
-    .map((p, i) => {
-      const seg = `<span class="provider-pct-leg ${p.lvl}">${escapeHtml(p.text)}</span>`;
-      return i === 0
-        ? seg
-        : `<span class="provider-pct-sep" aria-hidden="true">/</span>${seg}`;
-    })
-    .join("");
-  return `<div class="provider-pct provider-pct-dual">${inner}</div>`;
+  const pct = idle ? 0 : clampPct(s.primary_used_percent);
+  const lvl = levelClass(pct, over, idle);
+  const msg = s.message ?? (s.status === "unavailable" ? "Unavailable" : "");
+  return `
+    <div class="usage-row${idle ? " is-idle" : ""}">
+      <div class="usage-head">
+        <span class="provider-name">${escapeHtml(s.display_name)}</span>
+        <span class="window-reset"></span>
+      </div>
+      <div class="usage-metrics">
+        <span class="window-label"></span>
+        <span class="usage-msg">${escapeHtml(msg)}</span>
+        <span class="provider-pct ${lvl}">${escapeHtml(formatPct(pct, over, idle))}</span>
+      </div>
+    </div>
+  `;
 }
 
 function tokenDetail(w: UsageWindow, over: boolean): string | null {
@@ -133,14 +215,17 @@ function tokenDetail(w: UsageWindow, over: boolean): string | null {
   return null;
 }
 
-function windowCell(
-  w: UsageWindow,
-  cardMessage: string | null,
-  cardIdle: boolean,
-): string {
-  const over = isOver(w.used_percent, cardMessage, w.used, w.limit);
+function usageRow(opts: {
+  name: string;
+  nameHidden: boolean;
+  window: UsageWindow;
+  cardMessage: string | null;
+  cardIdle: boolean;
+}): string {
+  const w = opts.window;
+  const over = isOver(w.used_percent, opts.cardMessage, w.used, w.limit);
   const idle =
-    cardIdle ||
+    opts.cardIdle ||
     ((w.used_percent ?? 0) <= 0 && w.used <= 0 && !w.resets_at);
   const pct = idle ? 0 : clampPct(w.used_percent);
   const lvl = levelClass(pct, over, idle);
@@ -154,43 +239,37 @@ function windowCell(
   if (label === "Weekly") label = "Week";
 
   const pctText = formatPct(pct, over, idle);
-  // Absolute used/limit is hover-only; % is in the card header (single or dual).
   const detail = tokenDetail(w, over);
-
   const reset = formatWindowReset({
     resetsAt: w.resets_at,
     idle,
     over,
   });
   const clockLong = formatResetClock(w.resets_at);
-  const title = [detail ?? pctText, clockLong || reset]
+  const title = [opts.name, detail ?? pctText, clockLong || reset]
     .filter(Boolean)
     .join(" · ");
   const urgent =
     over || (!idle && formatCountdown(w.resets_at) === "soon");
 
-  // Meta: reset only (no used/limit pair under the track)
-  const metaHtml = reset
-    ? `<div class="window-meta">
+  return `
+    <div class="usage-row${idle ? " is-idle" : ""}" title="${escapeAttr(title)}">
+      <div class="usage-head">
+        <span class="provider-name"${opts.nameHidden ? ' aria-hidden="true"' : ""}>${escapeHtml(opts.name)}</span>
         <span class="window-reset${urgent ? " urgent" : ""}"
               data-resets-at="${escapeAttr(w.resets_at ?? "")}"
               data-idle="${idle ? "1" : "0"}"
               data-over="${over ? "1" : "0"}">${escapeHtml(reset)}</span>
-      </div>`
-    : "";
-
-  // Label | track only — % lives in card head (Codex / dual 5h·Week alike)
-  return `
-    <div class="window-cell${idle ? " is-idle" : ""}" title="${escapeAttr(title)}">
-      <div class="window-row">
+      </div>
+      <div class="usage-metrics">
         <span class="window-label">${escapeHtml(label)}</span>
         <div class="track" aria-hidden="true">
           <div class="track-fill ${lvl}${width > 0 && !idle ? " is-active" : ""}" style="width:${width}%">
             ${showStop ? `<span class="track-stop"></span>` : ""}
           </div>
         </div>
+        <span class="provider-pct ${lvl}">${escapeHtml(pctText)}</span>
       </div>
-      ${metaHtml}
     </div>
   `;
 }

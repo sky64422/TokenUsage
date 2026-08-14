@@ -1,7 +1,7 @@
 # TokenUsage Architecture
 
 **Stack:** Tauri 2 + Rust + TypeScript (Vite), glass floating widget modeled on EconomyWarRoom.  
-**Current ship:** v0.1.29 — release notes: [docs/release.md](./release.md), GitHub [v0.1.29](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.29).
+**Current ship:** v0.1.30 — release notes: [docs/release.md](./release.md), GitHub [v0.1.30](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.30).
 
 **Product / visual context:** [PRODUCT.md](../PRODUCT.md) (Operate mode), [DESIGN.md](../DESIGN.md) (tokens + contracts).
 
@@ -20,8 +20,8 @@ Rust AppCore
 
 ## UI layout contracts
 
-- **Dual windows** (e.g. Claude/Codex 5h + Week): CSS grid `1fr 1fr`; each cell is `label | track` with shared `--win-label-min` (fits uppercase WEEK). **% is only in the card header** (`a% / b%`, per-leg level color).
-- **Single window** (e.g. Codex 30D, Grok Week): full-width track; `%` only in card header.
+- **Two-line card:** name + refill on row 1; period label + capsule track + **%** on row 2. Dual windows stack two blocks (name on the first only).
+- **Fixed columns:** metrics use a fixed-`em` label, `1fr` bar, fixed-`em` % (EconomyWarRoom `minmax(0, fr)` idea — text must not shift the rail).
 - **Progress (Quiet Luxury):** `.track` / `.track-fill` pill — gradient fill by risk level, soft outer glow; **sheen + critical breathe only when `.is-active`** (live usage). Respect `prefers-reduced-motion`.
 - **Reset / meta:** ~11px; `formatWindowReset` → `↻ M/D HH:mm` (local); empty when idle / no `resets_at`. Hover title may include token pair + long clock.
 - **Opacity:** `applyPanelOpacity` sets `--panel-opacity`, `--fg-opacity`, `--accent-opacity`, `--chrome-opacity` with **readability floors**; semantic tokens use `max(...)` alpha floors (see `tokens.css`).
@@ -73,7 +73,7 @@ If vendor quota misses, the card shows **Unavailable** / **AuthRequired** with a
 
 ## Commands
 
-`get_state`, `get_snapshots`, `refresh_now`, `set_opacity`, `set_autostart`, `set_refresh_secs`, `set_window_geometry`, `set_provider_enabled`, `set_provider_limits`, `hide_widget`, `quit_app`, `get_diagnostics`, `set_content_min_size`, `check_for_updates`
+`get_state`, `get_snapshots`, `refresh_now`, `set_opacity`, `set_autostart`, `set_refresh_secs` (legacy; poll interval is fixed at 5s), `set_window_geometry`, `set_provider_enabled`, `set_provider_limits`, `hide_widget`, `quit_app`, `get_diagnostics`, `set_content_min_size`, `check_for_updates`
 
 ## Updater
 

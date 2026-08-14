@@ -43,9 +43,29 @@ export interface PlanLimits {
   weekly_tokens: number | null;
 }
 
+export type CardTint =
+  | "none"
+  | "rose"
+  | "peach"
+  | "mint"
+  | "sky"
+  | "lavender"
+  | "lemon";
+
+export const CARD_TINTS: { value: CardTint; label: string }[] = [
+  { value: "none", label: "Default" },
+  { value: "rose", label: "Rose" },
+  { value: "peach", label: "Peach" },
+  { value: "mint", label: "Mint" },
+  { value: "sky", label: "Sky" },
+  { value: "lavender", label: "Lavender" },
+  { value: "lemon", label: "Lemon" },
+];
+
 export interface ProviderConfig {
   enabled: boolean;
   limits: PlanLimits;
+  card_tint?: CardTint;
 }
 
 export interface AppSettings {

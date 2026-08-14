@@ -180,6 +180,15 @@ impl AppCore {
         Ok(self.refresh_all())
     }
 
+    pub fn set_provider_tint(&self, id: ProviderId, tint: String) -> Result<(), String> {
+        let tint = normalize_card_tint(&tint)?;
+        {
+            let mut guard = self.inner.lock().unwrap();
+            provider_config_mut(&mut guard.state.settings, id).card_tint = tint;
+        }
+        self.persist()
+    }
+
     pub fn set_provider_limits(&self, id: ProviderId, limits: PlanLimits) -> Result<(), String> {
         {
             let mut guard = self.inner.lock().unwrap();
@@ -207,7 +216,8 @@ impl AppCore {
     }
 
     pub fn refresh_secs(&self) -> u64 {
-        self.inner.lock().unwrap().state.settings.refresh_secs
+        // Interval is fixed; persisted refresh_secs is ignored.
+        crate::domain::constants::RefreshPolicy::DEFAULT_REFRESH_SECS
     }
 
     pub fn note_diag(&self, message: impl Into<String>) {
@@ -225,6 +235,15 @@ fn provider_config(settings: &AppSettings, id: ProviderId) -> ProviderConfig {
         ProviderId::Claude => settings.claude.clone(),
         ProviderId::Codex => settings.codex.clone(),
         ProviderId::Grok => settings.grok.clone(),
+    }
+}
+
+fn normalize_card_tint(tint: &str) -> Result<String, String> {
+    match tint {
+        "none" | "rose" | "peach" | "mint" | "sky" | "lavender" | "lemon" => {
+            Ok(tint.to_string())
+        }
+        _ => Err(format!("unknown card tint: {tint}")),
     }
 }
 

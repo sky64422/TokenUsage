@@ -13,7 +13,7 @@ impl AppHandleState {
         Self {
             core,
             content_min_w: AtomicU32::new(240),
-            content_min_h: AtomicU32::new(160),
+            content_min_h: AtomicU32::new(120),
         }
     }
 
