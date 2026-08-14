@@ -105,8 +105,8 @@
 
   /*
    * Two-line usage row — fr shares (EconomyWarRoom pattern).
-   * Row 1: name | refill (own grid)
-   * Row 2: label | bar | pct — label is a fixed em so WEEK sits next to the bar
+   * Row 1: name | period (30D / WEEK) | refill
+   * Row 2: bar | pct
    */
   --row-col-gap: 4px;
   --row-row-gap: 7px;

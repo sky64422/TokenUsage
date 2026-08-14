@@ -1,7 +1,7 @@
 # TokenUsage Architecture
 
 **Stack:** Tauri 2 + Rust + TypeScript (Vite), glass floating widget modeled on EconomyWarRoom.  
-**Current ship:** v0.1.31 — release notes: [docs/release.md](./release.md), GitHub [v0.1.31](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.31).
+**Current ship:** v0.1.32 — release notes: [docs/release.md](./release.md), GitHub [v0.1.32](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.32).
 
 **Product / visual context:** [PRODUCT.md](../PRODUCT.md) (Operate mode), [DESIGN.md](../DESIGN.md) (tokens + contracts).
 
@@ -20,8 +20,8 @@ Rust AppCore
 
 ## UI layout contracts
 
-- **Two-line card:** name + refill on row 1; period label + capsule track + **%** on row 2. Dual windows stack two blocks (name on the first only).
-- **Fixed columns:** metrics `2.2em` (right-aligned period) · `1fr` bar · `2.9em` %; gutters 8px / 2px on `.track`. Text must not shift the rail.
+- **Two-line card:** name + period + refill on row 1; capsule track + **%** on row 2. Dual windows stack two blocks (name on the first only).
+- **Fixed columns:** head `1fr` name · `auto` period · `auto` refill; metrics `1fr` bar · `2.9em` %; bar→% gutter 2px on `.track`. Text must not shift the rail.
 - **Progress (Quiet Luxury):** `.track` / `.track-fill` 6px pill — gradient fill by risk level, soft outer glow; **sheen + critical breathe only when `.is-active`** (live usage). Respect `prefers-reduced-motion`.
 - **Reset / meta:** 9px; `formatWindowReset` → `↻ M/D HH:mm` (local); empty when idle / no `resets_at`. Hover title may include token pair + long clock.
 - **Opacity:** `applyPanelOpacity` sets `--panel-opacity`, `--fg-opacity`, `--accent-opacity`, `--chrome-opacity` with **readability floors**; semantic tokens use `max(...)` alpha floors (see `tokens.css`).
@@ -53,6 +53,20 @@ Usage/limit HTTP is metadata only (does not consume coding tokens).
 Window labels are short at the adapter (`5h` / `Week` / `Month` / `30d`).  
 Env `TOKENUSAGE_SKIP_DIRECT_QUOTA=1` for tests.
 
+#### What these quota APIs return
+
+These endpoints are **rate-limit / credit windows**, not a token ledger.
+
+| Kind | Present? |
+|------|----------|
+| Period % + reset (`5h` / `Week` / `30d`) | Yes — this is what the widget shows |
+| Claude extra weekly buckets `seven_day_opus` / `seven_day_sonnet` | Optional; parsed as extra windows if the JSON has them |
+| Plan / tier strings | Sometimes: Codex `plan_type`; Claude `subscription_type` / creds `rate_limit_tier`; Grok `subscriptionTier` (often **absent** on unified billing — live probe 2026-08-15 had `isUnifiedBillingUser` only) |
+| Input / output / cache read / cache write token counts | **No** on these URLs |
+| Grok `productUsage` | Same credit pool by product name; **ignored** in UI |
+
+Plan strings are stored on `snapshot.message` when present; healthy cards do not render a tier chip.
+
 #### Grok window mapping
 
 - **Shown:** one primary period window from `creditUsagePercent` (or legacy cents) + period end → typically **Week** (or Monthly/Daily if API says so).
@@ -73,6 +87,7 @@ There is no `PlanLimits` / local-event estimate path. Poll interval is `RefreshP
 - Google Antigravity (AGY) in-widget  
 - Perfect billing parity with official subscription meters  
 - Per-product Grok breakdown (GrokBuild vs GrokChat) in the UI  
+- Token ledger (input / output / cache read / write) from a different vendor usage API  
 
 ## Commands
 

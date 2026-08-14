@@ -2,16 +2,16 @@
 
 Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent **quota usage vs reset times** — personal CLI OAuth, with **reset-time–first** display. Design language follows [EconomyWarRoom](../EconomyWarRoom) (glass, always-on-top, hotkey).
 
-**Current release:** [v0.1.31](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.31)
+**Current release:** [v0.1.32](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.32)
 
-## Features (v0.1.31)
+## Features (v0.1.32)
 
 - Always-on-top **dark** glass panel; **opacity slider** (neutral chrome) tints panel, text, and bar colors together (readable floors at low opacity)
 - Providers: **Claude Code**, **Codex**, **Grok**
 - **Codex:** refreshes expired ChatGPT OAuth tokens (same client as `codex` CLI)
 - Data: **direct vendor OAuth quota** only (no tokscale / local JSONL / plan-limit estimates)
 - First quota refresh is **non-blocking** (window shows, then cards fill)
-- **Progress rows:** right-aligned period label + 6px Quiet Luxury pill + **%**; dual windows stack two two-line blocks
+- **Progress rows:** name + period (`5h` / `Week` / `30D`) + refill on row 1; 6px Quiet Luxury pill + **%** on row 2; dual windows stack two blocks
 - **Live-only motion:** sheen / critical breathe only on active fills; update badge pulse while downloading
 - **Reset stamp:** coral `↻ M/D HH:mm`; hover title keeps long form / tokens
 - **Grok:** one primary period track only (no GrokBuild / GrokChat product rows)
@@ -39,7 +39,8 @@ Uses OAuth already stored by each CLI (no in-app login). Metadata HTTP only — 
 | Codex | `~/.codex/auth.json` | ChatGPT `wham/usage` |
 | Grok | `~/.grok/auth.json` | `cli-chat-proxy.grok.com` billing |
 
-Grok maps **period credit %** only; vendor `productUsage` breakdown is ignored in-app.
+Grok maps **period credit %** only; vendor `productUsage` breakdown is ignored in-app.  
+These quota URLs return **window % + reset** (and sometimes a plan string). They do **not** return input / output / cache token counts.
 
 If vendor quota fails, the card shows **Unavailable** / **AuthRequired**.
 

@@ -1,6 +1,6 @@
 # PRODUCT.md — TokenUsage
 
-**Updated:** 2026-08-15 · **Ship:** v0.1.31  
+**Updated:** 2026-08-15 · **Ship:** v0.1.32  
 **Platform:** desktop (Tauri 2 / Windows primary; WebView UI)  
 **Mode (Impeccable):** **Operate** — scan and act quickly; brand lives in precise details, not persuasion.
 
@@ -47,6 +47,8 @@ A floating **usage monitor widget** that shows personal vendor OAuth quota (Clau
 - Google Antigravity (AGY) in-widget  
 - Perfect parity with every vendor subscription UI  
 - Per-product Grok breakdown (GrokBuild / GrokChat) in the widget  
+- Token ledger (input / output / cache read / cache write) — quota APIs do not return it  
+- Subscription-tier chips (vendors may send `plan_type` / `subscription_type`; often omitted)  
 
 ## Surfaces
 

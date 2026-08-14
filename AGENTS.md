@@ -16,7 +16,7 @@ If you are an automated coding agent in a new session:
 - **No** browser scraping of vendor dashboards without an explicit design decision.
 - **Notifications** are out of scope until requested.
 - **Antigravity (AGY)** deferred in-app.
-- UI: keep **fixed column geometry** for tracks (`2.2em` right-aligned label · `1fr` bar · `2.9em` %; 8px / 2px gutters). Dual vs single layouts may differ.
+- UI: keep **fixed column geometry** — row 1 name · period · refill; row 2 `1fr` bar · `2.9em` % (2px bar→% gutter). Dual vs single layouts may differ.
 - **Progress:** Quiet Luxury 6px pill bars (glow / sheen / end-cap) — sheen & critical breathe only on **live** fills (`.is-active`); prefer glanceable bars over experimental gauges unless explicitly requested.
 - **Refresh:** interval is **fixed at 5s**. Do not add a settings control; `refresh_secs()` ignores persisted values.
 - **Panel radius:** `--radius` 8px to match Win11 `DWMWCP_ROUND`; panel `height: 100%` so CSS does not draw a square frame inside the DWM clip.

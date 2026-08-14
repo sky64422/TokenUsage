@@ -1,6 +1,6 @@
 # DESIGN.md — TokenUsage
 
-**Updated:** 2026-08-15 · **Ship:** v0.1.31  
+**Updated:** 2026-08-15 · **Ship:** v0.1.32  
 
 Visual system for the floating usage widget. Source of truth for tokens: [`src/styles/tokens.css`](src/styles/tokens.css). Layout contracts also live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
@@ -21,7 +21,7 @@ When UI diverges, prefer **product constraints** in [`PRODUCT.md`](PRODUCT.md) o
 
 1. **Glance first** — % and risk color beat dense numbers; used/limit is hover/detail.
 2. **Quiet Luxury progress** — single pill track with glow / sheen / end-cap; not gauges or charts.
-3. **Fixed geometry** — shared metrics columns (`2.2em` label · `1fr` bar · `2.9em` %); dual vs single layouts may differ, columns stay stable.
+3. **Fixed geometry** — row 1 name · period · refill; row 2 `1fr` bar · `2.9em` %; dual vs single layouts may differ, columns stay stable.
 4. **Glass with purpose** — panel translucency + blur for desktop layering; settings sheet is **opaque** so controls stay readable.
 5. **Distill** — no nested cards, no redundant helper copy, no decorative motion without live data.
 
@@ -96,15 +96,15 @@ Prefer spacing scale over one-off px.
 
 - Card: `--card` fill, soft border, `--radius-card`. No source chips (`vendor` / `auth` / plan).
 - **Two lines per quota window** (not a header + divider + stack):
-  - Row 1: provider name (left) · refill stamp (right, may span the bar column).
-  - Row 2: period label (`5h` / `Week` / `30D`) · capsule track · **%**.
+  - Row 1: provider name (left) · period label (`5h` / `Week` / `30D`) immediately left of refill · refill stamp (right).
+  - Row 2: capsule track · **%**.
 - Dual windows (e.g. Claude 5h + Week): two stacked two-line blocks; name only on the first.
 
 ### Window row
 
-- Head grid: `name | refill` (`fr` shares; text ellipsizes, does not steal columns).
-- Metrics grid: **`2.2em` right-aligned label** · `1fr` bar · **`2.9em` right-aligned %**.
-- Gutters: label→bar **8px** (`margin-left` on `.track`); bar→% **2px** (`margin-right`). Do not use `column-gap` (it would also split the % column).
+- Head grid: `name | period | refill` (`1fr` · `auto` · `auto`; text ellipsizes, does not steal columns).
+- Metrics grid: **`1fr` bar** · **`2.9em` right-aligned %**.
+- Gutters: bar→% **2px** (`margin-right` on `.track`). Do not use `column-gap` (it would also split the % column).
 - Track height: **6px**. Card padding: **10px 12px**.
 - Same pattern as EconomyWarRoom: `minmax(0, Nfr)` / fixed chrome; content length must not change column widths.
 

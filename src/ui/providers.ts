@@ -192,10 +192,10 @@ function emptyUsageRow(
     <div class="usage-row${idle ? " is-idle" : ""}">
       <div class="usage-head">
         <span class="provider-name">${escapeHtml(s.display_name)}</span>
+        <span class="window-label"></span>
         <span class="window-reset"></span>
       </div>
       <div class="usage-metrics">
-        <span class="window-label"></span>
         <span class="usage-msg">${escapeHtml(msg)}</span>
         <span class="provider-pct ${lvl}">${escapeHtml(formatPct(pct, over, idle))}</span>
       </div>
@@ -250,13 +250,13 @@ function usageRow(opts: {
     <div class="usage-row${idle ? " is-idle" : ""}" title="${escapeAttr(title)}">
       <div class="usage-head">
         <span class="provider-name"${opts.nameHidden ? ' aria-hidden="true"' : ""}>${escapeHtml(opts.name)}</span>
+        <span class="window-label">${escapeHtml(label)}</span>
         <span class="window-reset${urgent ? " urgent" : ""}"
               data-resets-at="${escapeAttr(w.resets_at ?? "")}"
               data-idle="${idle ? "1" : "0"}"
               data-over="${over ? "1" : "0"}">${escapeHtml(reset)}</span>
       </div>
       <div class="usage-metrics">
-        <span class="window-label">${escapeHtml(label)}</span>
         <div class="track" aria-hidden="true">
           <div class="track-fill ${lvl}${width > 0 && !idle ? " is-active" : ""}" style="width:${width}%">
             ${showStop ? `<span class="track-stop"></span>` : ""}
