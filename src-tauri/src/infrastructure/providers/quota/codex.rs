@@ -206,7 +206,7 @@ fn classify_window_seconds(secs: Option<i64>) -> WindowKind {
 fn kind_label(kind: WindowKind, secs: Option<i64>, fallback: &str) -> String {
     match kind {
         WindowKind::Rolling5h => "5h".into(),
-        WindowKind::Weekly => "Weekly".into(),
+        WindowKind::Weekly => "Week".into(),
         WindowKind::Daily => "Daily".into(),
         WindowKind::Monthly => "30d".into(),
         WindowKind::Session => "Session".into(),

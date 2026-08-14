@@ -1,10 +1,9 @@
-//! Window show/hide, geometry, and opacity helpers.
+//! Window show/hide and geometry helpers.
 //!
-//! Tauri 2 has no `Window::set_opacity` API. Opacity is clamped and persisted;
-//! the frontend applies CSS via the `set_opacity` command return path.
-//! Geometry and always-on-top use native window APIs.
+//! Tauri 2 has no native window opacity API. The frontend applies CSS via
+//! `set_opacity`. Geometry and always-on-top use native window APIs.
 
-use crate::domain::constants::{clamp_geometry, clamp_opacity, WindowPolicy};
+use crate::domain::constants::{clamp_geometry, WindowPolicy};
 use crate::domain::types::WindowGeometry;
 use tauri::{
     AppHandle, LogicalPosition, LogicalSize, Manager, PhysicalSize, Size, WebviewWindow, Window,
@@ -28,11 +27,6 @@ pub fn apply_geometry(window: &WebviewWindow, geometry: &WindowGeometry) -> Resu
         .set_position(LogicalPosition::new(geometry.x, geometry.y))
         .map_err(|e| e.to_string())?;
     Ok(())
-}
-
-/// Clamp only. Native window opacity is not available in Tauri 2.
-pub fn apply_opacity(_app: &AppHandle, opacity: f64) -> Result<f64, String> {
-    Ok(clamp_opacity(opacity))
 }
 
 pub fn show_window(window: &WebviewWindow) -> Result<(), String> {

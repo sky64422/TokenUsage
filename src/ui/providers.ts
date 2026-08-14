@@ -231,9 +231,6 @@ function usageRow(opts: {
   if (label === "rolling_5h") label = "5h";
   if (label === "weekly") label = "Week";
   if (label === "monthly") label = "Month";
-  if (label === "5-hour") label = "5h";
-  if (label === "Weekly") label = "Week";
-  if (label === "Monthly") label = "Month";
 
   const pctText = formatPct(pct, over, idle);
   const detail = tokenDetail(w, over);

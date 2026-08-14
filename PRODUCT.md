@@ -1,6 +1,6 @@
 # PRODUCT.md — TokenUsage
 
-**Updated:** 2026-08-14 · **Ship:** v0.1.30  
+**Updated:** 2026-08-15 · **Ship:** v0.1.31  
 **Platform:** desktop (Tauri 2 / Windows primary; WebView UI)  
 **Mode (Impeccable):** **Operate** — scan and act quickly; brand lives in precise details, not persuasion.
 

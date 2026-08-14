@@ -73,10 +73,10 @@ impl AppCore {
                     .copied()
                     .map(|id| {
                         scope.spawn(move || {
-                            let result =
-                                crate::infrastructure::providers::quota::try_fetch(id)
-                                    .unwrap_or_else(|| Err("no quota adapter".into()));
-                            (id, result)
+                            (
+                                id,
+                                crate::infrastructure::providers::quota::fetch(id),
+                            )
                         })
                     })
                     .collect();
@@ -206,10 +206,6 @@ impl AppCore {
             ));
         }
         DiagnosticsSnapshot { lines }
-    }
-
-    pub fn refresh_secs(&self) -> u64 {
-        crate::domain::constants::RefreshPolicy::DEFAULT_REFRESH_SECS
     }
 
     pub fn note_diag(&self, message: impl Into<String>) {

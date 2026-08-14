@@ -47,7 +47,6 @@ pub fn run() {
                 // Floating widget: desktop + tray only, not the taskbar.
                 let _ = window.set_skip_taskbar(true);
                 let _ = window_ctl::apply_geometry(&window, &persisted.settings.window);
-                let _ = window_ctl::apply_opacity(app.handle(), persisted.settings.opacity);
                 let _ = window_ctl::apply_clean_glass_edge(&window);
                 let _ = window_ctl::show_window(&window);
             }
@@ -64,14 +63,22 @@ pub fn run() {
                 let _ = app.global_shortcut().register(shortcut);
             }
 
-            let snaps = core.refresh_all();
-            let _ = app.emit("snapshots-updated", &snaps);
-
             app.manage(handle_state);
             app.manage(updater::PendingUpdateState::default());
 
             updater::spawn_update_check(app.handle().clone());
             infrastructure::poll::spawn_refresh_loop(app.handle().clone());
+
+            let boot_core = Arc::clone(&core);
+            let boot_app = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let snaps =
+                    match tokio::task::spawn_blocking(move || boot_core.refresh_all()).await {
+                        Ok(s) => s,
+                        Err(_) => return,
+                    };
+                let _ = boot_app.emit("snapshots-updated", &snaps);
+            });
 
             Ok(())
         })

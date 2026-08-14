@@ -135,17 +135,17 @@ pub fn parse_billing_json(raw: &str) -> Result<ProviderSnapshot, String> {
 
 fn classify_period(period: Option<&UsagePeriod>) -> (WindowKind, String) {
     let Some(p) = period else {
-        return (WindowKind::Weekly, "Weekly".into());
+        return (WindowKind::Weekly, "Week".into());
     };
     let t = p.period_type.as_deref().unwrap_or("").to_ascii_uppercase();
     if t.contains("WEEK") {
-        (WindowKind::Weekly, "Weekly".into())
+        (WindowKind::Weekly, "Week".into())
     } else if t.contains("MONTH") {
-        (WindowKind::Monthly, "Monthly".into())
+        (WindowKind::Monthly, "Month".into())
     } else if t.contains("DAY") {
         (WindowKind::Daily, "Daily".into())
     } else {
-        (WindowKind::Weekly, "Weekly".into())
+        (WindowKind::Weekly, "Week".into())
     }
 }
 

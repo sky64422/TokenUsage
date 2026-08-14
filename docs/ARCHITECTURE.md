@@ -1,7 +1,7 @@
 # TokenUsage Architecture
 
 **Stack:** Tauri 2 + Rust + TypeScript (Vite), glass floating widget modeled on EconomyWarRoom.  
-**Current ship:** v0.1.30 — release notes: [docs/release.md](./release.md), GitHub [v0.1.30](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.30).
+**Current ship:** v0.1.31 — release notes: [docs/release.md](./release.md), GitHub [v0.1.31](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.31).
 
 **Product / visual context:** [PRODUCT.md](../PRODUCT.md) (Operate mode), [DESIGN.md](../DESIGN.md) (tokens + contracts).
 
@@ -12,10 +12,10 @@ Web UI (provider cards, Quiet Luxury tracks, reset stamp, settings)
         │ invoke / events (snapshots-updated)
         │ set_content_min_size (content-hug min + snap height)
 Rust AppCore
-        │ refresh_all()  per provider:
+        │ refresh_all()  (parallel per provider; spawn_blocking)
 1) Direct vendor OAuth  ──► source: vendor
         │ miss / fail
-2) Unavailable / AuthRequired card (no local JSONL / tokscale)
+2) Unavailable / AuthRequired card (source: unavailable; no local JSONL / tokscale)
 ```
 
 ## UI layout contracts
@@ -49,7 +49,9 @@ Reads local CLI auth only (no in-app login). Always on:
 | `grok` | `~/.grok/auth.json` (+ OIDC refresh) | `cli-chat-proxy.grok.com/v1/billing?format=credits` |
 
 Usage/limit HTTP is metadata only (does not consume coding tokens).  
-`source: vendor`. 45s response cache. Env `TOKENUSAGE_SKIP_DIRECT_QUOTA=1` for tests.
+`source: vendor`. Shared 45s body cache + HTTP status mapping (`quota/http.rs`); snapshot primaries in `quota/snapshot.rs`.  
+Window labels are short at the adapter (`5h` / `Week` / `Month` / `30d`).  
+Env `TOKENUSAGE_SKIP_DIRECT_QUOTA=1` for tests.
 
 #### Grok window mapping
 
@@ -59,7 +61,8 @@ Usage/limit HTTP is metadata only (does not consume coding tokens).
 ### No local JSONL / tokscale
 
 Session log estimates and tokscale were removed.  
-If vendor quota misses, the card shows **Unavailable** / **AuthRequired** with a short hint.
+If vendor quota misses, the card shows **Unavailable** / **AuthRequired** with a short hint (`source: unavailable`).  
+There is no `PlanLimits` / local-event estimate path. Poll interval is `RefreshPolicy::DEFAULT_REFRESH_SECS` (5s); persisted `refresh_secs` is ignored.
 
 ## Non-goals (v0.1+)
 

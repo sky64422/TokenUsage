@@ -1,12 +1,12 @@
 # Testing & coverage
 
-**Updated:** 2026-08-14
+**Updated:** 2026-08-15
 
 ## Snapshot
 
 | Layer | Location | Purpose |
 |-------|----------|---------|
-| Unit | `src-tauri/src/**` `#[cfg(test)]` | quota parsers, snapshot finish, HTTP cache |
+| Unit | `src-tauri/src/**` `#[cfg(test)]` | quota parsers, snapshot finish, TTL cache / HTTP map |
 | Front | `src/ui/format.test.ts` | percent, reset stamp, risk level |
 | Grok | `quota/grok.rs` tests | weekly credits, legacy cents, **ignores productUsage breakdown** |
 | Risk | `src-tauri/tests/risk_scenarios.rs` | Corrupt JSON, AppCore visibility, legacy settings |

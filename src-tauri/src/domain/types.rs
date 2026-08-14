@@ -46,9 +46,6 @@ pub enum WindowKind {
 #[serde(rename_all = "snake_case")]
 pub enum UsageUnit {
     Percent,
-    Tokens,
-    Messages,
-    Credits,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

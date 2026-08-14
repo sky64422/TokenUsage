@@ -11,11 +11,11 @@ pub mod snapshot;
 
 use crate::domain::types::{ProviderId, ProviderSnapshot};
 
-/// Try personal direct quota for a provider.
-pub fn try_fetch(id: ProviderId) -> Option<Result<ProviderSnapshot, String>> {
+/// Fetch personal direct quota for a provider.
+pub fn fetch(id: ProviderId) -> Result<ProviderSnapshot, String> {
     match id {
-        ProviderId::Claude => Some(claude::fetch()),
-        ProviderId::Codex => Some(codex::fetch()),
-        ProviderId::Grok => Some(grok::fetch()),
+        ProviderId::Claude => claude::fetch(),
+        ProviderId::Codex => codex::fetch(),
+        ProviderId::Grok => grok::fetch(),
     }
 }

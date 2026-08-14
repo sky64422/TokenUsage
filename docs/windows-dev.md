@@ -1,6 +1,6 @@
 # Windows development (TokenUsage)
 
-**Updated:** 2026-08-14  
+**Updated:** 2026-08-15  
 Companion to [ARCHITECTURE.md](./ARCHITECTURE.md), [PRODUCT.md](../PRODUCT.md), [DESIGN.md](../DESIGN.md).
 
 ## Prerequisites

@@ -60,7 +60,7 @@ mod tests {
             unit: UsageUnit::Percent,
             resets_at: Some(reset.into()),
             used_percent: Some(pct),
-            label: Some("Weekly".into()),
+            label: Some("Week".into()),
         }
     }
 

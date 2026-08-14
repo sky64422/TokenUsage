@@ -30,14 +30,8 @@ pub async fn refresh_now(
 }
 
 #[tauri::command]
-pub fn set_opacity(
-    app: AppHandle,
-    state: State<'_, AppHandleState>,
-    opacity: f64,
-) -> Result<f64, String> {
-    let o = state.core.set_opacity(opacity)?;
-    window_ctl::apply_opacity(&app, o)?;
-    Ok(o)
+pub fn set_opacity(state: State<'_, AppHandleState>, opacity: f64) -> Result<f64, String> {
+    state.core.set_opacity(opacity)
 }
 
 /// Sync login-item registration with the OS.

@@ -10,7 +10,7 @@ export type WindowKind =
   | "unknown";
 export type SnapshotStatus = "ok" | "degraded" | "unavailable" | "auth_required";
 export type DataSource = "vendor" | "unavailable";
-export type UsageUnit = "percent" | "tokens" | "messages" | "credits";
+export type UsageUnit = "percent";
 
 export interface UsageWindow {
   kind: WindowKind;

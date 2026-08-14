@@ -18,7 +18,7 @@ pub fn spawn_refresh_loop(app_handle: AppHandle) {
             if !state.core.is_visible() {
                 continue;
             }
-            let every = state.core.refresh_secs().max(1);
+            let every = RefreshPolicy::DEFAULT_REFRESH_SECS.max(1);
             if !tick.is_multiple_of(every) {
                 continue;
             }

@@ -77,7 +77,7 @@ pub fn parse_oauth_usage(raw: &str) -> Result<ProviderSnapshot, String> {
     push_window(
         &mut windows,
         WindowKind::Rolling5h,
-        "5-hour",
+        "5h",
         rl.get("five_hour")
             .or_else(|| rl.get("fiveHour"))
             .or_else(|| v.get("five_hour")),
@@ -85,7 +85,7 @@ pub fn parse_oauth_usage(raw: &str) -> Result<ProviderSnapshot, String> {
     push_window(
         &mut windows,
         WindowKind::Weekly,
-        "Weekly",
+        "Week",
         rl.get("seven_day")
             .or_else(|| rl.get("sevenDay"))
             .or_else(|| v.get("seven_day")),
