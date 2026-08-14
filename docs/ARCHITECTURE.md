@@ -21,13 +21,13 @@ Rust AppCore
 ## UI layout contracts
 
 - **Two-line card:** name + refill on row 1; period label + capsule track + **%** on row 2. Dual windows stack two blocks (name on the first only).
-- **Fixed columns:** metrics use a fixed-`em` label, `1fr` bar, fixed-`em` % (EconomyWarRoom `minmax(0, fr)` idea — text must not shift the rail).
-- **Progress (Quiet Luxury):** `.track` / `.track-fill` pill — gradient fill by risk level, soft outer glow; **sheen + critical breathe only when `.is-active`** (live usage). Respect `prefers-reduced-motion`.
-- **Reset / meta:** ~11px; `formatWindowReset` → `↻ M/D HH:mm` (local); empty when idle / no `resets_at`. Hover title may include token pair + long clock.
+- **Fixed columns:** metrics `2.2em` (right-aligned period) · `1fr` bar · `2.9em` %; gutters 8px / 2px on `.track`. Text must not shift the rail.
+- **Progress (Quiet Luxury):** `.track` / `.track-fill` 6px pill — gradient fill by risk level, soft outer glow; **sheen + critical breathe only when `.is-active`** (live usage). Respect `prefers-reduced-motion`.
+- **Reset / meta:** 9px; `formatWindowReset` → `↻ M/D HH:mm` (local); empty when idle / no `resets_at`. Hover title may include token pair + long clock.
 - **Opacity:** `applyPanelOpacity` sets `--panel-opacity`, `--fg-opacity`, `--accent-opacity`, `--chrome-opacity` with **readability floors**; semantic tokens use `max(...)` alpha floors (see `tokens.css`).
 - **Tokens:** shadcn-inspired semantic names (`--foreground`, `--primary`, `--ring`, …) with Quiet Luxury values; legacy aliases (`--text`, `--accent`, `--ok`) kept for tracks.
 - **Height:** frontend measures unconstrained panel height; Rust `snap_height_to_content` sets size to content floor (not grow-only).
-- **Settings:** absolute overlay over provider cards (list fades out); window height does **not** grow for the sheet. **Dark-only**. Provider chips (last enabled locked); footer **Copy Log** / **Quit**; meta `{hotkey} · ↻ update`.
+- **Settings:** absolute overlay over provider cards (list fades out); window height does **not** grow for the sheet. **Dark-only**. Autostart switch; provider chips (last enabled locked); footer **Copy Log** / **Quit**; meta `{hotkey} · ↻ update`; app version. Refresh interval is **fixed at 5s** (no in-settings control).
 - **Focus:** `:focus-visible` + `--ring` on interactive controls.
 
 ## Autostart

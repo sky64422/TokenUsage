@@ -21,7 +21,7 @@ When UI diverges, prefer **product constraints** in [`PRODUCT.md`](PRODUCT.md) o
 
 1. **Glance first** — % and risk color beat dense numbers; used/limit is hover/detail.
 2. **Quiet Luxury progress** — single pill track with glow / sheen / end-cap; not gauges or charts.
-3. **Fixed geometry** — shared label column (`--win-label-min`); dual vs single layouts may differ, columns stay stable.
+3. **Fixed geometry** — shared metrics columns (`2.2em` label · `1fr` bar · `2.9em` %); dual vs single layouts may differ, columns stay stable.
 4. **Glass with purpose** — panel translucency + blur for desktop layering; settings sheet is **opaque** so controls stay readable.
 5. **Distill** — no nested cards, no redundant helper copy, no decorative motion without live data.
 
@@ -58,7 +58,7 @@ Legacy aliases (`--text`, `--accent`, `--ok`, …) map to the semantic layer —
 ### Do / don't
 
 - **Do** use level colors only on % text and track fills.  
-- **Do** keep header title as `--foreground`; soft `--primary` mix is for the opacity slider (and settings On chips), not labels.  
+- **Do** keep header title as `--foreground`; settings On chips may use `--primary`. The opacity slider is **neutral chrome** (text-rgb), not accent blue.  
 - **Don't** purple–cyan AI gradients, gradient text headings, cream/beige “tasteful” marketing surfaces.  
 - **Don't** side-tab thick accent borders on cards.
 
@@ -71,7 +71,7 @@ Legacy aliases (`--text`, `--accent`, `--ok`, …) map to the semantic layer —
 | Title (header) | 13px semibold, slight negative tracking, `--foreground` |
 | Provider name | 12px semibold |
 | Usage % | **12px bold**, tabular nums (same size as the name, heavier weight) |
-| Window label | 9px semibold uppercase (short: `5h`, `Week`, `30D`) |
+| Window label | 9px semibold uppercase, **right-aligned** (short: `5h`, `Week`, `30D`) |
 | Reset stamp | 9px semibold coral; secondary to % |
 
 Hierarchy: **% (loudest)** → name → reset → period label. No display serif heroes. Period/reset stay small so the bar can stay long.
@@ -103,7 +103,9 @@ Prefer spacing scale over one-off px.
 ### Window row
 
 - Head grid: `name | refill` (`fr` shares; text ellipsizes, does not steal columns).
-- Metrics grid: **fixed `em` label** · `1fr` bar · **fixed `em` %** so `WEEK` vs `30D` and `11%` vs `100%` do not shift the rail.
+- Metrics grid: **`2.2em` right-aligned label** · `1fr` bar · **`2.9em` right-aligned %**.
+- Gutters: label→bar **8px** (`margin-left` on `.track`); bar→% **2px** (`margin-right`). Do not use `column-gap` (it would also split the % column).
+- Track height: **6px**. Card padding: **10px 12px**.
 - Same pattern as EconomyWarRoom: `minmax(0, Nfr)` / fixed chrome; content length must not change column widths.
 
 ### Settings
@@ -122,7 +124,7 @@ Frontend measures content; Rust snaps window height to content floor (not grow-o
 | Primitive | Class / area | Notes |
 |-----------|--------------|--------|
 | Icon button | `.icon-btn` | 28×28, `--radius-md`, focus ring |
-| Opacity slider | `.opacity-slider` | Header bar + square thumb; 5% steps |
+| Opacity slider | `.opacity-slider` | Neutral fill; 6px off-white square thumb; 5% steps |
 | App version | `.settings-version` | Footer `vX.Y.Z` from Tauri `getVersion()` |
 | Switch | `.settings-switch` | Autostart; ring on focus-visible |
 | Chip | `.provider-chip` | on/off; last-on locked |
@@ -146,7 +148,7 @@ Motion only for **live state** (usage risk, update download) — no decorative i
 
 ## Elevation & glass
 
-- Panel: `backdrop-filter` blur + saturate; border; inset highlight only (no outer halo in transparent WebView).  
+- Panel: `height: 100%` so glass fills the HWND; `backdrop-filter` blur + saturate; 8px radius matching DWM; inset highlight only (no outer halo).  
 - Settings: no glass — full opacity popover.  
 - Glass is **desktop layering**, not marketing glassmorphism everywhere.
 
@@ -178,5 +180,5 @@ See [impeccable.style](https://impeccable.style). Reject or fix if introduced:
 |------|------|
 | `src/styles/tokens.css` | Design tokens |
 | `src/styles/app.css` | Layout + primitives |
-| `src/ui/*.ts` | Header, providers, settings mount |
+| `src/ui/*.ts` | Header, providers, settings, opacity helpers |
 | `PRODUCT.md` | Product / mode / non-goals |

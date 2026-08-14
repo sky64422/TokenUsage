@@ -1,6 +1,6 @@
 # Testing & coverage
 
-**Updated:** 2026-08-09
+**Updated:** 2026-08-14
 
 ## Snapshot
 
@@ -39,9 +39,9 @@ Risk tests set this automatically.
 
 | Check | How |
 |-------|-----|
-| Low opacity | Settings opacity → 35–50%; meta/reset/labels still readable |
+| Low opacity | Header slider → 35–50%; meta/reset/labels still readable; slider fill stays neutral |
 | Live motion | Idle track static; active fill may sheen; critical+active may breathe |
-| Provider lock | One provider on → chip disabled |
+| Settings | No refresh chips; footer shows `vX.Y.Z`; last provider chip locked |
 | Autostart (release only) | Install build; Run key should be install path, not `target\debug` |
 | Updater | Prior signed build → header ↻ / auto-check to newer `latest.json` |
 

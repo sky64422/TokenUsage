@@ -1,6 +1,6 @@
 # Windows development (TokenUsage)
 
-**Updated:** 2026-08-09  
+**Updated:** 2026-08-14  
 Companion to [ARCHITECTURE.md](./ARCHITECTURE.md), [PRODUCT.md](../PRODUCT.md), [DESIGN.md](../DESIGN.md).
 
 ## Prerequisites
@@ -23,7 +23,7 @@ npm run build
 
 ## Autostart note
 
-- Settings **Launch at login** is stored always.
+- Settings **Launch at login** is stored always. Refresh interval is fixed (5s) — no in-app control.
 - OS `HKCU\...\Run` is updated **only by release builds** so `npm run tauri dev` does not point boot at `target\debug\token-usage.exe` (no Vite → blank UI).
 - To fix a machine that already has a bad Run key: run the **installed** app once with autostart on, or set Run to `%LocalAppData%\TokenUsage\token-usage.exe`.
 

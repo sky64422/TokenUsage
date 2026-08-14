@@ -6,20 +6,20 @@ Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent **quo
 
 ## Features (v0.1.30)
 
-- Always-on-top **dark** glass panel; **opacity slider** tints panel, text, and bar colors together (readable floors at low opacity)
+- Always-on-top **dark** glass panel; **opacity slider** (neutral chrome) tints panel, text, and bar colors together (readable floors at low opacity)
 - Providers: **Claude Code**, **Codex**, **Grok**
 - **Codex:** refreshes expired ChatGPT OAuth tokens (same client as `codex` CLI)
 - Data: **direct vendor OAuth quota** only (no tokscale / local JSONL)
-- **Progress rows:** label + Quiet Luxury pill track (gradient, glow, sheen, end-cap); dual limits (5h | Week) side-by-side, single limit full width
+- **Progress rows:** right-aligned period label + 6px Quiet Luxury pill + **%**; dual windows stack two two-line blocks
 - **Live-only motion:** sheen / critical breathe only on active fills; update badge pulse while downloading
-- **Header %:** single value or dual `a% / b%` with per-leg risk color
 - **Reset stamp:** coral `↻ M/D HH:mm`; hover title keeps long form / tokens
 - **Grok:** one primary period track only (no GrokBuild / GrokChat product rows)
-- **Content-hug height:** window min size tracks card content (grow + shrink)
+- **Content-hug height:** window min size tracks card content (grow + shrink); panel fills HWND (8px radius matches DWM)
 - **Settings overlay:** list fades under opaque sheet (no window expand)
-  - Opacity · launch at login
+  - Opacity (header) · launch at login
   - Provider chips (horizontal on/off; last enabled locked)
-  - Footer: **Copy Log** / **Quit** (half-width each); meta `{hotkey} · ↻ update`; app version
+  - Refresh interval fixed at 5s (no control)
+  - Footer: **Copy Log** / **Quit**; meta `{hotkey} · ↻ update`; app version
 - Hotkey: `Ctrl+Shift+U` (toggle hide/show; independent of EconomyWarRoom’s `Ctrl+Shift+Space`)
 - **Autostart:** OS login item uses **release/install** binary only (`tauri dev` does not overwrite Run key)
 - **In-app updates** (header ↻ badge + background download → click to restart; release startup check)
