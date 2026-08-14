@@ -6,16 +6,17 @@
 
 | Layer | Location | Purpose |
 |-------|----------|---------|
-| Unit | `src-tauri/src/**` `#[cfg(test)]` | usage_math, claude/codex/grok quota parsers |
+| Unit | `src-tauri/src/**` `#[cfg(test)]` | quota parsers, snapshot finish, HTTP cache |
+| Front | `src/ui/format.test.ts` | percent, reset stamp, risk level |
 | Grok | `quota/grok.rs` tests | weekly credits, legacy cents, **ignores productUsage breakdown** |
-| Risk | `src-tauri/tests/risk_scenarios.rs` | Corrupt JSON, AppCore limits/visibility, legacy settings |
+| Risk | `src-tauri/tests/risk_scenarios.rs` | Corrupt JSON, AppCore visibility, legacy settings |
 | GUI | Manual `npm run tauri dev` / `run:exe` | Glass chrome, Quiet Luxury tracks, hotkey, updater, opacity floors |
 
 ## Commands
 
 ```bash
 # From repo root
-npm test                 # cargo test --lib + risk_scenarios
+npm test                 # vitest + cargo test --lib + risk_scenarios
 npm run test:coverage    # scripts/coverage.sh (fail-under 75, business logic)
 npm run build            # frontend tsc + vite
 ```

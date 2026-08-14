@@ -10,7 +10,7 @@ import {
   levelClass,
 } from "./format";
 import type { CardTint, ProviderId, ProviderSnapshot, UsageWindow } from "./types";
-import { CARD_TINTS } from "./types";
+import { CARD_TINTS, PROVIDER_IDS } from "./types";
 
 function normalizeTint(raw: string | null | undefined): CardTint {
   return CARD_TINTS.some((t) => t.value === raw) ? (raw as CardTint) : "none";
@@ -18,7 +18,6 @@ function normalizeTint(raw: string | null | undefined): CardTint {
 
 export function mountProviders(root: HTMLElement): {
   setSnapshots: (snaps: ProviderSnapshot[]) => void;
-  setTint: (id: ProviderId, tint: CardTint) => void;
   setTints: (tints: Partial<Record<ProviderId, CardTint>>) => void;
 } {
   let snaps: ProviderSnapshot[] = [];
@@ -134,14 +133,10 @@ export function mountProviders(root: HTMLElement): {
       snaps = next;
       render();
     },
-    setTint(id, tint) {
-      tints[id] = normalizeTint(tint);
-      applyTintClass(id, tints[id]);
-    },
     setTints(next) {
-      (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
+      for (const id of PROVIDER_IDS) {
         if (next[id] != null) tints[id] = normalizeTint(next[id]);
-      });
+      }
       render();
     },
   };
@@ -235,8 +230,10 @@ function usageRow(opts: {
   let label = (w.label ?? w.kind).replace(/\s*·\s*over$/i, "");
   if (label === "rolling_5h") label = "5h";
   if (label === "weekly") label = "Week";
+  if (label === "monthly") label = "Month";
   if (label === "5-hour") label = "5h";
   if (label === "Weekly") label = "Week";
+  if (label === "Monthly") label = "Month";
 
   const pctText = formatPct(pct, over, idle);
   const detail = tokenDetail(w, over);

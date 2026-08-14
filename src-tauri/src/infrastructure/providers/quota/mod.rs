@@ -6,6 +6,8 @@ pub mod codex;
 pub mod codex_fetch;
 pub mod grok;
 pub mod grok_fetch;
+pub mod http;
+pub mod snapshot;
 
 use crate::domain::types::{ProviderId, ProviderSnapshot};
 

@@ -73,7 +73,7 @@ If vendor quota misses, the card shows **Unavailable** / **AuthRequired** with a
 
 ## Commands
 
-`get_state`, `get_snapshots`, `refresh_now`, `set_opacity`, `set_autostart`, `set_refresh_secs` (legacy; poll interval is fixed at 5s), `set_window_geometry`, `set_provider_enabled`, `set_provider_limits`, `hide_widget`, `quit_app`, `get_diagnostics`, `set_content_min_size`, `check_for_updates`
+`get_state`, `get_snapshots`, `refresh_now`, `set_opacity`, `set_autostart`, `set_window_geometry`, `set_provider_enabled`, `set_provider_tint`, `hide_widget`, `quit_app`, `get_diagnostics`, `set_content_min_size`, `check_for_updates`
 
 ## Updater
 

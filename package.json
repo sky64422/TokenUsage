@@ -10,7 +10,7 @@
     "tauri": "tauri",
     "run:exe": "node scripts/run-release.mjs",
     "release:publish": "node scripts/publish-release.mjs",
-    "test": "cd src-tauri && cargo test --lib && cargo test --test risk_scenarios",
+    "test": "vitest run && cd src-tauri && cargo test --lib && cargo test --test risk_scenarios",
     "test:coverage": "bash scripts/coverage.sh"
   },
   "dependencies": {
@@ -20,6 +20,7 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2",
     "typescript": "~5.6.2",
-    "vite": "^6.0.3"
+    "vite": "^6.0.3",
+    "vitest": "^3.2.4"
   }
 }

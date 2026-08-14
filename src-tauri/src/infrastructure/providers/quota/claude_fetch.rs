@@ -1,26 +1,16 @@
 //! HTTP + short cache for Claude OAuth usage (excluded from coverage gate).
 
-use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use super::http::{check_usage_http, TtlBodyCache};
+use std::time::Duration;
 
-struct Cache {
-    at: Instant,
-    body: String,
-}
-
-static CACHE: Mutex<Option<Cache>> = Mutex::new(None);
-const CACHE_TTL: Duration = Duration::from_secs(45);
+static CACHE: TtlBodyCache = TtlBodyCache::new(45);
 
 const USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
 const TOKEN_URL: &str = "https://platform.claude.com/v1/oauth/token";
 
 pub fn get_usage_json(access_token: &str) -> Result<String, String> {
-    if let Ok(guard) = CACHE.lock() {
-        if let Some(c) = guard.as_ref() {
-            if c.at.elapsed() < CACHE_TTL {
-                return Ok(c.body.clone());
-            }
-        }
+    if let Some(body) = CACHE.get() {
+        return Ok(body);
     }
 
     let client = reqwest::blocking::Client::builder()
@@ -43,29 +33,8 @@ pub fn get_usage_json(access_token: &str) -> Result<String, String> {
     let body = resp
         .text()
         .map_err(|e| format!("claude usage body: {e}"))?;
-
-    if status.as_u16() == 401 || status.as_u16() == 403 {
-        return Err(format!(
-            "claude auth rejected ({status}); run `claude` login"
-        ));
-    }
-    if status.as_u16() == 429 {
-        return Err("claude usage rate limited (retry later)".into());
-    }
-    if !status.is_success() {
-        let snippet: String = body.chars().take(160).collect();
-        return Err(format!("claude usage HTTP {status}: {snippet}"));
-    }
-    if body.trim().is_empty() {
-        return Err("claude usage empty body".into());
-    }
-
-    if let Ok(mut guard) = CACHE.lock() {
-        *guard = Some(Cache {
-            at: Instant::now(),
-            body: body.clone(),
-        });
-    }
+    check_usage_http("claude", "run `claude` login", status, &body)?;
+    CACHE.set(body.clone());
     Ok(body)
 }
 
@@ -126,9 +95,7 @@ pub fn refresh_access_token(
         .and_then(|x| x.as_i64())
         .unwrap_or(28_800);
 
-    if let Ok(mut guard) = CACHE.lock() {
-        *guard = None;
-    }
+    CACHE.clear();
 
     Ok(RefreshedTokens {
         access_token: access,

@@ -1,12 +1,15 @@
 export type ProviderId = "claude" | "codex" | "grok";
-export type WindowKind = "rolling_5h" | "weekly" | "daily" | "session" | "unknown";
+export const PROVIDER_IDS: ProviderId[] = ["claude", "codex", "grok"];
+
+export type WindowKind =
+  | "rolling_5h"
+  | "weekly"
+  | "daily"
+  | "monthly"
+  | "session"
+  | "unknown";
 export type SnapshotStatus = "ok" | "degraded" | "unavailable" | "auth_required";
-export type DataSource =
-  | "local_file"
-  | "cli"
-  | "manual"
-  | "estimate"
-  | "vendor";
+export type DataSource = "vendor" | "unavailable";
 export type UsageUnit = "percent" | "tokens" | "messages" | "credits";
 
 export interface UsageWindow {
@@ -38,11 +41,6 @@ export interface WindowGeometry {
   height: number;
 }
 
-export interface PlanLimits {
-  five_hour_tokens: number;
-  weekly_tokens: number | null;
-}
-
 export type CardTint =
   | "none"
   | "rose"
@@ -64,7 +62,6 @@ export const CARD_TINTS: { value: CardTint; label: string }[] = [
 
 export interface ProviderConfig {
   enabled: boolean;
-  limits: PlanLimits;
   card_tint?: CardTint;
 }
 

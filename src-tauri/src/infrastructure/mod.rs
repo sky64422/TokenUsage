@@ -1,4 +1,6 @@
+pub mod poll;
 pub mod providers;
 pub mod store;
+pub mod tray;
 pub mod updater;
 pub mod window_ctl;

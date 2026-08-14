@@ -19,6 +19,8 @@ EXCLUDE=(
   --exclude-files 'src/application/*'
   --exclude-files 'src/infrastructure/window_ctl.rs'
   --exclude-files 'src/infrastructure/updater.rs'
+  --exclude-files 'src/infrastructure/tray.rs'
+  --exclude-files 'src/infrastructure/poll.rs'
   --exclude-files 'src/infrastructure/providers/paths.rs'
   --exclude-files 'src/infrastructure/providers/mod.rs'
   --exclude-files 'src/infrastructure/providers/quota/codex_fetch.rs'

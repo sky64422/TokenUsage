@@ -1,8 +1,6 @@
 //! Grok Build subscription credits via CLI chat proxy billing API.
 
-use crate::domain::types::{
-    DataSource, ProviderId, ProviderSnapshot, SnapshotStatus, UsageUnit, UsageWindow, WindowKind,
-};
+use crate::domain::types::{ProviderId, ProviderSnapshot, UsageUnit, UsageWindow, WindowKind};
 use crate::infrastructure::providers::credentials::grok as grok_creds;
 use chrono::{Duration, Utc};
 use serde::Deserialize;
@@ -10,11 +8,8 @@ use serde::Deserialize;
 use super::grok_fetch;
 
 pub fn fetch() -> Result<ProviderSnapshot, String> {
-    if std::env::var("TOKENUSAGE_SKIP_DIRECT_QUOTA")
-        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-        .unwrap_or(false)
-    {
-        return Err("skipped by TOKENUSAGE_SKIP_DIRECT_QUOTA".into());
+    if super::http::skip_direct_quota() {
+        return Err(super::http::skip_err());
     }
 
     let mut creds = grok_creds::load()?;
@@ -124,44 +119,18 @@ pub fn parse_billing_json(raw: &str) -> Result<ProviderSnapshot, String> {
         .and_then(|c| c.is_unified_billing_user)
         .unwrap_or(false);
 
-    let primary_used_percent = windows
-        .iter()
-        .filter_map(|w| w.used_percent)
-        .fold(None, |acc: Option<f64>, p| {
-            Some(acc.map(|a| a.max(p)).unwrap_or(p))
-        });
-
-    let primary_resets_at = windows
-        .iter()
-        .filter_map(|w| w.resets_at.as_ref())
-        .filter_map(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-        .filter(|d| d.with_timezone(&Utc) > now)
-        .min()
-        .map(|d| d.with_timezone(&Utc).to_rfc3339())
-        .or_else(|| windows.iter().filter_map(|w| w.resets_at.clone()).min());
-
-    let status = if windows.is_empty() {
-        SnapshotStatus::Degraded
-    } else {
-        SnapshotStatus::Ok
-    };
     let message = if windows.is_empty() && unified {
         Some("unified billing — vendor omitted weekly %".into())
     } else {
         plan
     };
 
-    Ok(ProviderSnapshot {
-        provider_id: ProviderId::Grok,
-        display_name: ProviderId::Grok.display_name().into(),
+    Ok(super::snapshot::finish_snapshot(
+        ProviderId::Grok,
         windows,
-        status,
-        source: DataSource::Vendor,
-        as_of: now.to_rfc3339(),
         message,
-        primary_resets_at,
-        primary_used_percent,
-    })
+        now,
+    ))
 }
 
 fn classify_period(period: Option<&UsagePeriod>) -> (WindowKind, String) {
@@ -172,7 +141,7 @@ fn classify_period(period: Option<&UsagePeriod>) -> (WindowKind, String) {
     if t.contains("WEEK") {
         (WindowKind::Weekly, "Weekly".into())
     } else if t.contains("MONTH") {
-        (WindowKind::Unknown, "Monthly".into())
+        (WindowKind::Monthly, "Monthly".into())
     } else if t.contains("DAY") {
         (WindowKind::Daily, "Daily".into())
     } else {
@@ -227,6 +196,7 @@ struct UsagePeriod {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::types::{DataSource, SnapshotStatus};
 
     const LIVE_SHAPE: &str = r#"{
       "config": {

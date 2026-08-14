@@ -6,16 +6,12 @@ pub mod domain;
 pub mod infrastructure;
 mod state;
 
-use domain::constants::RefreshPolicy;
 use infrastructure::store::{load_state, save_state};
 use infrastructure::updater;
 use infrastructure::window_ctl;
 use state::AppHandleState;
 use std::sync::Arc;
-use std::time::Duration;
-use tauri::menu::{Menu, MenuItem};
-use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{Emitter, Manager, WindowEvent};
+use tauri::{Emitter, Manager};
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
@@ -56,54 +52,31 @@ pub fn run() {
                 let _ = window_ctl::show_window(&window);
             }
 
-            if let Err(e) = setup_system_tray(app) {
+            if let Err(e) = infrastructure::tray::setup_system_tray(app) {
                 eprintln!("system tray setup failed: {e}");
             }
 
             // Prefer release binary for OS login items (see commands::sync_os_autostart).
             let _ = commands::sync_os_autostart(app.handle(), persisted.settings.autostart);
 
-            // Register hotkey
             let hotkey = persisted.settings.hotkey.clone();
             if let Ok(shortcut) = hotkey.parse::<Shortcut>() {
                 let _ = app.global_shortcut().register(shortcut);
             }
 
-            // Initial refresh
             let snaps = core.refresh_all();
             let _ = app.emit("snapshots-updated", &snaps);
 
             app.manage(handle_state);
             app.manage(updater::PendingUpdateState::default());
 
-            // In-app updates (release builds only; skipped under debug_assertions)
             updater::spawn_update_check(app.handle().clone());
-
-            // Background refresh loop
-            let app_handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                let mut tick: u64 = 0;
-                loop {
-                    tokio::time::sleep(Duration::from_secs(RefreshPolicy::TICK_SECS)).await;
-                    tick = tick.wrapping_add(1);
-                    let Some(state) = app_handle.try_state::<AppHandleState>() else {
-                        continue;
-                    };
-                    if !state.core.is_visible() {
-                        continue;
-                    }
-                    let every = state.core.refresh_secs().max(1);
-                    if tick.is_multiple_of(every) {
-                        let snaps = state.core.refresh_all();
-                        let _ = app_handle.emit("snapshots-updated", &snaps);
-                    }
-                }
-            });
+            infrastructure::poll::spawn_refresh_loop(app.handle().clone());
 
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let WindowEvent::Resized(size) = event {
+            if let tauri::WindowEvent::Resized(size) = event {
                 if let Some(state) = window.app_handle().try_state::<AppHandleState>() {
                     let (min_w, min_h) = state.content_min_logical();
                     let _ = window_ctl::clamp_physical_size_to_content_min(
@@ -120,14 +93,11 @@ pub fn run() {
             commands::get_state,
             commands::get_snapshots,
             commands::refresh_now,
-
             commands::set_opacity,
             commands::set_autostart,
-            commands::set_refresh_secs,
             commands::set_window_geometry,
             commands::set_provider_enabled,
             commands::set_provider_tint,
-            commands::set_provider_limits,
             commands::hide_widget,
             commands::quit_app,
             commands::get_diagnostics,
@@ -136,58 +106,4 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running TokenUsage");
-}
-
-/// Tray-only presence for a desktop widget (no taskbar button).
-fn setup_system_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let show_i = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
-    let hide_i = MenuItem::with_id(app, "hide", "Hide", true, None::<&str>)?;
-    let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show_i, &hide_i, &quit_i])?;
-
-    let icon = app
-        .default_window_icon()
-        .ok_or("default window icon missing")?
-        .clone();
-
-    let _tray = TrayIconBuilder::with_id("main")
-        .icon(icon)
-        .tooltip("Token Usage")
-        .menu(&menu)
-        .show_menu_on_left_click(false)
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "show" => {
-                if let Some(state) = app.try_state::<AppHandleState>() {
-                    if let Ok(window) = window_ctl::main_window(app) {
-                        let _ = window_ctl::show_window(&window);
-                        state.core.set_visible(true);
-                    }
-                }
-            }
-            "hide" => {
-                if let Some(state) = app.try_state::<AppHandleState>() {
-                    if let Ok(window) = window_ctl::main_window(app) {
-                        let _ = window_ctl::hide_window(&window);
-                        state.core.set_visible(false);
-                    }
-                }
-            }
-            "quit" => {
-                app.exit(0);
-            }
-            _ => {}
-        })
-        .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click {
-                button: MouseButton::Left,
-                button_state: MouseButtonState::Up,
-                ..
-            } = event
-            {
-                commands::toggle_visibility_from_handle(tray.app_handle());
-            }
-        })
-        .build(app)?;
-
-    Ok(())
 }

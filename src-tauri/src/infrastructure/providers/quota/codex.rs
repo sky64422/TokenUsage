@@ -1,8 +1,6 @@
 //! Codex / ChatGPT subscription quota via `chatgpt.com/backend-api/wham/usage`.
 
-use crate::domain::types::{
-    DataSource, ProviderId, ProviderSnapshot, SnapshotStatus, UsageUnit, UsageWindow, WindowKind,
-};
+use crate::domain::types::{ProviderId, ProviderSnapshot, UsageUnit, UsageWindow, WindowKind};
 use chrono::{Duration, TimeZone, Utc};
 use serde::Deserialize;
 use serde_json::Value;
@@ -14,11 +12,8 @@ use crate::infrastructure::providers::credentials::codex::CodexCredentials;
 const USAGE_URL: &str = "https://chatgpt.com/backend-api/wham/usage";
 
 pub fn fetch() -> Result<ProviderSnapshot, String> {
-    if std::env::var("TOKENUSAGE_SKIP_DIRECT_QUOTA")
-        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-        .unwrap_or(false)
-    {
-        return Err("skipped by TOKENUSAGE_SKIP_DIRECT_QUOTA".into());
+    if super::http::skip_direct_quota() {
+        return Err(super::http::skip_err());
     }
     let mut creds = codex_creds::load()?;
     if codex_creds::needs_refresh(&creds, Duration::minutes(2)) {
@@ -100,39 +95,12 @@ pub fn parse_wham_usage(raw: &str) -> Result<ProviderSnapshot, String> {
         .filter(|p| !p.is_empty())
         .cloned();
 
-    let primary_used_percent = windows
-        .iter()
-        .filter_map(|w| w.used_percent)
-        .fold(None, |acc: Option<f64>, p| {
-            Some(acc.map(|a| a.max(p)).unwrap_or(p))
-        });
-
-    let primary_resets_at = windows
-        .iter()
-        .filter_map(|w| w.resets_at.as_ref())
-        .filter_map(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-        .filter(|d| d.with_timezone(&Utc) > now)
-        .min()
-        .map(|d| d.with_timezone(&Utc).to_rfc3339())
-        .or_else(|| windows.iter().filter_map(|w| w.resets_at.clone()).min());
-
-    let status = if windows.is_empty() {
-        SnapshotStatus::Degraded
-    } else {
-        SnapshotStatus::Ok
-    };
-
-    Ok(ProviderSnapshot {
-        provider_id: ProviderId::Codex,
-        display_name: ProviderId::Codex.display_name().into(),
+    Ok(super::snapshot::finish_snapshot(
+        ProviderId::Codex,
         windows,
-        status,
-        source: DataSource::Vendor,
-        as_of: now.to_rfc3339(),
-        message: plan,
-        primary_resets_at,
-        primary_used_percent,
-    })
+        plan,
+        now,
+    ))
 }
 
 #[derive(Debug, Deserialize)]
@@ -227,7 +195,7 @@ fn classify_window_seconds(secs: Option<i64>) -> WindowKind {
     } else if (500_000..=700_000).contains(&s) {
         WindowKind::Weekly
     } else if (2_000_000..=3_200_000).contains(&s) {
-        WindowKind::Unknown // 30-day
+        WindowKind::Monthly
     } else if (80_000..=100_000).contains(&s) {
         WindowKind::Daily
     } else {
@@ -240,6 +208,7 @@ fn kind_label(kind: WindowKind, secs: Option<i64>, fallback: &str) -> String {
         WindowKind::Rolling5h => "5h".into(),
         WindowKind::Weekly => "Weekly".into(),
         WindowKind::Daily => "Daily".into(),
+        WindowKind::Monthly => "30d".into(),
         WindowKind::Session => "Session".into(),
         WindowKind::Unknown => {
             if let Some(s) = secs {
@@ -302,6 +271,7 @@ fn parse_reset_at(reset_at: Option<&Value>, reset_after_seconds: Option<i64>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::types::DataSource;
 
     const FIXTURE: &str = r#"{
       "plan_type": "free",
@@ -361,6 +331,6 @@ mod tests {
     fn classify_seconds() {
         assert_eq!(classify_window_seconds(Some(18000)), WindowKind::Rolling5h);
         assert_eq!(classify_window_seconds(Some(604800)), WindowKind::Weekly);
-        assert_eq!(classify_window_seconds(Some(2592000)), WindowKind::Unknown);
+        assert_eq!(classify_window_seconds(Some(2592000)), WindowKind::Monthly);
     }
 }

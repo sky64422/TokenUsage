@@ -1,15 +1,9 @@
 //! HTTP + short cache for Grok billing (excluded from coverage gate).
 
-use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use super::http::{check_usage_http, TtlBodyCache};
+use std::time::Duration;
 
-struct Cache {
-    at: Instant,
-    body: String,
-}
-
-static CACHE: Mutex<Option<Cache>> = Mutex::new(None);
-const CACHE_TTL: Duration = Duration::from_secs(45);
+static CACHE: TtlBodyCache = TtlBodyCache::new(45);
 
 const BILLING_URL: &str = "https://cli-chat-proxy.grok.com/v1/billing?format=credits";
 const TOKEN_URL_DEFAULT: &str = "https://auth.x.ai/oauth2/token";
@@ -18,12 +12,8 @@ pub fn get_billing_json(
     access_token: &str,
     user_id: Option<&str>,
 ) -> Result<String, String> {
-    if let Ok(guard) = CACHE.lock() {
-        if let Some(c) = guard.as_ref() {
-            if c.at.elapsed() < CACHE_TTL {
-                return Ok(c.body.clone());
-            }
-        }
+    if let Some(body) = CACHE.get() {
+        return Ok(body);
     }
 
     let client = reqwest::blocking::Client::builder()
@@ -48,26 +38,8 @@ pub fn get_billing_json(
     let body = resp
         .text()
         .map_err(|e| format!("grok billing body: {e}"))?;
-
-    if status.as_u16() == 401 || status.as_u16() == 403 {
-        return Err(format!(
-            "grok auth rejected ({status}); run `grok login` again"
-        ));
-    }
-    if !status.is_success() {
-        let snippet: String = body.chars().take(160).collect();
-        return Err(format!("grok billing HTTP {status}: {snippet}"));
-    }
-    if body.trim().is_empty() {
-        return Err("grok billing empty body".into());
-    }
-
-    if let Ok(mut guard) = CACHE.lock() {
-        *guard = Some(Cache {
-            at: Instant::now(),
-            body: body.clone(),
-        });
-    }
+    check_usage_http("grok", "run `grok login` again", status, &body)?;
+    CACHE.set(body.clone());
     Ok(body)
 }
 
@@ -134,10 +106,7 @@ pub fn refresh_access_token(
         .and_then(|x| x.as_i64())
         .unwrap_or(21_600);
 
-    // New tokens invalidate billing cache
-    if let Ok(mut guard) = CACHE.lock() {
-        *guard = None;
-    }
+    CACHE.clear();
 
     Ok(RefreshedTokens {
         access_token: access,

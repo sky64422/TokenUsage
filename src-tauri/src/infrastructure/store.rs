@@ -1,26 +1,9 @@
-use crate::domain::constants::{
-    clamp_opacity, clamp_refresh_secs, HotkeyPolicy, OpacityPolicy, WindowPolicy,
-};
-use crate::domain::types::{AppSettings, PersistedState, WindowGeometry};
+use crate::domain::constants::clamp_opacity;
+use crate::domain::types::PersistedState;
 use std::path::{Path, PathBuf};
 
 pub fn default_state() -> PersistedState {
-    PersistedState {
-        settings: AppSettings {
-            opacity: OpacityPolicy::DEFAULT,
-            window: WindowGeometry {
-                x: 80.0,
-                y: 80.0,
-                width: WindowPolicy::DEFAULT_WIDTH,
-                height: WindowPolicy::DEFAULT_HEIGHT,
-            },
-            hotkey: HotkeyPolicy::DEFAULT.into(),
-            autostart: true,
-            refresh_secs: crate::domain::constants::RefreshPolicy::DEFAULT_REFRESH_SECS,
-            ..AppSettings::default()
-        },
-        version: 1,
-    }
+    PersistedState::default()
 }
 
 pub fn state_path(app_data_dir: &Path) -> PathBuf {
@@ -40,7 +23,6 @@ pub fn save_state(app_data_dir: &Path, state: &PersistedState) -> Result<(), Str
     let path = state_path(app_data_dir);
     let mut cloned = state.clone();
     cloned.settings.opacity = clamp_opacity(cloned.settings.opacity);
-    cloned.settings.refresh_secs = clamp_refresh_secs(cloned.settings.refresh_secs);
     let json = serde_json::to_string_pretty(&cloned).map_err(|e| e.to_string())?;
     std::fs::write(path, json).map_err(|e| e.to_string())
 }

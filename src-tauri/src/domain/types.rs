@@ -1,3 +1,4 @@
+use crate::domain::constants::{HotkeyPolicy, OpacityPolicy, RefreshPolicy, WindowPolicy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -36,6 +37,7 @@ pub enum WindowKind {
     Rolling5h,
     Weekly,
     Daily,
+    Monthly,
     Session,
     Unknown,
 }
@@ -61,12 +63,23 @@ pub enum SnapshotStatus {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DataSource {
-    LocalFile,
-    Cli,
-    Manual,
-    Estimate,
     /// Direct OAuth call to the vendor quota endpoint (personal CLI credentials).
     Vendor,
+    /// Vendor miss — no secondary estimate path.
+    Unavailable,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum CardTint {
+    #[default]
+    None,
+    Rose,
+    Peach,
+    Mint,
+    Sky,
+    Lavender,
+    Lemon,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -105,41 +118,22 @@ pub struct WindowGeometry {
     pub height: f64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct PlanLimits {
-    /// Token budget for the primary 5-hour window (local estimate).
-    pub five_hour_tokens: f64,
-    /// Optional weekly token budget.
-    pub weekly_tokens: Option<f64>,
-}
-
-impl Default for PlanLimits {
-    fn default() -> Self {
-        Self {
-            five_hour_tokens: 88_000.0, // Max5-ish default
-            weekly_tokens: Some(500_000.0),
-        }
-    }
-}
-
-fn default_card_tint() -> String {
-    "none".into()
+fn default_card_tint() -> CardTint {
+    CardTint::None
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProviderConfig {
     pub enabled: bool,
-    pub limits: PlanLimits,
     #[serde(default = "default_card_tint")]
-    pub card_tint: String,
+    pub card_tint: CardTint,
 }
 
 impl Default for ProviderConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            limits: PlanLimits::default(),
-            card_tint: default_card_tint(),
+            card_tint: CardTint::None,
         }
     }
 }
@@ -150,7 +144,7 @@ pub struct AppSettings {
     pub window: WindowGeometry,
     pub hotkey: String,
     pub autostart: bool,
-    /// Seconds between usage refresh (clamped on write).
+    /// Legacy persist field; poll interval is always `RefreshPolicy::DEFAULT_REFRESH_SECS`.
     #[serde(default = "default_refresh_secs")]
     pub refresh_secs: u64,
     #[serde(default)]
@@ -162,46 +156,25 @@ pub struct AppSettings {
 }
 
 fn default_refresh_secs() -> u64 {
-    5
+    RefreshPolicy::DEFAULT_REFRESH_SECS
 }
 
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            opacity: 0.92,
+            opacity: OpacityPolicy::DEFAULT,
             window: WindowGeometry {
                 x: 80.0,
                 y: 80.0,
-                width: 340.0,
-                height: 420.0,
+                width: WindowPolicy::DEFAULT_WIDTH,
+                height: WindowPolicy::DEFAULT_HEIGHT,
             },
-            hotkey: "Ctrl+Shift+U".into(),
+            hotkey: HotkeyPolicy::DEFAULT.into(),
             autostart: true,
-            refresh_secs: 5,
-            claude: ProviderConfig {
-                enabled: true,
-                limits: PlanLimits {
-                    five_hour_tokens: 88_000.0,
-                    weekly_tokens: Some(500_000.0),
-                },
-                card_tint: default_card_tint(),
-            },
-            codex: ProviderConfig {
-                enabled: true,
-                limits: PlanLimits {
-                    five_hour_tokens: 200_000.0,
-                    weekly_tokens: Some(1_000_000.0),
-                },
-                card_tint: default_card_tint(),
-            },
-            grok: ProviderConfig {
-                enabled: true,
-                limits: PlanLimits {
-                    five_hour_tokens: 200_000.0,
-                    weekly_tokens: Some(1_000_000.0),
-                },
-                card_tint: default_card_tint(),
-            },
+            refresh_secs: RefreshPolicy::DEFAULT_REFRESH_SECS,
+            claude: ProviderConfig::default(),
+            codex: ProviderConfig::default(),
+            grok: ProviderConfig::default(),
         }
     }
 }

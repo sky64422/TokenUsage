@@ -1,4 +1,5 @@
 import type { AppSettings, ProviderId } from "./types";
+import { PROVIDER_IDS } from "./types";
 
 export function mountSettingsPanel(
   root: HTMLElement,
@@ -79,13 +80,13 @@ export function mountSettingsPanel(
   }
 
   function countEnabled(): number {
-    return (["claude", "codex", "grok"] as ProviderId[]).filter(isProviderOn).length;
+    return PROVIDER_IDS.filter(isProviderOn).length;
   }
 
   /** Last remaining provider cannot be turned off — visual + a11y lock. */
   function syncProviderLocks(): void {
     const onlyOne = countEnabled() <= 1;
-    (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
+    PROVIDER_IDS.forEach((id) => {
       const btn = providerBtn(id);
       if (!btn) return;
       const locked = onlyOne && isProviderOn(id);
@@ -99,7 +100,7 @@ export function mountSettingsPanel(
     });
   }
 
-  (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
+  PROVIDER_IDS.forEach((id) => {
     const btn = providerBtn(id);
     btn?.addEventListener("click", () => {
       const next = !isProviderOn(id);
@@ -143,7 +144,7 @@ export function mountSettingsPanel(
     },
     isVisible: () => visible,
     syncProviderEnabled(st: AppSettings) {
-      (["claude", "codex", "grok"] as ProviderId[]).forEach((id) => {
+      PROVIDER_IDS.forEach((id) => {
         const btn = providerBtn(id);
         const on = st[id]?.enabled !== false;
         if (!btn) return;

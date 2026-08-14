@@ -1,13 +1,15 @@
-use crate::domain::constants::{clamp_geometry, clamp_opacity, clamp_refresh_secs};
+use crate::domain::constants::{clamp_geometry, clamp_opacity};
 use crate::domain::types::{
-    AppSettings, DataSource, DiagnosticsSnapshot, PersistedState, PlanLimits, ProviderConfig,
+    AppSettings, CardTint, DataSource, DiagnosticsSnapshot, PersistedState, ProviderConfig,
     ProviderId, ProviderSnapshot, SnapshotStatus, WindowGeometry,
 };
 use crate::infrastructure::store::save_state;
 use chrono::Utc;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
+
+const DIAG_CAP: usize = 40;
 
 pub struct AppCore {
     inner: Mutex<CoreInner>,
@@ -34,128 +36,133 @@ impl AppCore {
         })
     }
 
+    fn lock(&self) -> MutexGuard<'_, CoreInner> {
+        self.inner.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
     pub fn get_state(&self) -> PersistedState {
-        self.inner.lock().unwrap().state.clone()
+        self.lock().state.clone()
     }
 
     pub fn get_snapshots(&self) -> Vec<ProviderSnapshot> {
-        let guard = self.inner.lock().unwrap();
-        let order = ProviderId::all();
-        order
-            .into_iter()
-            .filter_map(|id| guard.snapshots.get(&id).cloned())
-            .collect()
+        ordered_snapshots(&self.lock().snapshots)
     }
 
     pub fn set_visible(&self, visible: bool) {
-        self.inner.lock().unwrap().visible = visible;
+        self.lock().visible = visible;
     }
 
     pub fn is_visible(&self) -> bool {
-        self.inner.lock().unwrap().visible
+        self.lock().visible
     }
 
     pub fn refresh_all(&self) -> Vec<ProviderSnapshot> {
-        let (settings, app_data_dir) = {
-            let guard = self.inner.lock().unwrap();
-            (guard.state.settings.clone(), guard.app_data_dir.clone())
+        let (enabled, app_data_dir) = {
+            let guard = self.lock();
+            let enabled: Vec<ProviderId> = ProviderId::all()
+                .into_iter()
+                .filter(|id| provider_config(&guard.state.settings, *id).enabled)
+                .collect();
+            (enabled, guard.app_data_dir.clone())
         };
 
-        // Direct vendor OAuth quota only (no local JSONL / tokscale).
+        let fetched: Vec<(ProviderId, Result<ProviderSnapshot, String>)> =
+            std::thread::scope(|scope| {
+                let handles: Vec<_> = enabled
+                    .iter()
+                    .copied()
+                    .map(|id| {
+                        scope.spawn(move || {
+                            let result =
+                                crate::infrastructure::providers::quota::try_fetch(id)
+                                    .unwrap_or_else(|| Err("no quota adapter".into()));
+                            (id, result)
+                        })
+                    })
+                    .collect();
+                handles
+                    .into_iter()
+                    .zip(enabled.iter().copied())
+                    .map(|(h, id)| {
+                        h.join()
+                            .unwrap_or_else(|_| (id, Err("refresh panicked".into())))
+                    })
+                    .collect()
+            });
+
         let mut next = HashMap::new();
         let mut source_notes: Vec<String> = Vec::new();
-        for id in ProviderId::all() {
-            let cfg = provider_config(&settings, id);
-            if !cfg.enabled {
-                continue;
-            }
-
-            let mut vendor_err: Option<String> = None;
-
-            // Direct vendor OAuth quota (always on; only data path).
-            if let Some(result) = crate::infrastructure::providers::quota::try_fetch(id) {
-                match result {
-                    Ok(snap) => {
-                        source_notes.push(format!("{}:vendor", id.as_str()));
-                        next.insert(id, snap);
-                        continue;
-                    }
-                    Err(e) => {
-                        let safe = e.replace('\n', " ");
-                        let safe: String = safe.chars().take(120).collect();
-                        source_notes.push(format!("{}:vendor_fail({})", id.as_str(), safe));
-                        vendor_err = Some(safe);
-                    }
+        for (id, result) in fetched {
+            match result {
+                Ok(snap) => {
+                    source_notes.push(format!("{}:vendor", id.as_str()));
+                    next.insert(id, snap);
+                }
+                Err(e) => {
+                    let safe = e.replace('\n', " ");
+                    let safe: String = safe.chars().take(120).collect();
+                    source_notes.push(format!("{}:vendor_fail({})", id.as_str(), safe));
+                    source_notes.push(format!("{}:unavailable", id.as_str()));
+                    next.insert(id, missing_quota_snapshot(id, Some(safe.as_str())));
                 }
             }
-
-            // Vendor missed — surface unavailable / auth (no secondary path)
-            source_notes.push(format!("{}:unavailable", id.as_str()));
-            next.insert(id, missing_quota_snapshot(id, vendor_err.as_deref()));
         }
 
-        let mut guard = self.inner.lock().unwrap();
+        let mut guard = self.lock();
         let count = next.len();
         guard.snapshots = next;
-        let sources = source_notes.join(" ");
-        guard.diag.push(format!(
-            "{} refreshed {} providers · [{}] (dir={})",
-            chrono::Utc::now().to_rfc3339(),
-            count,
-            sources,
-            app_data_dir.display()
-        ));
-        if guard.diag.len() > 40 {
-            let drain = guard.diag.len() - 40;
-            guard.diag.drain(0..drain);
-        }
-        let order = ProviderId::all();
-        order
-            .into_iter()
-            .filter_map(|id| guard.snapshots.get(&id).cloned())
-            .collect()
+        push_diag(
+            &mut guard.diag,
+            format!(
+                "{} refreshed {} providers · [{}] (dir={})",
+                Utc::now().to_rfc3339(),
+                count,
+                source_notes.join(" "),
+                app_data_dir.display()
+            ),
+        );
+        ordered_snapshots(&guard.snapshots)
     }
 
     pub fn persist(&self) -> Result<(), String> {
-        let guard = self.inner.lock().unwrap();
-        save_state(&guard.app_data_dir, &guard.state)
+        let (dir, state) = {
+            let guard = self.lock();
+            (guard.app_data_dir.clone(), guard.state.clone())
+        };
+        save_state(&dir, &state)
+    }
+
+    fn mutate_settings<T>(
+        &self,
+        f: impl FnOnce(&mut AppSettings) -> T,
+    ) -> Result<T, String> {
+        let out = {
+            let mut guard = self.lock();
+            f(&mut guard.state.settings)
+        };
+        self.persist()?;
+        Ok(out)
     }
 
     pub fn set_opacity(&self, opacity: f64) -> Result<f64, String> {
         let opacity = clamp_opacity(opacity);
-        {
-            let mut guard = self.inner.lock().unwrap();
-            guard.state.settings.opacity = opacity;
-        }
-        self.persist()?;
-        Ok(opacity)
+        self.mutate_settings(|s| {
+            s.opacity = opacity;
+            opacity
+        })
     }
 
     pub fn set_autostart(&self, enabled: bool) -> Result<(), String> {
-        {
-            let mut guard = self.inner.lock().unwrap();
-            guard.state.settings.autostart = enabled;
-        }
-        self.persist()
-    }
-
-    pub fn set_refresh_secs(&self, secs: u64) -> Result<u64, String> {
-        let secs = clamp_refresh_secs(secs);
-        {
-            let mut guard = self.inner.lock().unwrap();
-            guard.state.settings.refresh_secs = secs;
-        }
-        self.persist()?;
-        Ok(secs)
+        self.mutate_settings(|s| {
+            s.autostart = enabled;
+        })
     }
 
     pub fn set_window_geometry(&self, geometry: WindowGeometry) -> Result<(), String> {
         let geometry = clamp_geometry(&geometry);
-        {
-            let mut guard = self.inner.lock().unwrap();
-            guard.state.settings.window = geometry;
-        }
-        self.persist()
+        self.mutate_settings(|s| {
+            s.window = geometry;
+        })
     }
 
     pub fn set_provider_enabled(
@@ -164,8 +171,7 @@ impl AppCore {
         enabled: bool,
     ) -> Result<Vec<ProviderSnapshot>, String> {
         {
-            let mut guard = self.inner.lock().unwrap();
-            // Keep at least one provider visible so the widget never goes blank by accident
+            let mut guard = self.lock();
             if !enabled {
                 let others_on = ProviderId::all().into_iter().any(|other| {
                     other != id && provider_config(&guard.state.settings, other).enabled
@@ -180,27 +186,14 @@ impl AppCore {
         Ok(self.refresh_all())
     }
 
-    pub fn set_provider_tint(&self, id: ProviderId, tint: String) -> Result<(), String> {
-        let tint = normalize_card_tint(&tint)?;
-        {
-            let mut guard = self.inner.lock().unwrap();
-            provider_config_mut(&mut guard.state.settings, id).card_tint = tint;
-        }
-        self.persist()
-    }
-
-    pub fn set_provider_limits(&self, id: ProviderId, limits: PlanLimits) -> Result<(), String> {
-        {
-            let mut guard = self.inner.lock().unwrap();
-            provider_config_mut(&mut guard.state.settings, id).limits = limits;
-        }
-        self.persist()?;
-        let _ = self.refresh_all();
-        Ok(())
+    pub fn set_provider_tint(&self, id: ProviderId, tint: CardTint) -> Result<(), String> {
+        self.mutate_settings(|s| {
+            provider_config_mut(s, id).card_tint = tint;
+        })
     }
 
     pub fn diagnostics(&self) -> DiagnosticsSnapshot {
-        let guard = self.inner.lock().unwrap();
+        let guard = self.lock();
         let mut lines = guard.diag.clone();
         for (id, snap) in &guard.snapshots {
             lines.push(format!(
@@ -216,34 +209,35 @@ impl AppCore {
     }
 
     pub fn refresh_secs(&self) -> u64 {
-        // Interval is fixed; persisted refresh_secs is ignored.
         crate::domain::constants::RefreshPolicy::DEFAULT_REFRESH_SECS
     }
 
     pub fn note_diag(&self, message: impl Into<String>) {
-        let mut guard = self.inner.lock().unwrap();
-        guard.diag.push(message.into());
-        if guard.diag.len() > 40 {
-            let drain = guard.diag.len() - 40;
-            guard.diag.drain(0..drain);
-        }
+        let mut guard = self.lock();
+        push_diag(&mut guard.diag, message.into());
     }
 }
 
-fn provider_config(settings: &AppSettings, id: ProviderId) -> ProviderConfig {
+fn push_diag(diag: &mut Vec<String>, message: String) {
+    diag.push(message);
+    if diag.len() > DIAG_CAP {
+        let drain = diag.len() - DIAG_CAP;
+        diag.drain(0..drain);
+    }
+}
+
+fn ordered_snapshots(map: &HashMap<ProviderId, ProviderSnapshot>) -> Vec<ProviderSnapshot> {
+    ProviderId::all()
+        .into_iter()
+        .filter_map(|id| map.get(&id).cloned())
+        .collect()
+}
+
+fn provider_config(settings: &AppSettings, id: ProviderId) -> &ProviderConfig {
     match id {
-        ProviderId::Claude => settings.claude.clone(),
-        ProviderId::Codex => settings.codex.clone(),
-        ProviderId::Grok => settings.grok.clone(),
-    }
-}
-
-fn normalize_card_tint(tint: &str) -> Result<String, String> {
-    match tint {
-        "none" | "rose" | "peach" | "mint" | "sky" | "lavender" | "lemon" => {
-            Ok(tint.to_string())
-        }
-        _ => Err(format!("unknown card tint: {tint}")),
+        ProviderId::Claude => &settings.claude,
+        ProviderId::Codex => &settings.codex,
+        ProviderId::Grok => &settings.grok,
     }
 }
 
@@ -258,10 +252,11 @@ fn provider_config_mut(settings: &mut AppSettings, id: ProviderId) -> &mut Provi
 /// When vendor quota misses: show a card, not a local token estimate.
 fn missing_quota_snapshot(id: ProviderId, vendor_err: Option<&str>) -> ProviderSnapshot {
     let err = vendor_err.unwrap_or("");
-    let auth = err.to_ascii_lowercase().contains("auth")
-        || err.to_ascii_lowercase().contains("login")
-        || err.to_ascii_lowercase().contains("expired")
-        || err.to_ascii_lowercase().contains("credentials");
+    let lower = err.to_ascii_lowercase();
+    let auth = lower.contains("auth")
+        || lower.contains("login")
+        || lower.contains("expired")
+        || lower.contains("credentials");
     let message = if !err.is_empty() {
         err.to_string()
     } else {
@@ -280,7 +275,7 @@ fn missing_quota_snapshot(id: ProviderId, vendor_err: Option<&str>) -> ProviderS
         } else {
             SnapshotStatus::Unavailable
         },
-        source: DataSource::Manual,
+        source: DataSource::Unavailable,
         as_of: Utc::now().to_rfc3339(),
         message: Some(message),
         primary_resets_at: None,

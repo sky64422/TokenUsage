@@ -1,14 +1,13 @@
 //! Window show/hide, geometry, and opacity helpers.
 //!
-//! Note: Tauri 2 has no `Window::set_opacity` API. Opacity is clamped, persisted,
-//! and emitted as `opacity-updated` so the frontend can apply CSS opacity.
+//! Tauri 2 has no `Window::set_opacity` API. Opacity is clamped and persisted;
+//! the frontend applies CSS via the `set_opacity` command return path.
 //! Geometry and always-on-top use native window APIs.
 
 use crate::domain::constants::{clamp_geometry, clamp_opacity, WindowPolicy};
 use crate::domain::types::WindowGeometry;
 use tauri::{
-    AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, PhysicalSize, Size, WebviewWindow,
-    Window,
+    AppHandle, LogicalPosition, LogicalSize, Manager, PhysicalSize, Size, WebviewWindow, Window,
 };
 
 pub fn main_window(app: &AppHandle) -> Result<WebviewWindow, String> {
@@ -31,12 +30,9 @@ pub fn apply_geometry(window: &WebviewWindow, geometry: &WindowGeometry) -> Resu
     Ok(())
 }
 
-/// Clamp and notify frontend. Native window opacity is not available in Tauri 2.
-pub fn apply_opacity(app: &AppHandle, opacity: f64) -> Result<f64, String> {
-    let opacity = clamp_opacity(opacity);
-    app.emit("opacity-updated", opacity)
-        .map_err(|e| e.to_string())?;
-    Ok(opacity)
+/// Clamp only. Native window opacity is not available in Tauri 2.
+pub fn apply_opacity(_app: &AppHandle, opacity: f64) -> Result<f64, String> {
+    Ok(clamp_opacity(opacity))
 }
 
 pub fn show_window(window: &WebviewWindow) -> Result<(), String> {
@@ -101,29 +97,6 @@ pub fn apply_content_min_size(
             height: ph.max(1),
         })))
         .map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-/// If the window is smaller than the content floor, grow it (no shrink).
-pub fn ensure_at_least_min_size(
-    window: &impl WindowMinSize,
-    logical_w: f64,
-    logical_h: f64,
-) -> Result<(), String> {
-    let min_w = logical_w.max(WindowPolicy::MIN_WIDTH);
-    let min_h = logical_h.max(WindowPolicy::MIN_HEIGHT);
-    let scale = window.scale_factor_for_min().map_err(|e| e.to_string())?;
-    let size = window.inner_size_for_min().map_err(|e| e.to_string())?;
-    let cur_w = size.width as f64 / scale;
-    let cur_h = size.height as f64 / scale;
-    if cur_w + 0.5 < min_w || cur_h + 0.5 < min_h {
-        window
-            .set_size_for_content(Size::Logical(LogicalSize::new(
-                cur_w.max(min_w),
-                cur_h.max(min_h),
-            )))
-            .map_err(|e| e.to_string())?;
-    }
     Ok(())
 }
 

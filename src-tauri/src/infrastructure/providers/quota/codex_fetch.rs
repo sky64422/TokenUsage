@@ -1,27 +1,17 @@
 //! HTTP + short cache for Codex wham/usage (excluded from coverage gate).
 
-use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use super::http::{check_usage_http, TtlBodyCache};
+use std::time::Duration;
 
-struct Cache {
-    at: Instant,
-    body: String,
-}
-
-static CACHE: Mutex<Option<Cache>> = Mutex::new(None);
-const CACHE_TTL: Duration = Duration::from_secs(45);
+static CACHE: TtlBodyCache = TtlBodyCache::new(45);
 
 pub fn get_usage_json(
     url: &str,
     access_token: &str,
     account_id: Option<&str>,
 ) -> Result<String, String> {
-    if let Ok(guard) = CACHE.lock() {
-        if let Some(c) = guard.as_ref() {
-            if c.at.elapsed() < CACHE_TTL {
-                return Ok(c.body.clone());
-            }
-        }
+    if let Some(body) = CACHE.get() {
+        return Ok(body);
     }
 
     let client = reqwest::blocking::Client::builder()
@@ -43,26 +33,8 @@ pub fn get_usage_json(
     let body = resp
         .text()
         .map_err(|e| format!("codex usage body: {e}"))?;
-
-    if status.as_u16() == 401 || status.as_u16() == 403 {
-        return Err(format!(
-            "codex auth rejected ({status}); run `codex` login again"
-        ));
-    }
-    if !status.is_success() {
-        let snippet: String = body.chars().take(160).collect();
-        return Err(format!("codex usage HTTP {status}: {snippet}"));
-    }
-    if body.trim().is_empty() {
-        return Err("codex usage empty body".into());
-    }
-
-    if let Ok(mut guard) = CACHE.lock() {
-        *guard = Some(Cache {
-            at: Instant::now(),
-            body: body.clone(),
-        });
-    }
+    check_usage_http("codex", "run `codex` login again", status, &body)?;
+    CACHE.set(body.clone());
     Ok(body)
 }
 
@@ -125,9 +97,7 @@ pub fn refresh_access_token(refresh_token: &str) -> Result<RefreshedTokens, Stri
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string());
 
-    if let Ok(mut guard) = CACHE.lock() {
-        *guard = None;
-    }
+    CACHE.clear();
 
     Ok(RefreshedTokens {
         access_token: access,
@@ -140,7 +110,5 @@ pub fn refresh_access_token(refresh_token: &str) -> Result<RefreshedTokens, Stri
 #[cfg(test)]
 #[allow(dead_code)]
 pub fn clear_cache() {
-    if let Ok(mut g) = CACHE.lock() {
-        *g = None;
-    }
+    CACHE.clear();
 }

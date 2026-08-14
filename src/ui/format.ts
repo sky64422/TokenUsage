@@ -10,10 +10,6 @@ export function isOver(
   limit?: number | null,
 ): boolean {
   if (message && /over\s*limit/i.test(message)) return true;
-  // Local context-token estimates can exceed plan tables without being "quota over"
-  if (message && /estimate\s*\(context/i.test(message)) {
-    if (used != null && limit != null && limit > 0 && used > limit) return true;
-  }
   if (used != null && limit != null && limit > 0 && used > limit) return true;
   if (pct != null && !Number.isNaN(pct) && pct > 100) return true;
   return false;
@@ -134,27 +130,4 @@ export function formatTokenPair(
   return `${formatTokens(used)} / ${formatTokens(limit)}`;
 }
 
-export function formatResetsIn(iso: string | null | undefined, now = Date.now()): string {
-  const c = formatCountdown(iso, now);
-  if (!c) return "";
-  if (c === "soon") return "resets soon";
-  return `resets in ${c}`;
-}
 
-export function sourceLabel(
-  source: string,
-  message?: string | null,
-): { kind: string; detail: string | null } {
-  if (source === "vendor") {
-    const plan =
-      message && !/over|idle|estimate|auth/i.test(message) ? message : null;
-    return { kind: "vendor", detail: plan };
-  }
-  if (message && /login|auth|expired|credentials/i.test(message)) {
-    return { kind: "auth", detail: null };
-  }
-  if (message && /no \w+ quota|unavailable/i.test(message)) {
-    return { kind: "none", detail: null };
-  }
-  return { kind: "none", detail: null };
-}

@@ -1,7 +1,7 @@
 //! Claude Code subscription rate limits via `GET /api/oauth/usage`.
 
 use crate::domain::types::{
-    DataSource, ProviderId, ProviderSnapshot, SnapshotStatus, UsageUnit, UsageWindow, WindowKind,
+    ProviderId, ProviderSnapshot, UsageUnit, UsageWindow, WindowKind,
 };
 use crate::infrastructure::providers::credentials::claude as claude_creds;
 use chrono::{Duration, TimeZone, Utc};
@@ -10,11 +10,8 @@ use serde_json::Value;
 use super::claude_fetch;
 
 pub fn fetch() -> Result<ProviderSnapshot, String> {
-    if std::env::var("TOKENUSAGE_SKIP_DIRECT_QUOTA")
-        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-        .unwrap_or(false)
-    {
-        return Err("skipped by TOKENUSAGE_SKIP_DIRECT_QUOTA".into());
+    if super::http::skip_direct_quota() {
+        return Err(super::http::skip_err());
     }
 
     let mut creds = claude_creds::load()?;
@@ -116,39 +113,12 @@ pub fn parse_oauth_usage(raw: &str) -> Result<ProviderSnapshot, String> {
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string());
 
-    let primary_used_percent = windows
-        .iter()
-        .filter_map(|w| w.used_percent)
-        .fold(None, |acc: Option<f64>, p| {
-            Some(acc.map(|a| a.max(p)).unwrap_or(p))
-        });
-
-    let primary_resets_at = windows
-        .iter()
-        .filter_map(|w| w.resets_at.as_ref())
-        .filter_map(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-        .filter(|d| d.with_timezone(&Utc) > now)
-        .min()
-        .map(|d| d.with_timezone(&Utc).to_rfc3339())
-        .or_else(|| windows.iter().filter_map(|w| w.resets_at.clone()).min());
-
-    let status = if windows.is_empty() {
-        SnapshotStatus::Degraded
-    } else {
-        SnapshotStatus::Ok
-    };
-
-    Ok(ProviderSnapshot {
-        provider_id: ProviderId::Claude,
-        display_name: ProviderId::Claude.display_name().into(),
+    Ok(super::snapshot::finish_snapshot(
+        ProviderId::Claude,
         windows,
-        status,
-        source: DataSource::Vendor,
-        as_of: now.to_rfc3339(),
-        message: plan,
-        primary_resets_at,
-        primary_used_percent,
-    })
+        plan,
+        now,
+    ))
 }
 
 fn push_window(out: &mut Vec<UsageWindow>, kind: WindowKind, label: &str, obj: Option<&Value>) {
@@ -234,6 +204,7 @@ fn extract_resets_at(obj: &Value) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::types::{DataSource, SnapshotStatus};
 
     #[test]
     fn parse_utilization_fraction() {
