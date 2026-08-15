@@ -5,6 +5,7 @@ import {
   formatPct,
   formatResetClock,
   formatTokenPair,
+  formatWindowLabel,
   formatWindowReset,
   isOver,
   levelClass,
@@ -227,10 +228,7 @@ function usageRow(opts: {
   const width = idle ? 0 : (pct ?? 0);
   const showStop = !idle && width > 0 && width < 99;
 
-  let label = (w.label ?? w.kind).replace(/\s*·\s*over$/i, "");
-  if (label === "rolling_5h") label = "5h";
-  if (label === "weekly") label = "Week";
-  if (label === "monthly") label = "Month";
+  const label = formatWindowLabel(w.label ?? w.kind);
 
   const pctText = formatPct(pct, over, idle);
   const detail = tokenDetail(w, over);

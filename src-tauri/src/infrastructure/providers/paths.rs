@@ -24,3 +24,10 @@ pub fn grok_home() -> Option<PathBuf> {
     }
     home_dir().map(|h| h.join(".grok"))
 }
+
+pub fn gemini_home() -> Option<PathBuf> {
+    if let Ok(p) = std::env::var("GEMINI_HOME") {
+        return Some(PathBuf::from(p));
+    }
+    home_dir().map(|h| h.join(".gemini"))
+}

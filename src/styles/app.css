@@ -973,22 +973,26 @@ body {
 /* Toggle chip primitive (provider on/off) */
 .provider-chip-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-width: 0;
 }
 
 .provider-chip {
   flex: 1 1 0;
-  min-width: 4.5em;
-  height: 30px;
+  min-width: 0;
+  height: 28px;
   margin: 0;
-  padding: 0 10px;
+  padding: 0 4px;
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
   transition:
     background var(--duration-fast) ease,

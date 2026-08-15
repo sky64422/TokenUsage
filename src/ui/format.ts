@@ -130,4 +130,13 @@ export function formatTokenPair(
   return `${formatTokens(used)} / ${formatTokens(limit)}`;
 }
 
+export function formatWindowLabel(labelOrKind: string | null | undefined): string {
+  if (!labelOrKind) return "";
+  const label = labelOrKind.replace(/\s*·\s*over$/i, "").trim();
+  if (label === "rolling_5h") return "5h";
+  if (label === "weekly") return "Week";
+  if (label === "monthly") return "Month";
+  return label;
+}
+
 

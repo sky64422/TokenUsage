@@ -41,8 +41,9 @@ export function applyPanelOpacity(panel: HTMLElement, opacity: number): void {
   const chrome = Math.min(1, Math.max(0.28, o * 0.9 + 0.04));
   const tint = chrome;
 
-  const root = document.documentElement;
-  for (const el of [panel, root]) {
+  const root = typeof document !== "undefined" ? document.documentElement : null;
+  const elements = root ? [panel, root] : [panel];
+  for (const el of elements) {
     el.style.setProperty("--panel-opacity", String(o));
     el.style.setProperty("--fg-opacity", String(fg));
     el.style.setProperty("--accent-opacity", String(accent));

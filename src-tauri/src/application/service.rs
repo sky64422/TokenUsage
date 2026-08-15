@@ -5,7 +5,7 @@ use crate::domain::types::{
 };
 use crate::infrastructure::store::save_state;
 use chrono::Utc;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -20,7 +20,7 @@ struct CoreInner {
     app_data_dir: PathBuf,
     snapshots: HashMap<ProviderId, ProviderSnapshot>,
     visible: bool,
-    diag: Vec<String>,
+    diag: VecDeque<String>,
 }
 
 impl AppCore {
@@ -31,7 +31,7 @@ impl AppCore {
                 app_data_dir,
                 snapshots: HashMap::new(),
                 visible: true,
-                diag: Vec::new(),
+                diag: VecDeque::new(),
             }),
         })
     }
@@ -99,8 +99,7 @@ impl AppCore {
                     next.insert(id, snap);
                 }
                 Err(e) => {
-                    let safe = e.replace('\n', " ");
-                    let safe: String = safe.chars().take(120).collect();
+                    let safe = sanitize_error_message(&e);
                     source_notes.push(format!("{}:vendor_fail({})", id.as_str(), safe));
                     source_notes.push(format!("{}:unavailable", id.as_str()));
                     next.insert(id, missing_quota_snapshot(id, Some(safe.as_str())));
@@ -194,7 +193,7 @@ impl AppCore {
 
     pub fn diagnostics(&self) -> DiagnosticsSnapshot {
         let guard = self.lock();
-        let mut lines = guard.diag.clone();
+        let mut lines: Vec<String> = guard.diag.iter().cloned().collect();
         for (id, snap) in &guard.snapshots {
             lines.push(format!(
                 "{}: status={:?} source={:?} windows={} msg={}",
@@ -214,12 +213,16 @@ impl AppCore {
     }
 }
 
-fn push_diag(diag: &mut Vec<String>, message: String) {
-    diag.push(message);
-    if diag.len() > DIAG_CAP {
-        let drain = diag.len() - DIAG_CAP;
-        diag.drain(0..drain);
+fn sanitize_error_message(err: &str) -> String {
+    let safe = err.replace('\n', " ");
+    safe.chars().take(120).collect()
+}
+
+fn push_diag(diag: &mut VecDeque<String>, message: String) {
+    if diag.len() >= DIAG_CAP {
+        diag.pop_front();
     }
+    diag.push_back(message);
 }
 
 fn ordered_snapshots(map: &HashMap<ProviderId, ProviderSnapshot>) -> Vec<ProviderSnapshot> {

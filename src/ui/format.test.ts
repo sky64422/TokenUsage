@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   clampPct,
+  formatCountdown,
   formatPct,
+  formatTokenPair,
+  formatTokens,
+  formatWindowLabel,
   formatWindowReset,
   isOver,
   levelClass,
@@ -84,5 +88,45 @@ describe("formatWindowReset", () => {
       now: Date.parse("2026-08-01T00:00:00Z"),
     });
     expect(text.startsWith("Over ·")).toBe(true);
+  });
+});
+
+describe("formatWindowLabel", () => {
+  it("normalizes internal window kind names to glanceable labels", () => {
+    expect(formatWindowLabel("rolling_5h")).toBe("5h");
+    expect(formatWindowLabel("weekly")).toBe("Week");
+    expect(formatWindowLabel("monthly")).toBe("Month");
+    expect(formatWindowLabel("5h · over")).toBe("5h");
+    expect(formatWindowLabel("Custom Window")).toBe("Custom Window");
+    expect(formatWindowLabel(null)).toBe("");
+  });
+});
+
+describe("formatCountdown", () => {
+  it("returns soon for past or zero time", () => {
+    expect(formatCountdown("2026-08-01T00:00:00Z", Date.parse("2026-08-01T00:00:00Z"))).toBe("soon");
+    expect(formatCountdown(null)).toBe("");
+  });
+
+  it("formats hours and minutes or days", () => {
+    const base = Date.parse("2026-08-01T00:00:00Z");
+    const twoHoursTenMin = new Date(base + (2 * 3600 + 10 * 60) * 1000).toISOString();
+    expect(formatCountdown(twoHoursTenMin, base)).toBe("2h 10m");
+
+    const twoDays = new Date(base + 48 * 3600 * 1000).toISOString();
+    expect(formatCountdown(twoDays, base)).toBe("2d");
+  });
+});
+
+describe("formatTokens & formatTokenPair", () => {
+  it("formats number magnitudes", () => {
+    expect(formatTokens(500)).toBe("500");
+    expect(formatTokens(1500)).toBe("1.5k");
+    expect(formatTokens(2_500_000)).toBe("2.5M");
+  });
+
+  it("formats token pairs", () => {
+    expect(formatTokenPair(1500, null)).toBe("1.5k");
+    expect(formatTokenPair(1500, 3000)).toBe("1.5k / 3.0k");
   });
 });
