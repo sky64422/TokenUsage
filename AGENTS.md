@@ -15,7 +15,7 @@ If you are an automated coding agent in a new session:
 - **Primary data:** direct vendor OAuth quota (Claude / Codex / Grok) only. No tokscale, no local JSONL estimates.
 - **No** browser scraping of vendor dashboards without an explicit design decision.
 - **Notifications** are out of scope until requested.
-- **Antigravity (AGY)** deferred in-app.
+- **AGY:** removed until an official public API exists. Re-add as optional provider when `TOKENUSAGE_AGY_QUOTA_SOURCE=official` becomes available; the unofficial `cloudcode-pa v1internal` endpoint does not track Antigravity 2.0 / Gemini 3.7 usage.
 - UI: keep **fixed column geometry** — row 1 name · period · refill; row 2 `1fr` bar · `2.9em` % (2px bar→% gutter). Dual vs single layouts may differ.
 - **Progress:** Quiet Luxury 6px pill bars (glow / sheen / end-cap) — sheen & critical breathe only on **live** fills (`.is-active`); prefer glanceable bars over experimental gauges unless explicitly requested.
 - **Refresh:** interval is **fixed at 5s**. Do not add a settings control; `refresh_secs()` ignores persisted values.

@@ -53,6 +53,8 @@ Usage/limit HTTP is metadata only (does not consume coding tokens).
 Window labels are short at the adapter (`5h` / `Week` / `Month` / `30d`).  
 Env `TOKENUSAGE_SKIP_DIRECT_QUOTA=1` for tests.
 
+> **AGY / Gemini:** removed as of 2026-08-15. The unofficial `cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` endpoint only returns legacy Code Assist free-tier buckets (gemini-2.5-flash etc.) with `remainingFraction: 1` — it does **not** track Antigravity 2.0 / Gemini 3.7 session usage. Re-add when an official public API exists (`TOKENUSAGE_AGY_QUOTA_SOURCE=official` stub is reserved).
+
 #### What these quota APIs return
 
 These endpoints are **rate-limit / credit windows**, not a token ledger.
@@ -84,7 +86,8 @@ There is no `PlanLimits` / local-event estimate path. Poll interval is `RefreshP
 - HTTP scraping of vendor dashboards  
 - Local JSONL / plan-limit token estimates  
 - tokscale / `npx tokscale` integration  
-- Google Antigravity (AGY) in-widget  
+- Browser scraping of Antigravity / AI Studio dashboards  
+
 - Perfect billing parity with official subscription meters  
 - Per-product Grok breakdown (GrokBuild vs GrokChat) in the UI  
 - Token ledger (input / output / cache read / write) from a different vendor usage API  

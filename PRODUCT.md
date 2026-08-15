@@ -44,7 +44,7 @@ A floating **usage monitor widget** that shows personal vendor OAuth quota (Clau
 - Push notifications / tray alerts  
 - Browser scraping of vendor dashboards  
 - Local JSONL / plan-limit token estimates / tokscale  
-- Google Antigravity (AGY) in-widget  
+- **AGY / Gemini provider:** removed — unofficial `cloudcode-pa v1internal` does not track Antigravity 2.0 / Gemini 3.7 usage; re-add when an official public API exists  
 - Perfect parity with every vendor subscription UI  
 - Per-product Grok breakdown (GrokBuild / GrokChat) in the widget  
 - Token ledger (input / output / cache read / cache write) — quota APIs do not return it  
