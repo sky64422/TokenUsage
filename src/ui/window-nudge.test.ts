@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   arrowNudgeDelta,
   shouldNudgeWindow,
+  WINDOW_NUDGE_CTRL_PX,
   WINDOW_NUDGE_PX,
   WINDOW_NUDGE_SHIFT_PX,
 } from "./window-nudge";
@@ -28,8 +29,19 @@ describe("arrowNudgeDelta", () => {
   });
 
   it("uses 16px with Shift", () => {
-    expect(arrowNudgeDelta("ArrowLeft", true)).toEqual({
+    expect(arrowNudgeDelta("ArrowLeft", { shift: true })).toEqual({
       dx: -WINDOW_NUDGE_SHIFT_PX,
+      dy: 0,
+    });
+  });
+
+  it("uses 1px with Ctrl (wins over Shift)", () => {
+    expect(arrowNudgeDelta("ArrowRight", { ctrl: true })).toEqual({
+      dx: WINDOW_NUDGE_CTRL_PX,
+      dy: 0,
+    });
+    expect(arrowNudgeDelta("ArrowRight", { ctrl: true, shift: true })).toEqual({
+      dx: WINDOW_NUDGE_CTRL_PX,
       dy: 0,
     });
   });
@@ -53,9 +65,19 @@ describe("shouldNudgeWindow", () => {
     );
   });
 
-  it("blocks ctrl/alt/meta chords", () => {
+  it("allows Ctrl+arrow and blocks Alt/Meta", () => {
     expect(
       shouldNudgeWindow(key({ key: "ArrowLeft", ctrlKey: true }), {
+        settingsOpen: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldNudgeWindow(key({ key: "ArrowLeft", altKey: true }), {
+        settingsOpen: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldNudgeWindow(key({ key: "ArrowLeft", metaKey: true }), {
         settingsOpen: false,
       }),
     ).toBe(false);

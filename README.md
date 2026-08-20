@@ -7,7 +7,7 @@ Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent **quo
 ## Features (v0.1.33)
 
 - Always-on-top **dark** glass panel; **opacity slider** (neutral chrome) tints panel, text, and bar colors together (readable floors at low opacity)
-- Arrow keys nudge the window when focus is on the body (**4px**; **Shift+arrow** **16px**; not while Settings or the opacity slider is focused)
+- Arrow keys nudge the window when focus is on the body (**4px**; **Shift+arrow** **16px**; **Ctrl+arrow** **1px**; not while Settings or the opacity slider is focused)
 - Providers: **Claude Code**, **Codex**, **Grok**
 - **Codex:** refreshes expired ChatGPT OAuth tokens (same client as `codex` CLI)
 - Data: **direct vendor OAuth quota** only (no tokscale / local JSONL / plan-limit estimates)
