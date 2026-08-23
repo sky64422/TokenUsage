@@ -17,21 +17,27 @@ use token_usage_lib::domain::types::{DataSource, PersistedState, ProviderId};
 use token_usage_lib::infrastructure::store::{default_state, load_state, save_state, state_path};
 
 #[test]
-fn risk_corrupt_state_json_falls_back_to_default() {
+fn risk_corrupt_state_json_is_err_and_keeps_backup() {
     ensure_skip_network();
     let dir = tempdir().unwrap();
     let path = state_path(dir.path());
     fs::write(&path, "{ not valid json !!!").unwrap();
-    let loaded = load_state(dir.path());
-    assert!(loaded.settings.autostart);
+    let err = load_state(dir.path()).unwrap_err();
+    assert!(err.contains("corrupt"), "{err}");
+    assert!(!path.exists());
+    let bak = path.with_file_name(format!(
+        "{}.corrupt",
+        path.file_name().unwrap().to_string_lossy()
+    ));
+    assert!(bak.exists());
 }
 
 #[test]
-fn risk_empty_state_file_falls_back() {
+fn risk_empty_state_file_is_corrupt() {
     let dir = tempdir().unwrap();
     fs::write(state_path(dir.path()), "").unwrap();
-    let loaded = load_state(dir.path());
-    assert!((loaded.settings.opacity - 0.92).abs() < 0.001);
+    let err = load_state(dir.path()).unwrap_err();
+    assert!(err.contains("corrupt"), "{err}");
 }
 
 #[test]
@@ -51,7 +57,7 @@ fn risk_partial_state_deserializes_with_defaults() {
         }"#,
     )
     .unwrap();
-    let loaded = load_state(dir.path());
+    let loaded = load_state(dir.path()).unwrap();
     assert!((loaded.settings.opacity - 0.5).abs() < 0.001);
     assert!(loaded.settings.claude.enabled);
     assert_eq!(loaded.settings.refresh_secs, 45);
@@ -82,7 +88,7 @@ fn risk_legacy_fields_ignored() {
         }"#,
     )
     .unwrap();
-    let loaded = load_state(dir.path());
+    let loaded = load_state(dir.path()).unwrap();
     assert!(loaded.settings.autostart);
     assert!((loaded.settings.opacity - 0.9).abs() < 0.001);
     assert_eq!(
@@ -97,7 +103,7 @@ fn risk_store_round_trip_clamps_opacity() {
     let mut state = default_state();
     state.settings.opacity = 0.05;
     save_state(dir.path(), &state).unwrap();
-    let loaded = load_state(dir.path());
+    let loaded = load_state(dir.path()).unwrap();
     assert!(loaded.settings.opacity >= 0.35);
 }
 
@@ -160,7 +166,7 @@ fn risk_persisted_state_version_round_trip() {
         settings: default_state().settings,
     };
     save_state(dir.path(), &state).unwrap();
-    let loaded = load_state(dir.path());
+    let loaded = load_state(dir.path()).unwrap();
     assert_eq!(loaded.version, 2);
 }
 

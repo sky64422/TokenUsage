@@ -6,7 +6,7 @@ pub mod domain;
 pub mod infrastructure;
 mod state;
 
-use infrastructure::store::{load_state, save_state};
+use infrastructure::store::{default_state, load_state, save_state};
 use infrastructure::updater;
 use infrastructure::window_ctl;
 use state::AppHandleState;
@@ -36,7 +36,13 @@ pub fn run() {
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
             std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
-            let persisted = load_state(&app_data_dir);
+            let persisted = match load_state(&app_data_dir) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("load_state: {e}");
+                    default_state()
+                }
+            };
             let _ = save_state(&app_data_dir, &persisted);
 
             let core = application::service::AppCore::new(persisted.clone(), app_data_dir);
