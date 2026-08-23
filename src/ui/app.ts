@@ -10,7 +10,7 @@ import {
   POLICY_MIN_W,
 } from "./content-size";
 import { renderHeader, setSettingsButtonActive } from "./header";
-import { applyPanelOpacity } from "./opacity";
+import { applyPanelOpacity, OPACITY_DEFAULT } from "./opacity";
 import { mountProviders } from "./providers";
 import { mountSettingsPanel } from "./settings-panel";
 import type {
@@ -38,7 +38,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let settingsOpen = false;
 
   const state = await invoke<PersistedState>("get_state");
-  const opacity = state.settings.opacity ?? 0.92;
+  const opacity = state.settings.opacity ?? OPACITY_DEFAULT;
 
   applyPanelOpacity(panel, opacity);
 
@@ -52,8 +52,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let appVersion = "";
   try {
     appVersion = await getVersion();
-  } catch {
-    /* packaged/dev metadata unavailable */
+  } catch (err) {
+    console.warn("getVersion failed", err);
   }
 
   const settings = mountSettingsPanel(settingsRoot, state.settings, {
@@ -74,8 +74,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         try {
           const st = await invoke<PersistedState>("get_state");
           settings.syncProviderEnabled?.(st.settings);
-        } catch {
-          /* ignore */
+        } catch (syncErr) {
+          console.error("resync settings after provider toggle failed", syncErr);
         }
         throw err;
       }

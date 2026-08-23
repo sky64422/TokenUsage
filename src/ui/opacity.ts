@@ -2,6 +2,10 @@
 export const OPACITY_MIN_PCT = 35;
 export const OPACITY_MAX_PCT = 100;
 export const OPACITY_STEP_PCT = 5;
+/** Mirrors Rust `OpacityPolicy::MIN`. */
+export const OPACITY_MIN = OPACITY_MIN_PCT / 100;
+/** Mirrors Rust `OpacityPolicy::DEFAULT`. */
+export const OPACITY_DEFAULT = 0.92;
 /** Intervals between min and max (35→40 … 95→100). */
 export const OPACITY_INTERVALS =
   (OPACITY_MAX_PCT - OPACITY_MIN_PCT) / OPACITY_STEP_PCT; // 13
@@ -35,7 +39,7 @@ export function meterFillPct(pct: number): number {
  * and labels don't stay fully solid while the panel goes transparent.
  */
 export function applyPanelOpacity(panel: HTMLElement, opacity: number): void {
-  const o = Math.min(1, Math.max(0.35, opacity));
+  const o = Math.min(1, Math.max(OPACITY_MIN, opacity));
   const fg = Math.min(1, Math.max(0.4, o * 0.94 + 0.04));
   const accent = Math.min(1, Math.max(0.36, o * 0.96 + 0.02));
   const chrome = Math.min(1, Math.max(0.28, o * 0.9 + 0.04));

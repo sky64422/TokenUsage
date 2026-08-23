@@ -4,7 +4,9 @@ import {
   meterFillPct,
   opacityStepIndex,
   opacityToPct,
+  OPACITY_DEFAULT,
   OPACITY_MAX_PCT,
+  OPACITY_MIN,
   OPACITY_MIN_PCT,
   OPACITY_STEP_PCT,
   pctToOpacity,
@@ -31,10 +33,10 @@ describe("snapOpacityPct", () => {
 
 describe("opacityToPct & pctToOpacity", () => {
   it("converts fraction (0.0-1.0) to snapped whole percent", () => {
-    expect(opacityToPct(0.92)).toBe(90);
+    expect(opacityToPct(OPACITY_DEFAULT)).toBe(90);
     expect(opacityToPct(0.95)).toBe(95);
     expect(opacityToPct(1.0)).toBe(100);
-    expect(opacityToPct(0.35)).toBe(35);
+    expect(opacityToPct(OPACITY_MIN)).toBe(OPACITY_MIN_PCT);
   });
 
   it("converts percent back to fraction", () => {
