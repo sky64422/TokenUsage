@@ -1,7 +1,7 @@
 # Release & in-app updates
 
-**Updated:** 2026-08-15  
-**Current public tag:** v0.1.33  
+**Updated:** 2026-08-27  
+**Current public tag:** v0.1.34  
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,7 +12,8 @@
 
 | Tag | Highlights |
 |-----|------------|
-| **v0.1.33** | Arrow-key window nudge (4px / Shift 16px) when focus is on the body |
+| **v0.1.34** | Grok: omitted weekly % at period refill shows 0% + reset, not a degraded hint |
+| v0.1.33 | Arrow-key window nudge (4px / Shift 16px) when focus is on the body |
 | v0.1.32 | Card row 1: period (`5h` / `Week` / `30D`) left of refill; row 2: bar + % only. Docs: quota APIs have no token ledger |
 | v0.1.31 | Internals: drop JSONL/limits APIs; parallel vendor fetch; non-blocking boot; short window labels; vitest for format helpers |
 | v0.1.30 | Settings: fixed 5s refresh + app version; DWM-matched corners; quiet opacity slider; right-aligned period labels |

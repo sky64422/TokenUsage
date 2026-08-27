@@ -1,6 +1,6 @@
 # Testing & coverage
 
-**Updated:** 2026-08-20 (v0.1.33)
+**Updated:** 2026-08-27 (v0.1.34)
 
 ## Snapshot
 
@@ -9,7 +9,7 @@
 | Unit | `src-tauri/src/**` `#[cfg(test)]` | quota parsers, snapshot finish, TTL cache / HTTP map |
 | Front | `src/ui/format.test.ts` | `formatTokens`, `formatWindowLabel`, `formatCountdown`, `formatTokenPair` |
 | Opacity | `src/ui/opacity.test.ts` | opacity snapping, conversions, meter calc, CSS var styling |
-| Grok | `quota/grok.rs` tests | weekly credits, legacy cents, **ignores productUsage breakdown** |
+| Grok | `quota/grok.rs` tests | weekly credits, legacy cents, **ignores productUsage**, omitted % + period → **0%** |
 | Risk | `src-tauri/tests/risk_scenarios.rs` | Corrupt JSON, AppCore visibility, legacy settings |
 | GUI | Manual `npm run tauri dev` / `run:exe` | Glass chrome, Quiet Luxury tracks, hotkey, updater, opacity floors |
 

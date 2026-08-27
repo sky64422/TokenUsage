@@ -82,9 +82,12 @@ pub fn parse_billing_json(raw: &str) -> Result<ProviderSnapshot, String> {
             }
         });
 
-        if let Some(raw_pct) = pct {
+        let has_period = cfg.current_period.is_some() || cfg.billing_period_end.is_some();
+        if pct.is_some() || has_period {
+            // Omitted percent at period start (vendor drops default 0) → 0%.
+            let raw_pct = pct.unwrap_or(0.0);
             let over = raw_pct > 100.0;
-            let used_percent = Some(raw_pct.clamp(0.0, 100.0));
+            let used_percent = raw_pct.clamp(0.0, 100.0);
             let (kind, label) = classify_period(cfg.current_period.as_ref());
             let resets_at = cfg
                 .current_period
@@ -94,11 +97,11 @@ pub fn parse_billing_json(raw: &str) -> Result<ProviderSnapshot, String> {
 
             windows.push(UsageWindow {
                 kind,
-                used: used_percent.unwrap_or(0.0),
+                used: used_percent,
                 limit: Some(100.0),
                 unit: UsageUnit::Percent,
                 resets_at,
-                used_percent,
+                used_percent: Some(used_percent),
                 label: Some(if over {
                     format!("{label} · over")
                 } else {
@@ -272,20 +275,44 @@ mod tests {
     }
 
     #[test]
-    fn unified_billing_without_percent_is_degraded_with_hint() {
-        // Live shape as of 2026-08-13: credits format omits creditUsagePercent.
+    fn unified_billing_omitted_percent_is_zero_when_period_present() {
+        // Period rollover: vendor omits creditUsagePercent when usage is 0.
         let raw = r#"{
           "config": {
             "currentPeriod": {
               "type": "USAGE_PERIOD_TYPE_WEEKLY",
-              "start": "2026-08-06T12:00:00Z",
-              "end": "2026-08-13T12:00:00Z"
+              "start": "2026-08-27T12:36:54.070008+00:00",
+              "end": "2026-09-03T12:36:54.070008+00:00"
             },
             "isUnifiedBillingUser": true,
             "prepaidBalance": {"val": 0},
             "onDemandCap": {"val": 0},
             "onDemandUsed": {"val": 0},
-            "billingPeriodEnd": "2026-08-13T12:00:00Z"
+            "billingPeriodEnd": "2026-09-03T12:36:54.070008+00:00"
+          }
+        }"#;
+        let snap = parse_billing_json(raw).unwrap();
+        assert_eq!(snap.status, SnapshotStatus::Ok);
+        assert_eq!(snap.source, DataSource::Vendor);
+        assert_eq!(snap.windows.len(), 1);
+        assert_eq!(snap.windows[0].kind, WindowKind::Weekly);
+        assert_eq!(snap.windows[0].label.as_deref(), Some("Week"));
+        assert!((snap.windows[0].used_percent.unwrap() - 0.0).abs() < 0.01);
+        assert!((snap.primary_used_percent.unwrap() - 0.0).abs() < 0.01);
+        assert!(snap
+            .primary_resets_at
+            .as_ref()
+            .unwrap()
+            .starts_with("2026-09-03"));
+        assert!(snap.message.is_none());
+    }
+
+    #[test]
+    fn unified_billing_without_percent_or_period_is_degraded_with_hint() {
+        let raw = r#"{
+          "config": {
+            "isUnifiedBillingUser": true,
+            "prepaidBalance": {"val": 0}
           }
         }"#;
         let snap = parse_billing_json(raw).unwrap();

@@ -1,7 +1,7 @@
 # TokenUsage Architecture
 
 **Stack:** Tauri 2 + Rust + TypeScript (Vite), glass floating widget modeled on EconomyWarRoom.  
-**Current ship:** v0.1.33 — release notes: [docs/release.md](./release.md), GitHub [v0.1.33](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.33).
+**Current ship:** v0.1.34 — release notes: [docs/release.md](./release.md), GitHub [v0.1.34](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.34).
 
 **Product / visual context:** [PRODUCT.md](../PRODUCT.md) (Operate mode), [DESIGN.md](../DESIGN.md) (tokens + contracts).
 
@@ -72,7 +72,9 @@ Plan strings are stored on `snapshot.message` when present; healthy cards do not
 #### Grok window mapping
 
 - **Shown:** one primary period window from `creditUsagePercent` (or legacy cents) + period end → typically **Week** (or Monthly/Daily if API says so).
-- **Ignored:** `productUsage` array (GrokBuild, GrokChat, …) — same credit pool detail; too noisy for a glance widget. Tests: `ignores_product_usage_breakdown` in `quota/grok.rs`.
+- **Period present, percent omitted:** treat as **0%** (vendor drops default 0 at weekly refill). Keep the Week/Month/Daily label and `resets_at`. Do **not** Degrade.
+- **Hint** `unified billing — vendor omitted weekly %` only when unified billing has **neither** percent **nor** `currentPeriod` / `billingPeriodEnd`.
+- **Ignored:** `productUsage` array (GrokBuild, GrokChat, …) — same credit pool detail; too noisy for a glance widget. Tests: `ignores_product_usage_breakdown` / `unified_billing_omitted_percent_is_zero_when_period_present` in `quota/grok.rs`.
 
 ### No local JSONL / tokscale
 
