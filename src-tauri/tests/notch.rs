@@ -82,6 +82,17 @@ fn transparent_corners_are_not_interactive_but_body_is() {
 }
 
 #[test]
+fn compact_single_row_detail_shrinks_below_100() {
+    let m = monitor(1.);
+    let l_single = calculate_layout(&m, &NotchPlacement::default(), 2, true, 78.).unwrap();
+    assert_eq!(l_single.detail.unwrap().height, 78.);
+
+    let l_double = calculate_layout(&m, &NotchPlacement::default(), 2, true, 130.).unwrap();
+    assert_eq!(l_double.detail.unwrap().height, 130.);
+    assert!(l_single.detail.unwrap().height < l_double.detail.unwrap().height);
+}
+
+#[test]
 fn old_settings_keep_preferences_and_gain_default_placement() {
     let mut value = serde_json::to_value(PersistedState::default()).unwrap();
     value["settings"].as_object_mut().unwrap().remove("notch");

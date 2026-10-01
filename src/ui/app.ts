@@ -123,16 +123,19 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   );
   settings.show();
 
+  let lastLayoutKey = "";
   function paintLayout(next: NotchLayout) {
+    const key = `${next.edge}:${next.scale}:${next.notch.x},${next.notch.y},${next.notch.width},${next.notch.height}:${next.window.x},${next.window.y},${next.window.width},${next.window.height}:${next.detail ? `${next.detail.x},${next.detail.y},${next.detail.width},${next.detail.height}` : "none"}`;
+    if (key === lastLayoutKey) return;
+    lastLayoutKey = key;
     layout = next;
     notch.layout(next);
-    shell.dataset.edge = next.edge;
+    if (shell.dataset.edge !== next.edge) shell.dataset.edge = next.edge;
     shell.style.setProperty(
       "--detail-radius",
       `${next.metrics.detail_radius}px`,
     );
     if (next.detail) position(detail, next.detail, next);
-    if (!detail.hidden) requestSurface();
   }
   function requestSurface() {
     const expanded = !dragging && (interaction.settings || interaction.provider !== null);

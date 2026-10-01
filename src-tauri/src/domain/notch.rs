@@ -10,6 +10,7 @@ pub const END_PADDING: f64 = 50.;
 pub const DETAIL_RADIUS: f64 = 16.;
 pub const DETAIL_WIDTH: f64 = 228.;
 pub const DETAIL_HEIGHT: f64 = 560.;
+pub const MIN_DETAIL_HEIGHT: f64 = 48.;
 pub const GAP: f64 = 8.;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -239,7 +240,7 @@ pub fn calculate_layout(
         let dw = (DETAIL_WIDTH * s)
             .ceil()
             .min(w.width - if edge.vertical() { depth + GAP * s } else { 0. });
-        let dh = (detail_height.clamp(100., DETAIL_HEIGHT) * s)
+        let dh = (detail_height.clamp(MIN_DETAIL_HEIGHT, DETAIL_HEIGHT) * s)
             .ceil()
             .min(w.height - if edge.vertical() { 0. } else { depth + GAP * s });
         if dw <= 0. || dh <= 0. {

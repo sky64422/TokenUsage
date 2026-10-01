@@ -13,6 +13,7 @@
   user-select: none;
   position: absolute;
   color: var(--foreground);
+  contain: layout style;
 }
 .notch-shape {
   position: absolute;
@@ -80,9 +81,12 @@
 }
 .ring-wrap img {
   position: absolute;
-  inset: 10px;
+  top: 10px;
+  left: 10px;
   width: 20px;
   height: 20px;
+  display: block;
+  pointer-events: none;
   filter: brightness(0) invert(1);
   opacity: max(0.65, var(--fg-opacity));
 }
@@ -166,12 +170,19 @@
 }
 .notch-detail {
   position: absolute;
+  width: 228px;
+  box-sizing: border-box;
   border-radius: var(--detail-radius);
   background: rgba(8, 8, 10, max(0.88, var(--panel-opacity)));
   border: 1px solid rgba(255, 255, 255, 0.09);
   padding: 16px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   animation: notch-reveal var(--notch-motion) ease-out;
+}
+.detail-body {
+  width: 100%;
+  box-sizing: border-box;
 }
 .notch-detail h2 {
   font-size: 15px;

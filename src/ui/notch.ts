@@ -32,7 +32,15 @@ export function mountNotch(
     cells.append(b);
     buttons.set(id, b);
   }
+  let lastShapeKey = "";
   function shape(layout: NotchLayout) {
+    const vertical = layout.edge === "left" || layout.edge === "right";
+    const length =
+      (vertical ? layout.notch.height : layout.notch.width) / layout.scale;
+    const shapeKey = `${layout.edge}:${length}:${layout.scale}`;
+    if (shapeKey === lastShapeKey) return;
+    lastShapeKey = shapeKey;
+
     const {
       depth: DEPTH,
       shoulder: SHOULDER,
@@ -41,9 +49,6 @@ export function mountNotch(
     root.style.setProperty("--notch-depth", `${layout.metrics.depth}px`);
     root.style.setProperty("--notch-cell", `${layout.metrics.cell}px`);
     root.style.setProperty("--notch-inset", `${layout.metrics.inset}px`);
-    const vertical = layout.edge === "left" || layout.edge === "right";
-    const length =
-      (vertical ? layout.notch.height : layout.notch.width) / layout.scale;
     const svg = root.querySelector("svg")!;
     svg.setAttribute(
       "viewBox",
@@ -90,7 +95,7 @@ export function mountNotch(
       }
     },
     layout(l: NotchLayout) {
-      root.dataset.edge = l.edge;
+      if (root.dataset.edge !== l.edge) root.dataset.edge = l.edge;
       position(root, l.notch, l);
       shape(l);
     },
@@ -107,10 +112,12 @@ export function mountNotch(
   };
 }
 export function position(el: HTMLElement, r: Rect, l: NotchLayout) {
-  Object.assign(el.style, {
-    left: `${(r.x - l.window.x) / l.scale}px`,
-    top: `${(r.y - l.window.y) / l.scale}px`,
-    width: `${r.width / l.scale}px`,
-    height: `${r.height / l.scale}px`,
-  });
+  const left = `${(r.x - l.window.x) / l.scale}px`;
+  const top = `${(r.y - l.window.y) / l.scale}px`;
+  const width = `${r.width / l.scale}px`;
+  const height = `${r.height / l.scale}px`;
+  if (el.style.left !== left) el.style.left = left;
+  if (el.style.top !== top) el.style.top = top;
+  if (el.style.width !== width) el.style.width = width;
+  if (el.style.height !== height) el.style.height = height;
 }
