@@ -130,16 +130,16 @@ fn push_window(out: &mut Vec<UsageWindow>, kind: WindowKind, label: &str, obj: O
         return;
     };
     let over = pct > 100.0;
-    let used_percent = Some(pct.clamp(0.0, 100.0));
+    let clamped_pct = pct.clamp(0.0, 100.0);
     let resets_at = extract_resets_at(obj);
 
     out.push(UsageWindow {
         kind,
-        used: used_percent.unwrap_or(0.0),
+        used: clamped_pct,
         limit: Some(100.0),
         unit: UsageUnit::Percent,
         resets_at,
-        used_percent,
+        used_percent: Some(clamped_pct),
         label: Some(if over {
             format!("{label} · over")
         } else {

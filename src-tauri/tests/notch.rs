@@ -53,8 +53,10 @@ fn edges_anchor_and_detail_stays_inside_work_area() {
 
 #[test]
 fn bottom_overlaps_taskbar_and_invalid_offset_errors() {
-    let mut p = NotchPlacement::default();
-    p.edge = NotchEdge::Bottom;
+    let mut p = NotchPlacement {
+        edge: NotchEdge::Bottom,
+        ..Default::default()
+    };
     assert_eq!(
         calculate_layout(&monitor(1.), &p, 3, false, 360.)
             .unwrap()
@@ -194,23 +196,23 @@ fn drag_threshold_corner_hysteresis_and_all_edges() {
         let l = calculate_layout(&m, &NotchPlacement::default(), 2, false, 200.).unwrap();
         let start = (l.notch.x + 36. * scale, l.notch.y + l.notch.height / 2.);
         let mut d = NotchDrag::new(&l, start.0, start.1, 2);
-        d.update(&[m.clone()], start.0 - 4. * scale, start.1)
+        d.update(std::slice::from_ref(&m), start.0 - 4. * scale, start.1)
             .unwrap();
         assert!(!d.active);
-        d.update(&[m.clone()], start.0 - 6. * scale, start.1)
+        d.update(std::slice::from_ref(&m), start.0 - 6. * scale, start.1)
             .unwrap();
         assert!(d.active, "perpendicular motion must start drag");
-        d.update(&[m.clone()], 2559., 1.).unwrap();
+        d.update(std::slice::from_ref(&m), 2559., 1.).unwrap();
         assert_eq!(d.placement.edge, NotchEdge::Right);
-        d.update(&[m.clone()], 2500., 1.).unwrap();
+        d.update(std::slice::from_ref(&m), 2500., 1.).unwrap();
         assert_eq!(d.placement.edge, NotchEdge::Top);
-        d.update(&[m.clone()], 2559., 1.).unwrap();
+        d.update(std::slice::from_ref(&m), 2559., 1.).unwrap();
         assert_eq!(d.placement.edge, NotchEdge::Top, "ties retain edge");
-        d.update(&[m.clone()], 1., 200.).unwrap();
+        d.update(std::slice::from_ref(&m), 1., 200.).unwrap();
         assert_eq!(d.placement.edge, NotchEdge::Left);
-        d.update(&[m.clone()], 500., 1439.).unwrap();
+        d.update(std::slice::from_ref(&m), 500., 1439.).unwrap();
         assert_eq!(d.placement.edge, NotchEdge::Bottom);
-        d.update(&[m.clone()], 2559., 600.).unwrap();
+        d.update(std::slice::from_ref(&m), 2559., 600.).unwrap();
         assert_eq!(d.placement.edge, NotchEdge::Right);
         d.update(&[m], 1200., 600.).unwrap();
         assert_eq!(d.placement.edge, NotchEdge::Right, "interior retains edge");
@@ -223,7 +225,7 @@ fn drag_allows_bottom_taskbar_and_requires_monitor_inset() {
     m.work.height -= 48.;
     let l = calculate_layout(&m, &NotchPlacement::default(), 2, false, 200.).unwrap();
     let mut d = NotchDrag::new(&l, 2524., 600., 2);
-    d.update(&[m.clone()], 1200., 1439.).unwrap();
+    d.update(std::slice::from_ref(&m), 1200., 1439.).unwrap();
     assert_eq!(d.placement.edge, NotchEdge::Bottom);
     let mut other = drag_monitor(1.5);
     other.name = "other".into();

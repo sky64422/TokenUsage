@@ -137,18 +137,18 @@ fn window_from_rate_window(w: Option<&RateWindow>, fallback_label: &str) -> Opti
     let w = w?;
     let raw_pct = w.used_percent?;
     let over = raw_pct > 100.0;
-    let used_percent = Some(raw_pct.clamp(0.0, 100.0));
+    let clamped_pct = raw_pct.clamp(0.0, 100.0);
     let kind = classify_window_seconds(w.limit_window_seconds);
     let label = kind_label(kind, w.limit_window_seconds, fallback_label);
     let resets_at = parse_reset_at(w.reset_at.as_ref(), w.reset_after_seconds);
 
     Some(UsageWindow {
         kind,
-        used: used_percent.unwrap_or(0.0),
+        used: clamped_pct,
         limit: Some(100.0),
         unit: UsageUnit::Percent,
         resets_at,
-        used_percent,
+        used_percent: Some(clamped_pct),
         label: Some(if over {
             format!("{label} · over")
         } else {
@@ -161,7 +161,7 @@ fn push_additional(windows: &mut Vec<UsageWindow>, extra: &Value) {
     match extra {
         Value::Array(arr) => {
             for item in arr {
-                if let Some(rw) = serde_json::from_value::<RateWindow>(item.clone()).ok() {
+                if let Ok(rw) = serde_json::from_value::<RateWindow>(item.clone()) {
                     if let Some(w) = window_from_rate_window(Some(&rw), "extra") {
                         windows.push(w);
                     }

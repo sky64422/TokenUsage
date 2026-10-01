@@ -422,8 +422,7 @@ impl NotchDrag {
                     monitor_hint: Some(m.name.clone()),
                     offset: 0.,
                 };
-                d >= 0.
-                    && d <= EDGE_ENTRY
+                (0.0..=EDGE_ENTRY).contains(&d)
                     && calculate_layout(m, &p, self.count, false, 100.).is_ok_and(|l| l.edge == *e)
             })
             .min_by(|a, b| edge_distance(m, *a, x, y).total_cmp(&edge_distance(m, *b, x, y)))
