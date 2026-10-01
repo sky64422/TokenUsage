@@ -2,9 +2,9 @@
 
 Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent **quota usage vs reset times** — personal CLI OAuth, with **reset-time–first** display. Design language follows [EconomyWarRoom](../EconomyWarRoom) (glass, always-on-top, hotkey).
 
-**Current release:** [v0.1.34](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.34)
+**Current release:** [v0.2.0](https://github.com/sky64422/TokenUsage/releases/tag/v0.2.0)
 
-## Features (v0.1.34)
+## Features (v0.2.0)
 
 - Always-on-top **dark** glass panel; **opacity slider** (neutral chrome) tints panel, text, and bar colors together (readable floors at low opacity)
 - Arrow keys nudge the window when focus is on the body (**4px**; **Shift+arrow** **16px**; **Ctrl+arrow** **1px**; not while Settings or the opacity slider is focused)
