@@ -61,6 +61,6 @@ with sync_playwright() as p:
   if outside!=inside:break
  assert outside!=inside,'transparent corner intercepted input'
  page.locator('.notch').dispatch_event('contextmenu')
- expect(page.locator('#edge')).to_be_visible()
+ expect(page.locator('.detail-settings')).to_be_visible()
  page.screenshot(path='tmp/notch-settings.png',omit_background=True)
  print(json.dumps(dict(errors=errors,hover_focus_preserved=before==after,transparent_target_changed=inside!=outside,actual_bottom=l['edge'])))

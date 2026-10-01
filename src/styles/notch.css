@@ -194,34 +194,6 @@
 .notch-detail .settings-end {
   margin-top: 12px;
 }
-.placement-controls {
-  display: grid;
-  grid-template-columns: 70px 1fr;
-  gap: 10px;
-  align-items: center;
-  padding: 12px 0;
-  margin-bottom: 10px;
-  border-block: 1px solid var(--border-soft);
-}
-.placement-controls label {
-  font-size: 11px;
-  color: var(--muted-foreground);
-}
-.placement-controls select,
-.placement-controls button {
-  background: #202023;
-  color: var(--foreground);
-  border: 1px solid var(--border);
-  padding: 6px 8px;
-  border-radius: 6px;
-  min-width: 0;
-  font: inherit;
-}
-.placement-note {
-  font-size: 10px;
-  color: var(--muted-foreground);
-  margin: 0 0 12px;
-}
 .notch-error {
   font-size: 11px;
   color: var(--critical);
