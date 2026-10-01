@@ -218,7 +218,9 @@
   padding: 0;
   margin-bottom: 12px;
 }
-.notch-detail .header #btn-settings {
+.notch-detail .header #btn-settings,
+.notch-detail .header #btn-update,
+.notch-detail .header #btn-hide {
   display: none;
 }
 .notch-detail .settings-end {

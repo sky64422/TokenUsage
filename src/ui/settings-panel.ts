@@ -1,5 +1,23 @@
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type { AppSettings, ProviderId } from "./types";
 import { PROVIDER_IDS } from "./types";
+
+export type UpdatePhase = "idle" | "downloading" | "ready";
+
+export interface UpdateInfo {
+  current_version: string;
+  version: string;
+}
+
+export interface DownloadProgress {
+  version: string;
+  chunk_len: number;
+  content_length: number | null;
+  received: number;
+}
+
+const ICON_DOWNLOAD = `<svg class="icon-svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M8 2.5v7.5M5 7.25 8 10.25 11 7.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 12.5h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
 
 export function mountSettingsPanel(
   root: HTMLElement,
@@ -17,18 +35,21 @@ export function mountSettingsPanel(
   hide: () => void;
   isVisible: () => boolean;
   syncProviderEnabled: (st: AppSettings) => void;
+  destroy: () => void;
 } {
   let visible = false;
-  const versionLabel = appVersion ? `v${appVersion.replace(/^v/i, "")}` : "";
+  const versionStr = appVersion ? `v${appVersion.replace(/^v/i, "")}` : "";
+
+  let updatePhase: UpdatePhase = "idle";
+  let updateVersion: string | null = null;
+  let updateHint = "";
+  let updateBusy = false;
 
   root.innerHTML = `
     <div class="settings" id="settings-sheet">
       <div class="settings-section">
         <label class="settings-toggle" for="autostart">
-          <span class="settings-toggle-text">
-            <span class="settings-toggle-title">Launch at login</span>
-            <span class="settings-toggle-hint">Start with Windows</span>
-          </span>
+          <span class="settings-toggle-title">Start with Windows</span>
           <input type="checkbox" id="autostart" class="settings-switch-input" />
           <span class="settings-switch" aria-hidden="true"></span>
         </label>
@@ -36,10 +57,7 @@ export function mountSettingsPanel(
 
       <div class="settings-section">
         <label class="settings-toggle" for="hover-detail">
-          <span class="settings-toggle-text">
-            <span class="settings-toggle-title">Open on hover</span>
-            <span class="settings-toggle-hint">Hover to preview details</span>
-          </span>
+          <span class="settings-toggle-title">Open on hover</span>
           <input type="checkbox" id="hover-detail" class="settings-switch-input" />
           <span class="settings-switch" aria-hidden="true"></span>
         </label>
@@ -55,12 +73,18 @@ export function mountSettingsPanel(
       </div>
 
       <div class="settings-end">
-        <span class="settings-meta">${settings.hotkey} · ↻ update</span>
+        <div class="settings-update">
+          <span class="settings-update-title">Version</span>
+          <div class="settings-update-copy">
+            <span class="settings-meta">${versionStr || "v0.0.0"}</span>
+            <span class="settings-update-status" id="update-status"></span>
+            <button type="button" class="icon-btn settings-update-btn" id="btn-check-update" aria-label="Check for updates" title="Check for updates">${ICON_DOWNLOAD}</button>
+          </div>
+        </div>
         <div class="settings-action-row">
           <button type="button" class="settings-debug" id="btn-diag" title="Copy diagnostic log for troubleshooting">Copy Log</button>
           <button type="button" class="settings-quit" id="btn-quit">Quit</button>
         </div>
-        ${versionLabel ? `<span class="settings-version">${versionLabel}</span>` : ""}
       </div>
     </div>
   `;
@@ -68,6 +92,7 @@ export function mountSettingsPanel(
   const sheet = root.querySelector("#settings-sheet") as HTMLElement;
   const autostart = root.querySelector("#autostart") as HTMLInputElement;
   const hoverDetail = root.querySelector("#hover-detail") as HTMLInputElement;
+  const updateBtn = root.querySelector("#btn-check-update") as HTMLButtonElement;
 
   autostart.checked = settings.autostart;
   hoverDetail.checked = Boolean(settings.hover_detail);
@@ -78,6 +103,160 @@ export function mountSettingsPanel(
   hoverDetail.addEventListener("change", () => {
     handlers.onHoverDetail(hoverDetail.checked);
   });
+
+  function paintUpdateUi(): void {
+    const btn = root.querySelector<HTMLButtonElement>("#btn-check-update");
+    const status = root.querySelector<HTMLElement>("#update-status");
+    if (!btn || !status) return;
+
+    btn.disabled = updateBusy;
+    btn.classList.toggle("busy", updateBusy);
+    btn.classList.toggle("update-available", updatePhase !== "idle");
+    btn.classList.toggle("update-downloading", updatePhase === "downloading");
+    btn.classList.toggle("update-ready", updatePhase === "ready");
+
+    let title = "Check for updates";
+    if (updatePhase === "ready" && updateVersion) {
+      title = `Restart to install ${updateVersion}`;
+      status.textContent = updateHint || `Update ${updateVersion} ready`;
+    } else if (updatePhase === "downloading" && updateVersion) {
+      title = updateHint || `Downloading ${updateVersion}…`;
+      status.textContent = title;
+    } else if (updateBusy) {
+      title = "Checking for updates…";
+      status.textContent = updateHint || title;
+    } else {
+      status.textContent = updateHint;
+    }
+    btn.setAttribute("title", title);
+    btn.setAttribute("aria-label", title);
+  }
+
+  async function runUpdateAction(btn: HTMLButtonElement): Promise<void> {
+    const phaseAtClick = updatePhase;
+    const version = updateVersion;
+
+    if (phaseAtClick === "downloading") {
+      updateHint = "Still downloading…";
+      paintUpdateUi();
+      return;
+    }
+
+    updateBusy = true;
+    if (phaseAtClick === "ready") {
+      updateHint = version ? `Restarting to install ${version}…` : "Restarting…";
+    } else {
+      updateHint = "Checking…";
+    }
+    paintUpdateUi();
+
+    try {
+      const hasUpdate = await invoke<boolean>("check_for_updates");
+      if (hasUpdate) {
+        updateBusy = false;
+        if (updatePhase === "idle") updatePhase = "downloading";
+        updateHint = "Update found — downloading…";
+        paintUpdateUi();
+        return;
+      }
+      updatePhase = "idle";
+      updateVersion = null;
+      updateBusy = false;
+      updateHint = "Up to date";
+      paintUpdateUi();
+      window.setTimeout(() => {
+        if (updatePhase !== "idle") return;
+        updateHint = "";
+        paintUpdateUi();
+      }, 2500);
+    } catch (err) {
+      console.error("check_for_updates failed", err);
+      updateBusy = false;
+      updateHint = formatUpdateError(err).slice(0, 120);
+      if (phaseAtClick === "ready" && version) {
+        updatePhase = "ready";
+        updateVersion = version;
+      }
+      paintUpdateUi();
+      window.setTimeout(() => {
+        if (!btn.isConnected) return;
+        updateHint = "";
+        paintUpdateUi();
+      }, 4000);
+    }
+  }
+
+  function formatUpdateError(err: unknown): string {
+    if (typeof err === "string") return err;
+    if (err && typeof err === "object" && "message" in err) {
+      return String((err as { message: unknown }).message);
+    }
+    return "Update check failed";
+  }
+
+  updateBtn.addEventListener("click", () => {
+    void runUpdateAction(updateBtn);
+  });
+  paintUpdateUi();
+
+  const unlisteners: Array<() => void> = [];
+  void listen<UpdateInfo>("update-available", (ev) => {
+    if (!ev.payload?.version) return;
+    updatePhase = "downloading";
+    updateVersion = ev.payload.version;
+    updateBusy = false;
+    updateHint = `Downloading ${ev.payload.version}…`;
+    paintUpdateUi();
+  }).then((u) => unlisteners.push(u));
+
+  void listen<DownloadProgress>("update-download-progress", (ev) => {
+    const p = ev.payload;
+    if (!p?.version || updatePhase === "ready") return;
+    updatePhase = "downloading";
+    updateVersion = p.version;
+    updateBusy = false;
+    if (p.content_length && p.content_length > 0) {
+      const pct = Math.min(99, Math.round((p.received / p.content_length) * 100));
+      updateHint = `${p.version}… ${pct}%`;
+    } else {
+      updateHint = `Downloading ${p.version}…`;
+    }
+    paintUpdateUi();
+  }).then((u) => unlisteners.push(u));
+
+  void listen<UpdateInfo>("update-ready", (ev) => {
+    if (!ev.payload?.version) return;
+    updatePhase = "ready";
+    updateVersion = ev.payload.version;
+    updateBusy = false;
+    updateHint = `${ev.payload.version} ready`;
+    paintUpdateUi();
+  }).then((u) => unlisteners.push(u));
+
+  void listen("update-not-available", () => {
+    if (updatePhase === "idle") return;
+    updatePhase = "idle";
+    updateVersion = null;
+    updateBusy = false;
+    paintUpdateUi();
+  }).then((u) => unlisteners.push(u));
+
+  void listen<string>("update-failed", (ev) => {
+    const msg = typeof ev.payload === "string" ? ev.payload : "Update failed";
+    updateBusy = false;
+    if (updatePhase === "ready") {
+      paintUpdateUi();
+      return;
+    }
+    updatePhase = "idle";
+    updateHint = msg.slice(0, 120);
+    paintUpdateUi();
+    window.setTimeout(() => {
+      if (updatePhase !== "idle") return;
+      updateHint = "";
+      paintUpdateUi();
+    }, 4000);
+  }).then((u) => unlisteners.push(u));
 
   function providerBtn(id: ProviderId): HTMLButtonElement | null {
     return root.querySelector<HTMLButtonElement>(`[data-provider="${id}"]`);
@@ -170,6 +349,9 @@ export function mountSettingsPanel(
         btn.setAttribute("aria-pressed", on ? "true" : "false");
       });
       syncProviderLocks();
+    },
+    destroy() {
+      for (const u of unlisteners) u();
     },
   };
 }
