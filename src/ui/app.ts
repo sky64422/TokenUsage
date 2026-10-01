@@ -64,11 +64,17 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   });
   const notch = mountNotch(rail, {
     hover: (id) => {
-      if (dragging) return;
+      if (dragging || !persisted.settings.hover_detail) return;
       closeDelay.cancel();
       dispatch({ type: "hover", id });
     },
-    pin: (id) => dispatch({ type: "pin", id }),
+    pin: (id) => {
+      if (interaction.provider === id && interaction.pinned) {
+        dispatch({ type: "reset" });
+      } else {
+        dispatch({ type: "pin", id });
+      }
+    },
   });
   const providers = mountProviders(
     root.querySelector<HTMLElement>(".quota-root")!,
@@ -85,6 +91,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     {
       onAutostart: (v) => {
         void invoke("set_autostart", { enabled: v }).catch(fail);
+      },
+      onHoverDetail: (v) => {
+        persisted.settings.hover_detail = v;
+        void invoke("set_hover_detail", { enabled: v }).catch(fail);
       },
       onProviderEnabled: async (provider, isEnabled) => {
         try {
@@ -184,7 +194,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           : "";
       status.hidden = !status.textContent;
       root.querySelector(".detail-hint")!.textContent = interaction.pinned
-        ? "Kept open · click ring or press Esc to release"
+        ? (persisted.settings.hover_detail
+            ? "Kept open · click ring or press Esc to release"
+            : "Click ring or press Esc to close")
         : "Click ring to keep open";
     }
     requestSurface();

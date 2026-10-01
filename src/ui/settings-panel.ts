@@ -6,6 +6,7 @@ export function mountSettingsPanel(
   settings: AppSettings,
   handlers: {
     onAutostart: (v: boolean) => void;
+    onHoverDetail: (v: boolean) => void;
     onProviderEnabled: (id: ProviderId, enabled: boolean) => void | Promise<void>;
     onDiagnostics: () => void | Promise<void>;
     onQuit: () => void;
@@ -34,6 +35,17 @@ export function mountSettingsPanel(
       </div>
 
       <div class="settings-section">
+        <label class="settings-toggle" for="hover-detail">
+          <span class="settings-toggle-text">
+            <span class="settings-toggle-title">Open on hover</span>
+            <span class="settings-toggle-hint">Hover to preview details</span>
+          </span>
+          <input type="checkbox" id="hover-detail" class="settings-switch-input" />
+          <span class="settings-switch" aria-hidden="true"></span>
+        </label>
+      </div>
+
+      <div class="settings-section">
         <div class="settings-label">Providers</div>
         <div class="provider-chip-row" role="group" aria-label="Providers">
           ${providerChip("claude", "Claude", settings.claude.enabled !== false)}
@@ -55,11 +67,16 @@ export function mountSettingsPanel(
 
   const sheet = root.querySelector("#settings-sheet") as HTMLElement;
   const autostart = root.querySelector("#autostart") as HTMLInputElement;
+  const hoverDetail = root.querySelector("#hover-detail") as HTMLInputElement;
 
   autostart.checked = settings.autostart;
+  hoverDetail.checked = Boolean(settings.hover_detail);
 
   autostart.addEventListener("change", () => {
     handlers.onAutostart(autostart.checked);
+  });
+  hoverDetail.addEventListener("change", () => {
+    handlers.onHoverDetail(hoverDetail.checked);
   });
 
   function providerBtn(id: ProviderId): HTMLButtonElement | null {

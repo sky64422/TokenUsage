@@ -117,6 +117,14 @@ pub fn set_autostart(
 }
 
 #[tauri::command]
+pub fn set_hover_detail(
+    state: State<'_, AppHandleState>,
+    enabled: bool,
+) -> Result<(), String> {
+    state.core.set_hover_detail(enabled)
+}
+
+#[tauri::command]
 pub async fn set_provider_enabled(
     app: AppHandle,
     state: State<'_, AppHandleState>,

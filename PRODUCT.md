@@ -6,7 +6,7 @@
 
 ## Approved notch interaction (2026-09-30)
 
-Default right-centred notch; left/right vertical and top/bottom horizontal. Hover or keyboard focus opens quota details inward; click pins a provider and Escape releases it. Right-click the notch for settings; drag anywhere on the notch to move along an edge or dock at another screen edge/display. Escape cancels a drag; arrow keys do not reposition the widget. Quota polling remains 5 seconds. Bottom docking overlays the taskbar; other taskbar-blocked edges fall back visibly.
+Default right-centred notch; left/right vertical and top/bottom horizontal. Click on a model icon opens quota details inward (click again or press Escape to close); hover preview is an option in settings (default off). Right-click the notch for settings; drag anywhere on the notch to move along an edge or dock at another screen edge/display. Escape cancels a drag; arrow keys do not reposition the widget. Quota polling remains 5 seconds. Bottom docking overlays the taskbar; other taskbar-blocked edges fall back visibly.
 
 ## Users
 

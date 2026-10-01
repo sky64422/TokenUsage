@@ -157,6 +157,12 @@ impl AppCore {
         })
     }
 
+    pub fn set_hover_detail(&self, enabled: bool) -> Result<(), String> {
+        self.mutate_settings(|s| {
+            s.hover_detail = enabled;
+        })
+    }
+
     pub fn set_notch_placement(
         &self,
         placement: crate::domain::notch::NotchPlacement,

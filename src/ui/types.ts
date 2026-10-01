@@ -61,6 +61,7 @@ export interface AppSettings {
   window: WindowGeometry;
   hotkey: string;
   autostart: boolean;
+  hover_detail: boolean;
   refresh_secs: number;
   claude: ProviderConfig;
   codex: ProviderConfig;
