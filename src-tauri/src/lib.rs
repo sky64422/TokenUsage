@@ -95,6 +95,8 @@ pub fn run() {
             commands::get_notch_monitors,
             commands::set_notch_placement,
             commands::preview_notch_placement,
+            commands::begin_notch_drag,
+            commands::finish_notch_drag,
             commands::set_notch_surface,
             commands::get_snapshots,
             commands::refresh_now,

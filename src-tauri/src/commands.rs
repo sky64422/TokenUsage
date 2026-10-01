@@ -35,6 +35,15 @@ pub fn preview_notch_placement(
 }
 
 #[tauri::command]
+pub fn begin_notch_drag(app: AppHandle, id: u64) -> Result<(), String> {
+    crate::infrastructure::notch_window::begin_drag(&app, id)
+}
+#[tauri::command]
+pub fn finish_notch_drag(app: AppHandle, id: u64, cancel: bool) -> Result<(), String> {
+    crate::infrastructure::notch_window::finish_drag(&app, id, cancel)
+}
+
+#[tauri::command]
 pub fn set_notch_surface(
     app: AppHandle,
     revision: u64,

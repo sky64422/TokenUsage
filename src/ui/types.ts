@@ -87,6 +87,7 @@ export interface NotchLayout {
     inner_radius: number;
     inset: number;
     detail_radius: number;
+    drag_threshold: number;
   };
   edge: NotchEdge;
   notch: Rect;

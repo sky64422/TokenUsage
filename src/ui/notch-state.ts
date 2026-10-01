@@ -1,29 +1,5 @@
 import { clampPct, formatPct, formatWindowLabel, levelClass } from "./format";
-import type { ProviderId, ProviderSnapshot, NotchEdge } from "./types";
-
-const MOVE_STEP = 0.01;
-const LARGE_MOVE_MULTIPLIER = 5;
-export function nudgeOffset(
-  edge: NotchEdge,
-  offset: number,
-  key: string,
-  shift: boolean,
-): number {
-  const vertical = edge === "left" || edge === "right";
-  const sign =
-    key === (vertical ? "ArrowUp" : "ArrowLeft")
-      ? -1
-      : key === (vertical ? "ArrowDown" : "ArrowRight")
-        ? 1
-        : 0;
-  return Math.max(
-    0,
-    Math.min(
-      1,
-      offset + sign * MOVE_STEP * (shift ? LARGE_MOVE_MULTIPLIER : 1),
-    ),
-  );
-}
+import type { ProviderId, ProviderSnapshot } from "./types";
 
 export const CLOSE_DELAY_MS = 180;
 export interface NotchState {

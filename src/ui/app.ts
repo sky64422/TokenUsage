@@ -11,7 +11,6 @@ import {
   createCloseDelay,
   initialNotchState,
   reduceNotchState,
-  nudgeOffset,
 } from "./notch-state";
 import type { NotchEvent } from "./notch-state";
 import { PROVIDER_IDS } from "./types";
@@ -20,15 +19,12 @@ import type {
   ProviderSnapshot,
   NotchLayout,
   NotchPlacement,
-  MonitorArea,
   DiagnosticsSnapshot,
-  NotchEdge,
 } from "./types";
 
-const DRAG_THRESHOLD = 5; // CSS pixels along the attached edge.
 const SURFACE_PADDING = 34; // 16px padding and 1px border on both sides.
 export async function mountApp(root: HTMLElement): Promise<void> {
-  root.innerHTML = `<div class="notch-shell"><nav class="notch" aria-label="AI usage"></nav><section class="notch-detail" aria-label="Usage detail" hidden><div class="detail-body"><div class="detail-heading"><h2>Usage</h2><button class="icon-btn detail-close" aria-label="Close detail">×</button></div><div class="detail-quota"><div class="quota-root"></div><p class="detail-state"></p><small class="detail-hint">Click a ring to keep open</small></div><div class="detail-settings" hidden><div class="header-root"></div><div class="placement-controls"><label for="edge">Edge</label><select id="edge"><option value="right">Right</option><option value="left">Left</option><option value="top">Top</option><option value="bottom">Bottom</option></select><label for="monitor">Display</label><select id="monitor"></select><span></span><button id="recentre">Recentre</button></div><p class="placement-note"></p><div class="settings-root"></div></div><p class="notch-error" role="status" hidden></p></div></section></div>`;
+  root.innerHTML = `<div class="notch-shell"><nav class="notch" aria-label="AI usage"></nav><section class="notch-detail" aria-label="Usage detail" hidden><div class="detail-body"><div class="detail-heading"><h2>Usage</h2><button class="icon-btn detail-close" aria-label="Close detail">×</button></div><div class="detail-quota"><div class="quota-root"></div><p class="detail-state"></p><small class="detail-hint">Click a ring to keep open</small></div><div class="detail-settings" hidden><div class="header-root"></div><div class="settings-root"></div></div><p class="notch-error" role="status" hidden></p></div></section></div>`;
   const shell = root.querySelector<HTMLElement>(".notch-shell")!;
   const rail = root.querySelector<HTMLElement>(".notch")!;
   const detail = root.querySelector<HTMLElement>(".notch-detail")!;
@@ -38,23 +34,22 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   const errorEl = root.querySelector<HTMLElement>(".notch-error")!;
   const heading = root.querySelector("h2")!;
   let persisted = await invoke<PersistedState>("get_state");
-  let placement = persisted.settings.notch;
   let snaps: ProviderSnapshot[] = [];
   let interaction = initialNotchState();
   let layout: NotchLayout | undefined;
   let revision = Date.now();
   let lastSurface = "";
   let surfaceChain: Promise<void> = Promise.resolve();
-  let placementChain: Promise<void> = Promise.resolve();
   let lastQuota = "";
   let dragging = false;
   let pressedPointer: number | null = null;
+  let capturedPointer: { element: Element; id: number } | null = null;
   let suppressClick = false;
-  let dragStart = 0,
-    dragOffset = 0,
-    dragSpan = 1;
-  let pendingDrag: NotchPlacement | null = null;
-  let previewRunning = false;
+  let dragId: number | null = null;
+  let nextDragId = Date.now();
+  let dragChain: Promise<void> = Promise.resolve();
+  let beforeDrag = initialNotchState();
+  let localStart = { x: 0, y: 0 };
   const win = getCurrentWindow();
   const enabled = () =>
     PROVIDER_IDS.filter((id) => persisted.settings[id].enabled);
@@ -64,7 +59,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     errorEl.hidden = false;
   };
   const closeDelay = createCloseDelay(() => {
-    if (!document.activeElement?.matches(":focus-visible"))
+    if (dragId === null && !document.activeElement?.matches(":focus-visible"))
       dispatch({ type: "leave" });
   });
   const notch = mountNotch(rail, {
@@ -131,55 +126,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   header
     .querySelector("[data-tauri-drag-region]")
     ?.removeAttribute("data-tauri-drag-region");
-  const edgeSelect = root.querySelector<HTMLSelectElement>("#edge")!;
-  const monitorSelect = root.querySelector<HTMLSelectElement>("#monitor")!;
-  let areas: MonitorArea[] = await invoke("get_notch_monitors");
-  function fillMonitors() {
-    monitorSelect.replaceChildren(
-      ...areas.map((m, i) => {
-        const o = new Option(
-          `Display ${i + 1} · ${m.bounds.width} × ${m.bounds.height}`,
-          m.name,
-        );
-        return o;
-      }),
-    );
-    monitorSelect.value =
-      layout?.monitor ?? placement.monitor_hint ?? areas[0]?.name ?? "";
-  }
-  fillMonitors();
-  edgeSelect.value = placement.edge;
-  async function savePlacement(next: NotchPlacement) {
-    placement = next;
-    placementChain = placementChain
-      .then(async () => {
-        paintLayout(
-          await invoke<NotchLayout>("set_notch_placement", { placement: next }),
-        );
-        errorEl.hidden = true;
-      })
-      .catch(async (e) => {
-        fail(e);
-        try {
-          const restored = await invoke<PersistedState>("get_state");
-          placement = restored.settings.notch;
-          edgeSelect.value = placement.edge;
-          fillMonitors();
-        } catch (syncError) {
-          fail(syncError);
-        }
-      });
-    await placementChain;
-  }
-  edgeSelect.addEventListener("change", () => {
-    void savePlacement({ ...placement, edge: edgeSelect.value as NotchEdge });
-  });
-  monitorSelect.addEventListener("change", () => {
-    void savePlacement({ ...placement, monitor_hint: monitorSelect.value });
-  });
-  root.querySelector("#recentre")!.addEventListener("click", () => {
-    void savePlacement({ ...placement, offset: 0.5 });
-  });
 
   function paintLayout(next: NotchLayout) {
     layout = next;
@@ -190,15 +136,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       `${next.metrics.detail_radius}px`,
     );
     if (next.detail) position(detail, next.detail, next);
-    root.querySelector(".placement-note")!.textContent =
-      next.edge !== placement.edge
-        ? `Taskbar occupies ${placement.edge}; using ${next.edge}.`
-        : `Attached to ${next.edge} edge`;
-    monitorSelect.value = next.monitor;
     if (!detail.hidden) requestSurface();
   }
   function requestSurface() {
-    const expanded = interaction.settings || interaction.provider !== null;
+    const expanded = !dragging && (interaction.settings || interaction.provider !== null);
     const height = Math.ceil(
       body.getBoundingClientRect().height + SURFACE_PADDING,
     );
@@ -222,7 +163,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   }
   function render() {
     notch.select(interaction.provider, interaction.pinned);
-    detail.hidden = !interaction.settings && !interaction.provider;
+    detail.hidden = dragging || (!interaction.settings && !interaction.provider);
     settingsArea.hidden = !interaction.settings;
     quota.hidden = interaction.settings;
     heading.textContent = interaction.settings
@@ -273,85 +214,74 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     e.preventDefault();
+    if (dragId !== null) { finishDrag(true); return; }
     const id = interaction.provider;
     dispatch({ type: "escape" });
     // Focus recovery must not reopen a detail via the focus handler.
     notch.focus(id);
   });
-  async function previewDrag(next: NotchPlacement) {
-    pendingDrag = next;
-    if (previewRunning) return;
-    previewRunning = true;
-    try {
-      while (pendingDrag && dragging) {
-        const placement = pendingDrag;
-        pendingDrag = null;
-        paintLayout(
-          await invoke<NotchLayout>("preview_notch_placement", { placement }),
-        );
-      }
-    } catch (e) {
-      fail(e);
-    } finally {
-      previewRunning = false;
-    }
+  function releaseDragCapture() {
+    const captured = capturedPointer;
+    capturedPointer = null;
+    if (captured?.element.hasPointerCapture(captured.id)) captured.element.releasePointerCapture(captured.id);
   }
+  function finishDrag(cancel: boolean) {
+    const id = dragId;
+    if (id === null) return;
+    dragChain = dragChain.then(() => invoke<void>("finish_notch_drag", { id, cancel })).catch(fail);
+  }
+  await listen<{id: number; active: boolean; finished: boolean; placement: NotchPlacement; error: string | null}>("notch-drag", ({payload: event}) => {
+    if (event.id !== dragId) return;
+    if (event.active) {
+      suppressClick = true;
+      closeDelay.cancel();
+    }
+    dragging = event.active && !event.finished;
+    rail.classList.toggle("is-dragging", dragging);
+    if (event.finished) {
+      dragId = null;
+      pressedPointer = null;
+      releaseDragCapture();
+      if (event.active) {
+        interaction = beforeDrag.settings || beforeDrag.pinned ? beforeDrag : initialNotchState();
+      }
+      if (event.error) { fail(event.error); interaction = { ...interaction, settings: true }; }
+    }
+    render();
+  });
   rail.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0 || !layout || pressedPointer !== null) return;
+    if (e.button !== 0 || !layout || dragId !== null) return;
+    const id = ++nextDragId;
+    dragId = id;
     pressedPointer = e.pointerId;
     suppressClick = false;
+    beforeDrag = { ...interaction };
+    localStart = { x: e.screenX, y: e.screenY };
     closeDelay.cancel();
-    (e.target as Element).setPointerCapture(e.pointerId);
-    dragStart =
-      layout.edge === "left" || layout.edge === "right" ? e.screenY : e.screenX;
-    dragOffset = placement.offset;
-    const m = areas.find((m) => m.name === layout!.monitor)!;
-    dragSpan =
-      (layout.edge === "left" || layout.edge === "right"
-        ? m.work.height - layout.notch.height
-        : m.work.width - layout.notch.width) / layout.scale;
+    capturedPointer = { element: e.target as Element, id: e.pointerId };
+    capturedPointer.element.setPointerCapture(e.pointerId);
+    dragChain = dragChain.then(() => invoke<void>("begin_notch_drag", { id })).catch((error) => {
+      if (dragId === id) { dragId = null; pressedPointer = null; releaseDragCapture(); }
+      fail(error);
+    });
   });
-  const dragPlacement = (e: PointerEvent): NotchPlacement => {
-    const end =
-      layout!.edge === "left" || layout!.edge === "right"
-        ? e.screenY
-        : e.screenX;
-    return {
-      ...placement,
-      offset: Math.max(
-        0,
-        Math.min(1, dragOffset + (end - dragStart) / Math.max(1, dragSpan)),
-      ),
-    };
-  };
   rail.addEventListener("pointermove", (e) => {
     if (e.pointerId !== pressedPointer || !layout) return;
-    const end = layout.edge === "left" || layout.edge === "right" ? e.screenY : e.screenX;
-    if (!dragging && Math.abs(end - dragStart) < DRAG_THRESHOLD) return;
-    dragging = true;
-    suppressClick = true;
-    rail.classList.add("is-dragging");
-    rail.setPointerCapture(e.pointerId);
-    void previewDrag(dragPlacement(e));
+    // Only suppress the browser's click here; native physical coordinates own placement.
+    if (Math.hypot(e.screenX - localStart.x, e.screenY - localStart.y) >= layout.metrics.drag_threshold) {
+      suppressClick = true;
+    }
   });
   rail.addEventListener("pointerup", (e) => {
-    if (e.pointerId !== pressedPointer || !layout) return;
-    pressedPointer = null;
-    const moved = dragging;
-    dragging = false;
-    rail.classList.remove("is-dragging");
-    pendingDrag = null;
-    if (moved) void savePlacement(dragPlacement(e));
-  });
-  rail.addEventListener("pointercancel", (e) => {
     if (e.pointerId !== pressedPointer) return;
     pressedPointer = null;
-    dragging = false;
-    rail.classList.remove("is-dragging");
-    pendingDrag = null;
-    void invoke<NotchLayout>("preview_notch_placement", { placement: null })
-      .then(paintLayout)
-      .catch(fail);
+    finishDrag(false);
+  });
+  rail.addEventListener("pointercancel", (e) => {
+    if (e.pointerId === pressedPointer) finishDrag(true);
+  });
+  rail.addEventListener("lostpointercapture", (e) => {
+    if (e.pointerId === pressedPointer) finishDrag(e.buttons !== 0);
   });
   rail.addEventListener("click", (e) => {
     if (suppressClick && e.detail !== 0) {
@@ -361,14 +291,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     suppressClick = false;
   }, true);
   function openSettings() {
+    if (dragId !== null) return;
     closeDelay.cancel();
     if (!interaction.settings) dispatch({ type: "settings" });
-    void invoke<MonitorArea[]>("get_notch_monitors")
-      .then((next) => {
-        areas = next;
-        fillMonitors();
-      })
-      .catch(fail);
   }
   rail.addEventListener("contextmenu", (e) => {
     e.preventDefault();
@@ -380,17 +305,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       openSettings();
       return;
     }
-    if (!layout) return;
-    const offset = nudgeOffset(
-      layout.edge,
-      placement.offset,
-      e.key,
-      e.shiftKey,
-    );
-    if (offset !== placement.offset) {
-      e.preventDefault();
-      void savePlacement({ ...placement, offset });
-    }
   });
   await listen<NotchLayout>("notch-layout", (ev) => paintLayout(ev.payload));
   await listen<ProviderSnapshot[]>("snapshots-updated", (ev) => {
@@ -398,7 +312,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     refreshView();
   });
   await win.onFocusChanged(({ payload }) => {
-    if (!payload) {
+    if (!payload && dragId === null) {
       (document.activeElement as HTMLElement | null)?.blur();
       closeDelay.schedule();
     }

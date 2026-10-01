@@ -4,7 +4,6 @@ import {
   reduceNotchState,
   createCloseDelay,
   headline,
-  nudgeOffset,
 } from "./notch-state";
 import type { ProviderSnapshot } from "./types";
 
@@ -14,13 +13,6 @@ describe("notch interaction", () => {
     expect(
       reduceNotchState(state, { type: "providers", ids: ["grok"] }),
     ).toEqual({ provider: null, pinned: false, settings: true });
-  });
-  it("moves only along the selected edge and clamps at the ends", () => {
-    expect(nudgeOffset("right", 0.5, "ArrowLeft", false)).toBe(0.5);
-    expect(nudgeOffset("right", 0.5, "ArrowDown", false)).toBe(0.51);
-    expect(nudgeOffset("top", 0.5, "ArrowDown", false)).toBe(0.5);
-    expect(nudgeOffset("top", 0.98, "ArrowRight", true)).toBe(1);
-    expect(nudgeOffset("left", 0.01, "ArrowUp", true)).toBe(0);
   });
   it("keeps pinned detail across leave and closes settings before pinned detail", () => {
     let s = reduceNotchState(initialNotchState(), {

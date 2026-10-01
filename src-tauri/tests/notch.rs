@@ -52,15 +52,21 @@ fn edges_anchor_and_detail_stays_inside_work_area() {
 }
 
 #[test]
-fn taskbar_edge_falls_back_and_invalid_offset_errors() {
+fn bottom_overlaps_taskbar_and_invalid_offset_errors() {
     let mut p = NotchPlacement::default();
     p.edge = NotchEdge::Bottom;
-    assert_ne!(
+    assert_eq!(
         calculate_layout(&monitor(1.), &p, 3, false, 360.)
             .unwrap()
             .edge,
         NotchEdge::Bottom
     );
+    let m = monitor(1.);
+    let l = calculate_layout(&m, &p, 3, true, 360.).unwrap();
+    assert_eq!(l.notch.y + l.notch.height, m.bounds.y + m.bounds.height);
+    assert!(l.notch.y + l.notch.height > m.work.y + m.work.height);
+    let detail = l.detail.unwrap();
+    assert!(detail.y + detail.height <= m.work.y + m.work.height);
     p.offset = f64::NAN;
     assert!(calculate_layout(&monitor(1.), &p, 3, false, 360.).is_err());
 }
@@ -150,7 +156,8 @@ fn failed_placement_save_keeps_committed_settings() {
 #[test]
 fn circular_end_hit_regions_follow_the_visible_silhouette() {
     for scale in [1., 1.25, 1.5, 2.] {
-        let l = calculate_layout(&monitor(scale), &NotchPlacement::default(), 3, false, 360.).unwrap();
+        let l =
+            calculate_layout(&monitor(scale), &NotchPlacement::default(), 3, false, 360.).unwrap();
         // Midpoints on each half of the S curve; check both sides of the arc.
         for (along, boundary) in [(18., 36. + 972_f64.sqrt()), (54., 36. - 972_f64.sqrt())] {
             for end in [along * scale, l.notch.height - along * scale] {
@@ -159,4 +166,185 @@ fn circular_end_hit_regions_follow_the_visible_silhouette() {
             }
         }
     }
+}
+
+fn drag_monitor(scale: f64) -> MonitorArea {
+    MonitorArea {
+        name: "main".into(),
+        bounds: Rect {
+            x: 0.,
+            y: 0.,
+            width: 2560.,
+            height: 1440.,
+        },
+        work: Rect {
+            x: 0.,
+            y: 0.,
+            width: 2560.,
+            height: 1440.,
+        },
+        scale,
+    }
+}
+
+#[test]
+fn drag_threshold_corner_hysteresis_and_all_edges() {
+    for scale in [1., 1.25, 1.5, 2.] {
+        let m = drag_monitor(scale);
+        let l = calculate_layout(&m, &NotchPlacement::default(), 2, false, 200.).unwrap();
+        let start = (l.notch.x + 36. * scale, l.notch.y + l.notch.height / 2.);
+        let mut d = NotchDrag::new(&l, start.0, start.1, 2);
+        d.update(&[m.clone()], start.0 - 4. * scale, start.1)
+            .unwrap();
+        assert!(!d.active);
+        d.update(&[m.clone()], start.0 - 6. * scale, start.1)
+            .unwrap();
+        assert!(d.active, "perpendicular motion must start drag");
+        d.update(&[m.clone()], 2559., 1.).unwrap();
+        assert_eq!(d.placement.edge, NotchEdge::Right);
+        d.update(&[m.clone()], 2500., 1.).unwrap();
+        assert_eq!(d.placement.edge, NotchEdge::Top);
+        d.update(&[m.clone()], 2559., 1.).unwrap();
+        assert_eq!(d.placement.edge, NotchEdge::Top, "ties retain edge");
+        d.update(&[m.clone()], 1., 200.).unwrap();
+        assert_eq!(d.placement.edge, NotchEdge::Left);
+        d.update(&[m.clone()], 500., 1439.).unwrap();
+        assert_eq!(d.placement.edge, NotchEdge::Bottom);
+        d.update(&[m.clone()], 2559., 600.).unwrap();
+        assert_eq!(d.placement.edge, NotchEdge::Right);
+        d.update(&[m], 1200., 600.).unwrap();
+        assert_eq!(d.placement.edge, NotchEdge::Right, "interior retains edge");
+    }
+}
+
+#[test]
+fn drag_allows_bottom_taskbar_and_requires_monitor_inset() {
+    let mut m = drag_monitor(1.);
+    m.work.height -= 48.;
+    let l = calculate_layout(&m, &NotchPlacement::default(), 2, false, 200.).unwrap();
+    let mut d = NotchDrag::new(&l, 2524., 600., 2);
+    d.update(&[m.clone()], 1200., 1439.).unwrap();
+    assert_eq!(d.placement.edge, NotchEdge::Bottom);
+    let mut other = drag_monitor(1.5);
+    other.name = "other".into();
+    other.bounds.x = -2560.;
+    other.work.x = -2560.;
+    let monitors = [m, other];
+    d.update(&monitors, -10., 600.).unwrap();
+    assert_eq!(d.placement.monitor_hint.as_deref(), Some("main"));
+    d.update(&monitors, -40., 600.).unwrap();
+    assert_eq!(d.placement.monitor_hint.as_deref(), Some("other"));
+    assert_eq!(d.placement.edge, NotchEdge::Right);
+    d.update(&monitors, 10., 600.).unwrap();
+    assert_eq!(d.placement.monitor_hint.as_deref(), Some("other"));
+}
+
+#[test]
+fn drag_keeps_grab_ratio_and_handles_zero_travel() {
+    let mut m = drag_monitor(1.);
+    let l = calculate_layout(&m, &NotchPlacement::default(), 1, false, 200.).unwrap();
+    let mut d = NotchDrag::new(&l, 2524., l.notch.y + l.notch.height / 4., 1);
+    d.update(&[m.clone()], 1000., 1.).unwrap();
+    let moved = calculate_layout(&m, &d.placement, 1, false, 200.).unwrap();
+    assert!((moved.notch.x + moved.notch.width / 4. - 1000.).abs() <= 1.);
+    m.bounds.width = CELL + END_PADDING * 2.;
+    m.work.width = m.bounds.width;
+    d.update(&[m], 100., 1.).unwrap();
+    assert_eq!(d.placement.offset, 0.);
+}
+
+#[test]
+fn drag_can_cross_monitor_seams_while_following_an_outer_edge() {
+    let m = drag_monitor(1.);
+    let mut other = m.clone();
+    other.name = "other".into();
+    other.bounds.x = -2560.;
+    other.work.x = -2560.;
+    let l = calculate_layout(
+        &m,
+        &NotchPlacement {
+            edge: NotchEdge::Top,
+            ..Default::default()
+        },
+        2,
+        false,
+        200.,
+    )
+    .unwrap();
+    let mut d = NotchDrag::new(&l, 1200., 10., 2);
+    d.update(&[m.clone(), other], -100., 10.).unwrap();
+    assert_eq!(d.placement.monitor_hint.as_deref(), Some("other"));
+    assert_eq!(d.placement.edge, NotchEdge::Top);
+    let mut above = m.clone();
+    above.name = "above".into();
+    above.bounds.y = -1440.;
+    above.work.y = -1440.;
+    let l = calculate_layout(
+        &m,
+        &NotchPlacement {
+            edge: NotchEdge::Left,
+            ..Default::default()
+        },
+        2,
+        false,
+        200.,
+    )
+    .unwrap();
+    let mut d = NotchDrag::new(&l, 10., 600., 2);
+    d.update(&[m, above], 10., -100.).unwrap();
+    assert_eq!(d.placement.monitor_hint.as_deref(), Some("above"));
+    assert_eq!(d.placement.edge, NotchEdge::Left);
+}
+
+#[test]
+fn fast_monitor_round_trips_cannot_skip_the_entry_band() {
+    for scale in [1., 1.25, 1.5, 2.] {
+        let right = drag_monitor(scale);
+        let mut left = right.clone();
+        left.name = "left".into();
+        left.bounds.x = -2560.;
+        left.work.x = -2560.;
+        let l = calculate_layout(&left, &NotchPlacement::default(), 2, false, 200.).unwrap();
+        let mut d = NotchDrag::new(&l, -36. * scale, 600., 2);
+        let monitors = [right, left];
+        // First crossing is slow and succeeds; reverse motion skips the narrow band.
+        d.update(&monitors, 40. * scale, 600.).unwrap();
+        assert_eq!(d.placement.monitor_hint.as_deref(), Some("main"));
+        for _ in 0..5 {
+            d.update(&monitors, -180. * scale, 600.).unwrap();
+            assert_eq!(d.placement.monitor_hint.as_deref(), Some("left"));
+            assert_eq!(d.placement.edge, NotchEdge::Right);
+            d.update(&monitors, 180. * scale, 600.).unwrap();
+            assert_eq!(d.placement.monitor_hint.as_deref(), Some("main"));
+            assert_eq!(d.placement.edge, NotchEdge::Left);
+        }
+    }
+}
+
+#[test]
+fn fast_stacked_monitor_crossing_preserves_entry_hysteresis() {
+    let bottom = drag_monitor(1.);
+    let mut top = bottom.clone();
+    top.name = "top".into();
+    top.bounds.y = -1440.;
+    top.work.y = -1440.;
+    let l = calculate_layout(
+        &top,
+        &NotchPlacement {
+            edge: NotchEdge::Bottom,
+            ..Default::default()
+        },
+        2,
+        false,
+        200.,
+    )
+    .unwrap();
+    let mut d = NotchDrag::new(&l, 1000., -36., 2);
+    let monitors = [bottom, top];
+    d.update(&monitors, 1000., 10.).unwrap();
+    assert_eq!(d.placement.monitor_hint.as_deref(), Some("top"));
+    d.update(&monitors, 1000., 180.).unwrap();
+    assert_eq!(d.placement.monitor_hint.as_deref(), Some("main"));
+    d.update(&monitors, 1000., -180.).unwrap();
+    assert_eq!(d.placement.monitor_hint.as_deref(), Some("top"));
 }
