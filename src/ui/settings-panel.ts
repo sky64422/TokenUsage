@@ -1,5 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import {
+  meterFillPct,
+  opacityTicksHtml,
+  opacityToPct,
+  OPACITY_MAX_PCT,
+  OPACITY_MIN_PCT,
+  OPACITY_STEP_PCT,
+  pctToOpacity,
+  snapOpacityPct,
+} from "./opacity";
 import type { AppSettings, ProviderId } from "./types";
 import { PROVIDER_IDS } from "./types";
 
@@ -25,6 +35,7 @@ export function mountSettingsPanel(
   handlers: {
     onAutostart: (v: boolean) => void;
     onHoverDetail: (v: boolean) => void;
+    onOpacityChange: (o: number) => void;
     onProviderEnabled: (id: ProviderId, enabled: boolean) => void | Promise<void>;
     onDiagnostics: () => void | Promise<void>;
     onQuit: () => void;
@@ -39,6 +50,7 @@ export function mountSettingsPanel(
 } {
   let visible = false;
   const versionStr = appVersion ? `v${appVersion.replace(/^v/i, "")}` : "";
+  const initialPct = opacityToPct(settings.opacity);
 
   let updatePhase: UpdatePhase = "idle";
   let updateVersion: string | null = null;
@@ -47,6 +59,20 @@ export function mountSettingsPanel(
 
   root.innerHTML = `
     <div class="settings" id="settings-sheet">
+      <div class="settings-section">
+        <div class="settings-label-row opacity-label-row">
+          <span class="settings-label">Opacity</span>
+          <span class="settings-value opacity-value" id="opacity-val">${initialPct}%</span>
+        </div>
+        <div class="opacity-meter" style="--opacity-fill: ${meterFillPct(initialPct)}%">
+          <div class="opacity-meter-fill" aria-hidden="true"></div>
+          <div class="opacity-meter-ticks" aria-hidden="true">${opacityTicksHtml()}</div>
+          <input type="range" id="opacity-range" class="opacity-meter-input"
+            min="${OPACITY_MIN_PCT}" max="${OPACITY_MAX_PCT}" step="${OPACITY_STEP_PCT}"
+            value="${initialPct}" aria-label="Opacity" />
+        </div>
+      </div>
+
       <div class="settings-section">
         <label class="settings-toggle" for="autostart">
           <span class="settings-toggle-title">Start with Windows</span>
@@ -90,9 +116,32 @@ export function mountSettingsPanel(
   `;
 
   const sheet = root.querySelector("#settings-sheet") as HTMLElement;
+  const opacityRange = root.querySelector("#opacity-range") as HTMLInputElement;
+  const opacityVal = root.querySelector("#opacity-val") as HTMLElement;
+  const opacityMeter = root.querySelector(".opacity-meter") as HTMLElement;
   const autostart = root.querySelector("#autostart") as HTMLInputElement;
   const hoverDetail = root.querySelector("#hover-detail") as HTMLInputElement;
   const updateBtn = root.querySelector("#btn-check-update") as HTMLButtonElement;
+
+  const paintOpacity = (pct: number) => {
+    const snapped = snapOpacityPct(pct);
+    const o = pctToOpacity(snapped);
+    opacityRange.value = String(snapped);
+    opacityVal.textContent = `${snapped}%`;
+    opacityMeter.style.setProperty("--opacity-fill", `${meterFillPct(snapped)}%`);
+    handlers.onOpacityChange(o);
+  };
+
+  if (Math.abs(settings.opacity - pctToOpacity(initialPct)) > 0.001) {
+    paintOpacity(initialPct);
+  }
+
+  opacityRange.addEventListener("input", () => {
+    paintOpacity(Number(opacityRange.value));
+  });
+  opacityRange.addEventListener("change", () => {
+    paintOpacity(Number(opacityRange.value));
+  });
 
   autostart.checked = settings.autostart;
   hoverDetail.checked = Boolean(settings.hover_detail);

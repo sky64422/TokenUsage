@@ -60,39 +60,6 @@ body {
 }
 
 
-/* —— Header —— */
-.header {
-  /* Neutral chrome — risk color stays on the cards only. */
-  --opacity-accent: rgba(
-    var(--text-rgb),
-    calc(0.38 * var(--chrome-opacity))
-  );
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  height: var(--header-height);
-  padding: 0 var(--space-2) 0 var(--pad-x);
-  flex-shrink: 0;
-  -webkit-app-region: drag;
-  app-region: drag;
-}
-
-.header .title {
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: -0.02em;
-  color: var(--foreground);
-}
-
-.header-actions {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
-  margin-left: auto;
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
-}
-
 /* Icon button primitive */
 .icon-btn {
   width: 28px;
@@ -906,79 +873,93 @@ body {
   outline-color: color-mix(in srgb, var(--destructive) 50%, transparent);
 }
 
-/* Header opacity — Windows volume-style bar + square thumb. */
-.opacity-slider {
+/* Rectangular opacity meter — 5% steps with tick marks (35–100). */
+.opacity-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.opacity-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+  min-width: 2.75em;
+  text-align: right;
+}
+
+.opacity-meter {
   --opacity-fill: 0%;
-  --thumb: 6px;
   position: relative;
-  flex: 0 0 72px;
-  width: 72px;
-  height: 22px;
-  margin-right: 4px;
-  align-self: center;
-  cursor: pointer;
-  touch-action: none;
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
+  box-sizing: border-box;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--input);
+  background: var(--muted);
+  overflow: hidden;
+  user-select: none;
 }
 
-.opacity-slider-rail {
-  position: absolute;
-  left: calc(var(--thumb) / 2);
-  right: calc(var(--thumb) / 2);
-  top: 0;
-  bottom: 0;
-  pointer-events: none;
+.opacity-meter:focus-within {
+  border-color: color-mix(in srgb, var(--ring) 70%, var(--input));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ring) 35%, transparent);
 }
 
-.opacity-slider-track {
+.opacity-meter-fill {
   position: absolute;
   left: 0;
-  right: 0;
-  top: 50%;
-  height: 4px;
-  transform: translateY(-50%);
-  border-radius: 9999px;
-  background: rgba(var(--text-rgb), calc(0.12 * var(--chrome-opacity)));
-  overflow: hidden;
-}
-
-.opacity-slider-fill {
-  display: block;
-  height: 100%;
+  top: 0;
+  bottom: 0;
+  /* Exact 5% cell steps (N/13), not continuous lerp */
   width: var(--opacity-fill);
-  border-radius: inherit;
-  background: var(--opacity-accent);
-}
-
-.opacity-slider-thumb {
-  position: absolute;
-  top: 50%;
-  left: var(--opacity-fill);
-  width: var(--thumb);
-  height: var(--thumb);
-  margin-left: calc(var(--thumb) / -2);
-  transform: translateY(-50%);
-  box-sizing: border-box;
-  border-radius: 1px;
-  border: 1px solid rgba(var(--text-rgb), calc(0.28 * var(--fg-opacity)));
-  background: color-mix(
-    in srgb,
-    rgb(var(--text-rgb)) 78%,
-    rgb(var(--bg-glass-rgb))
-  );
-  box-shadow: none;
+  background: rgba(var(--text-rgb), calc(0.32 * var(--chrome-opacity)));
   pointer-events: none;
+  transition: width 0.06s linear;
 }
 
-.opacity-slider:hover .opacity-slider-thumb,
-.opacity-slider:focus-visible .opacity-slider-thumb,
-.opacity-slider.is-dragging .opacity-slider-thumb {
-  background: rgb(var(--text-rgb));
+.opacity-meter-ticks {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  pointer-events: none;
+  z-index: 1;
 }
 
-.opacity-slider:focus-visible {
-  outline-offset: 0;
+/* 13 equal cells: borders land on 40, 45, … 100 step edges */
+.opacity-tick {
+  flex: 1 1 0;
+  min-width: 0;
+  border-right: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  box-sizing: border-box;
+}
+
+.opacity-tick:last-child {
+  border-right: none;
+}
+
+.opacity-tick.major {
+  border-right-color: color-mix(in srgb, var(--text) 22%, transparent);
+}
+
+.opacity-tick.major:last-child {
+  border-right: none;
+}
+
+.opacity-meter-input {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
 }
 
 /* Switch primitive (Radix/shadcn Switch-like) */

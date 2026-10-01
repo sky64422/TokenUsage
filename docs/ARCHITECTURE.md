@@ -28,7 +28,7 @@ Rust AppCore
 - The main transparent HWND expands inward for details. The frontend renders at local DIP coordinates from the returned physical layout; it never moves or resizes the HWND itself.
 - No DWM rounded clipping, resize handles, legacy 240px width floor, or MutationObserver content-hug loop. Custom SVG owns the shape.
 - Details retain 6px pill tracks, fixed name/period/refill columns and `1fr / 2.9em` metrics with 2px gutter. Opacity readability floors remain.
-- Settings scroll inside the inward detail area if the monitor cannot fit the content. Header opacity/update/hide controls now live there.
+- Settings scroll inside the inward detail area if the monitor cannot fit the content. Opacity and update controls live directly in the settings sheet.
 - Existing `settings.window` survives migration but no longer determines placement. `settings.notch` defaults to right / centre / primary display.
 - `begin_notch_drag` / `finish_notch_drag` and `notch-drag` events coordinate session IDs, capture cleanup and frontend detail restoration. Native cursor sampling selects edges/displays in physical coordinates; release outside the HWND is detected by native button state. Keyboard arrows do not move the widget.
 - Drag preview is transient; only completed placement changes persist. Missing monitor hints fall back to primary without destroying the saved hint.

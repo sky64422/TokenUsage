@@ -2,7 +2,6 @@ import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { renderHeader } from "./header";
 import { applyPanelOpacity } from "./opacity";
 import { mountProviders } from "./providers";
 import { mountSettingsPanel } from "./settings-panel";
@@ -24,7 +23,7 @@ import type {
 
 const SURFACE_PADDING = 34; // 16px padding and 1px border on both sides.
 export async function mountApp(root: HTMLElement): Promise<void> {
-  root.innerHTML = `<div class="notch-shell"><nav class="notch" aria-label="AI usage"></nav><section class="notch-detail" aria-label="Usage detail" hidden><div class="detail-body"><div class="detail-heading"><h2>Usage</h2><button class="icon-btn detail-close" aria-label="Close detail">×</button></div><div class="detail-quota"><div class="quota-root"></div><p class="detail-state"></p><small class="detail-hint">Click a ring to keep open</small></div><div class="detail-settings" hidden><div class="header-root"></div><div class="settings-root"></div></div><p class="notch-error" role="status" hidden></p></div></section></div>`;
+  root.innerHTML = `<div class="notch-shell"><nav class="notch" aria-label="AI usage"></nav><section class="notch-detail" aria-label="Usage detail" hidden><div class="detail-body"><div class="detail-quota"><div class="quota-root"></div><p class="detail-state"></p></div><div class="detail-settings" hidden><div class="detail-heading"><h2>Settings</h2><button class="icon-btn detail-close" aria-label="Close settings">×</button></div><div class="settings-root"></div></div><p class="notch-error" role="status" hidden></p></div></section></div>`;
   const shell = root.querySelector<HTMLElement>(".notch-shell")!;
   const rail = root.querySelector<HTMLElement>(".notch")!;
   const detail = root.querySelector<HTMLElement>(".notch-detail")!;
@@ -32,7 +31,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   const quota = root.querySelector<HTMLElement>(".detail-quota")!;
   const settingsArea = root.querySelector<HTMLElement>(".detail-settings")!;
   const errorEl = root.querySelector<HTMLElement>(".notch-error")!;
-  const heading = root.querySelector("h2")!;
   let persisted = await invoke<PersistedState>("get_state");
   let snaps: ProviderSnapshot[] = [];
   let interaction = initialNotchState();
@@ -96,6 +94,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         persisted.settings.hover_detail = v;
         void invoke("set_hover_detail", { enabled: v }).catch(fail);
       },
+      onOpacityChange: (opacity) => {
+        applyPanelOpacity(shell, opacity);
+        void invoke("set_opacity", { opacity }).catch(fail);
+      },
       onProviderEnabled: async (provider, isEnabled) => {
         try {
           snaps = await invoke("set_provider_enabled", {
@@ -120,22 +122,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     await getVersion(),
   );
   settings.show();
-  const header = root.querySelector<HTMLElement>(".header-root")!;
-  renderHeader(header, {
-    onSettings: () => dispatch({ type: "escape" }),
-    onHide: () => {
-      dispatch({ type: "reset" });
-      void invoke("hide_widget").catch(fail);
-    },
-    opacity: persisted.settings.opacity,
-    onOpacityChange: (opacity) => {
-      applyPanelOpacity(shell, opacity);
-      void invoke("set_opacity", { opacity }).catch(fail);
-    },
-  });
-  header
-    .querySelector("[data-tauri-drag-region]")
-    ?.removeAttribute("data-tauri-drag-region");
 
   function paintLayout(next: NotchLayout) {
     layout = next;
@@ -176,10 +162,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     detail.hidden = dragging || (!interaction.settings && !interaction.provider);
     settingsArea.hidden = !interaction.settings;
     quota.hidden = interaction.settings;
-    heading.textContent = interaction.settings
-      ? "Settings"
-      : (snaps.find((s) => s.provider_id === interaction.provider)
-          ?.display_name ?? "Usage");
     if (interaction.provider && !interaction.settings) {
       const snap = snaps.find((s) => s.provider_id === interaction.provider);
       const key = JSON.stringify(snap);
@@ -193,11 +175,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           ? `${snap.status.replaceAll("_", " ")}${snap.message ? ` · ${snap.message}` : ""}`
           : "";
       status.hidden = !status.textContent;
-      root.querySelector(".detail-hint")!.textContent = interaction.pinned
-        ? (persisted.settings.hover_detail
-            ? "Kept open · click ring or press Esc to release"
-            : "Click ring or press Esc to close")
-        : "Click ring to keep open";
     }
     requestSurface();
   }

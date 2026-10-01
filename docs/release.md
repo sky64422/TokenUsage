@@ -1,7 +1,7 @@
 # Release & in-app updates
 
 **Updated:** 2026-10-01  
-**Current public tag:** v0.2.0  
+**Current public tag:** v0.2.1  
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,7 +12,8 @@
 
 | Tag | Highlights |
 |-----|------------|
-| **v0.2.0** | Screen-edge concave notch with cross-monitor drag, click-to-open detail with optional hover preview (default off), inward panel (228 DIP), horizontal 2-row layout, Quiet Luxury styling |
+| **v0.2.1** | Settings: standalone opacity meter with ticks & live alpha, removed duplicate top header; Model detail: removed redundant header/close button and bottom hint, increased model title font to 15px |
+| v0.2.0 | Screen-edge concave notch with cross-monitor drag, click-to-open detail with optional hover preview (default off), inward panel (228 DIP), horizontal 2-row layout, Quiet Luxury styling |
 | v0.1.34 | Grok: omitted weekly % at period refill shows 0% + reset, not a degraded hint |
 | v0.1.33 | Arrow-key window nudge (4px / Shift 16px) when focus is on the body |
 | v0.1.32 | Card row 1: period (`5h` / `Week` / `30D`) left of refill; row 2: bar + % only. Docs: quota APIs have no token ledger |

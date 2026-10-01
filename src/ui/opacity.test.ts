@@ -3,6 +3,7 @@ import {
   applyPanelOpacity,
   meterFillPct,
   opacityStepIndex,
+  opacityTicksHtml,
   opacityToPct,
   OPACITY_DEFAULT,
   OPACITY_MAX_PCT,
@@ -80,5 +81,16 @@ describe("applyPanelOpacity", () => {
     expect(parseFloat(vars["--fg-opacity"])).toBeGreaterThan(0.4);
     expect(parseFloat(vars["--accent-opacity"])).toBeGreaterThan(0.36);
     expect(parseFloat(vars["--chrome-opacity"])).toBeGreaterThan(0.28);
+  });
+});
+
+describe("opacityTicksHtml", () => {
+  it("generates 13 tick spans with major ticks every 10%", () => {
+    const html = opacityTicksHtml();
+    const count = (html.match(/<span class="opacity-tick/g) || []).length;
+    expect(count).toBe(13);
+    const majorCount = (html.match(/opacity-tick major/g) || []).length;
+    // 40, 50, 60, 70, 80, 90, 100 are multiples of 10%
+    expect(majorCount).toBe(7);
   });
 });

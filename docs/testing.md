@@ -41,7 +41,7 @@ Risk tests set this automatically.
 
 | Check | How |
 |-------|-----|
-| Low opacity | Header slider → 35–50%; meta/reset/labels still readable; slider fill stays neutral |
+| Low opacity | Settings opacity meter → 35–50%; meta/reset/labels still readable; meter fill stays neutral |
 | Live motion | Idle track static; active fill may sheen; critical+active may breathe |
 | Settings | No refresh chips; footer shows `vX.Y.Z`; last provider chip locked |
 | Autostart (release only) | Install build; Run key should be install path, not `target\debug` |

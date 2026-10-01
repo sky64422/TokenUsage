@@ -198,8 +198,13 @@
 .notch-detail .usage-row {
   margin-bottom: 14px;
 }
+.notch-detail .usage-row:last-child {
+  margin-bottom: 0;
+}
 .notch-detail .provider-name {
-  font-size: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
 }
 .notch-detail .settings {
   position: static;
@@ -211,17 +216,6 @@
   background: none;
   border: 0;
   min-height: 0;
-}
-.notch-detail .header {
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
-  padding: 0;
-  margin-bottom: 12px;
-}
-.notch-detail .header #btn-settings,
-.notch-detail .header #btn-update,
-.notch-detail .header #btn-hide {
-  display: none;
 }
 .notch-detail .settings-end {
   margin-top: 12px;
@@ -235,11 +229,6 @@
   font-size: 11px;
   color: var(--warn);
   margin-top: 12px;
-}
-.detail-hint {
-  font-size: 10px;
-  color: var(--muted-foreground);
-  display: block;
 }
 .notch-detail {
   scrollbar-width: thin;

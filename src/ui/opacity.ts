@@ -33,6 +33,18 @@ export function meterFillPct(pct: number): number {
   return (opacityStepIndex(pct) / OPACITY_INTERVALS) * 100;
 }
 
+/** One flex cell per 5% interval so borders line up with fill edges. */
+export function opacityTicksHtml(): string {
+  const parts: string[] = [];
+  for (let i = 0; i < OPACITY_INTERVALS; i++) {
+    const leftPct = OPACITY_MIN_PCT + i * OPACITY_STEP_PCT;
+    const rightPct = leftPct + OPACITY_STEP_PCT;
+    const major = rightPct % 10 === 0;
+    parts.push(`<span class="opacity-tick${major ? " major" : ""}"></span>`);
+  }
+  return parts.join("");
+}
+
 /**
  * Glass opacity + matching text/graph alpha.
  * Background uses --panel-opacity; fg/accent/chrome track the slider so bars
