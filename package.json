@@ -10,7 +10,7 @@
     "tauri": "tauri",
     "run:exe": "node scripts/run-release.mjs",
     "release:publish": "node scripts/publish-release.mjs",
-    "test": "vitest run && cd src-tauri && cargo test --lib && cargo test --test risk_scenarios",
+    "test": "vitest run && cd src-tauri && cargo test --lib && cargo test --test risk_scenarios && cargo test --test notch",
     "test:coverage": "bash scripts/coverage.sh"
   },
   "dependencies": {

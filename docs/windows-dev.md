@@ -40,3 +40,26 @@ npm run release:publish -- --dry-run
 - Transparent + always-on-top chrome behaves best on real Windows (not WSL GUI).
 - Hotkey and autostart need a packaged/dev Tauri process, not plain `vite` alone.
 - Design tokens: `src/styles/tokens.css`; UI primitives: `src/styles/app.css`.
+
+## Isolated notch smoke test
+
+Use a separate identifier to avoid touching installed preferences. With the Vite dev server already running, create `tmp/notch-preview.json`:
+
+```json
+{"identifier":"com.tokenusage.notch-preview","build":{"beforeDevCommand":""}}
+```
+
+```powershell
+$env:TOKENUSAGE_SKIP_DIRECT_QUOTA = '1'
+$env:WEBVIEW2_USER_DATA_FOLDER = "$PWD/tmp/notch-webview"
+$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=9223'
+npm run tauri dev -- --no-watch --config tmp/notch-preview.json
+# In another terminal; Python Playwright, Pillow, pyautogui required for this optional smoke:
+python -X utf8 scripts/notch-smoke.py
+python -X utf8 scripts/notch-regression.py
+```
+
+These smoke scripts refuse the production identifier. They use synthetic quota data,
+move the pointer and exercise preview settings. Close the preview before Rust rebuilds
+(Windows locks its running executable). Remove the three environment variables before
+normal development. Actual vendor data is not validated by these fixture runs.

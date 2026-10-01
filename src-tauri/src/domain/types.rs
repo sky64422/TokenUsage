@@ -137,6 +137,8 @@ impl Default for ProviderConfig {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppSettings {
+    #[serde(default)]
+    pub notch: super::notch::NotchPlacement,
     pub opacity: f64,
     pub window: WindowGeometry,
     pub hotkey: String,
@@ -159,6 +161,7 @@ fn default_refresh_secs() -> u64 {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            notch: super::notch::NotchPlacement::default(),
             opacity: OpacityPolicy::DEFAULT,
             window: WindowGeometry {
                 x: 80.0,

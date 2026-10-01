@@ -48,6 +48,10 @@ describe("levelClass", () => {
 });
 
 describe("formatPct", () => {
+  it("preserves measured overage while the bar can clamp separately",()=>{
+    expect(formatPct(125,true)).toBe("125%");
+    expect(formatPct(0)).toBe("0%");
+  });
   it("shows em dash when idle or missing", () => {
     expect(formatPct(0, false, true)).toBe("—");
     expect(formatPct(null)).toBe("—");

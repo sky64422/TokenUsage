@@ -222,7 +222,7 @@ function usageRow(opts: {
   const over = isOver(w.used_percent, opts.cardMessage, w.used, w.limit);
   const idle =
     opts.cardIdle ||
-    ((w.used_percent ?? 0) <= 0 && w.used <= 0 && !w.resets_at);
+    (w.used_percent == null && w.used <= 0 && !w.resets_at);
   const pct = idle ? 0 : clampPct(w.used_percent);
   const lvl = levelClass(pct, over, idle);
   const width = idle ? 0 : (pct ?? 0);
@@ -230,7 +230,7 @@ function usageRow(opts: {
 
   const label = formatWindowLabel(w.label ?? w.kind);
 
-  const pctText = formatPct(pct, over, idle);
+  const pctText = formatPct(w.used_percent, over, idle);
   const detail = tokenDetail(w, over);
   const reset = formatWindowReset({
     resetsAt: w.resets_at,

@@ -1,184 +1,43 @@
-# DESIGN.md — TokenUsage
+# TokenUsage visual system ? edge notch
 
-**Updated:** 2026-08-27 · **Ship:** v0.1.34  
+Updated: 2026-09-30. Implements the user-approved [edge notch design](docs/superpowers/specs/2026-09-30-edge-notch-design.md). Windows is the native validation target.
 
-Visual system for the floating usage widget. Source of truth for tokens: [`src/styles/tokens.css`](src/styles/tokens.css). Layout contracts also live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+## Purpose
 
-**Surface mode:** Operate (scanability over expression).
+A calm personal quota monitor integrated with the physical screen edge. The concave shoulders connecting the black notch to the edge are essential, not optional decoration. Reference: [CodeNotch](https://github.com/vinzdg/codenotch). Controls retain the semantic token/focus conventions from [shadcn/ui](https://ui.shadcn.com) and the restrained Operate-mode density from [Impeccable](https://impeccable.style).
 
-## UI references (external)
+## Main surface
 
-Canonical external design references for this product family (floating glass widgets — TokenUsage and sibling EconomyWarRoom):
+- Right edge, centred by default. Four edge choices; left/right are vertical and top/bottom horizontal.
+- 72 DIP depth, 104 DIP provider cells, two tangent 36 DIP circular arcs at each end, with no flat ledge between them: **50 DIP content inset at both ends**. Content sits within the curved end region with breathing room around the first ring and last label. Rings are 40 DIP; quiet grey track, colored usage arc, monochrome provider logo.
+- Percentage and period are always visible. Backend primary percentage is retained; currently it is the maximum across windows. Do not silently relabel it as session usage.
+- Missing/auth-required values show a dash with explicit status, never a zero. Overage preserves the number while only the arc is clamped.
+- Provider icons identify Claude, Codex, and Grok. Source/license notices live in `src/assets/marks`.
+- Dark-only; Pretendard, tabular numbers; no continuous decorative ring motion.
 
-| Site | URL | How we use it |
-|------|-----|----------------|
-| **shadcn/ui** | [ui.shadcn.com](https://ui.shadcn.com) | Control primitives & patterns: focus rings, segmented controls, switches, chips, dialogs/sheets, semantic token names (`--primary`, `--muted-foreground`, …). Adapt — do not paste full React/shadcn stacks into the vanilla TS widget. |
-| **Impeccable** | [impeccable.style](https://impeccable.style) | Taste / density / anti-slop: Operate-mode restraint, hierarchy, no cardocalypse, no decorative motion. Aligns with “Quiet Luxury” progress and distilled chrome. |
+## Details and settings
 
-When UI diverges, prefer **product constraints** in [`PRODUCT.md`](PRODUCT.md) over generic landing-page patterns from either site.
+- Drag any part of the notch (including rings) along its edge. A 5px movement threshold preserves ring clicks. There are no move/settings buttons; right-click the notch or press Shift+F10/Context Menu to open settings. Arrow keys move the focused notch along its edge.
 
-## Principles
+- Hover/focus opens inward; click keeps a provider open. Escape closes settings first, then pinned details, and restores focus without reopening them.
+- 180ms leave grace permits crossing into the detail. 160ms reveal; reduced-motion disables motion.
+- Detail cards use a near-black surface, 16px radius, thin quiet border, 16px padding. Max native height 560 DIP, bounded to work area. Scroll only on actual overflow.
+- Existing detail rows keep name / period / refill and `1fr` bar / `2.9em` percentage columns, with 2px gutter. Quiet Luxury 6px pill tracks remain.
+- Existing opacity/update/hide controls live in settings, with edge/display/recentre, autostart, providers, Copy Log, Quit and version.
+- Opacity slider remains neutral with off-white thumb. `applyPanelOpacity` and semantic `max(...)` floors preserve readability. Card tints apply only to quota detail surfaces.
 
-1. **Glance first** — % and risk color beat dense numbers; used/limit is hover/detail.
-2. **Quiet Luxury progress** — single pill track with glow / sheen / end-cap; not gauges or charts.
-3. **Fixed geometry** — row 1 name · period · refill; row 2 `1fr` bar · `2.9em` %; dual vs single layouts may differ, columns stay stable.
-4. **Glass with purpose** — panel translucency + blur for desktop layering; settings sheet is **opaque** so controls stay readable.
-5. **Distill** — no nested cards, no redundant helper copy, no decorative motion without live data.
+## Native contracts
 
-## Color
+- Transparent rectangular HWND, no native shadow; `DWMWCP_DONOTROUND`. The former 8px DWM panel contract applies to neither the notch nor its shoulders.
+- Rust is the sole physical geometry owner. SVG/CSS draw within returned local rectangles; no frontend resize loop or free window resizing.
+- Transparent regions must pass input to other processes. The open detail bridge intentionally accepts pointer travel. Hover must not steal focus.
+- Position uses physical screen bounds, display scale and normalized along-edge offset. Do not mix physical and logical positions or reject negative monitor coordinates.
+- A physical edge occupied by taskbar falls back to an available edge, explicitly stated in settings. The notch never floats above the taskbar pretending to touch the screen edge.
 
-Dark-only. Header opacity slider (bar + square thumb, 5% steps) drives `--panel-opacity`, `--fg-opacity`, `--accent-opacity`, `--chrome-opacity` together.
+## Tokens and colors
 
-### Channels (RGB)
+Sources: `src/styles/tokens.css`, `src/styles/notch.css`. Existing semantic foreground/muted/primary/border/ring and opacity floors remain. Safe/warning/critical colors come from existing quota risk helpers. Settings chrome stays neutral; color communicates usage and state.
 
-| Token | RGB | Role |
-|-------|-----|------|
-| `--bg-glass-rgb` | 28, 28, 30 | Panel / popover base |
-| `--text-rgb` | 245, 245, 247 | Primary text |
-| `--accent-rgb` | 10, 132, 255 | Primary / ring / interactive |
-| `--ok-rgb` / bright | 83,212,118 / 100,213,129 | Safe usage fill (mid chroma) |
-| `--warn-rgb` / bright | 255,159,10 / 255,214,10 | Elevated usage |
-| `--critical-rgb` / bright | 255,99,89 / 255,132,124 | High / over (mid chroma) |
-| `--reset-rgb` | 255, 105, 97 | Reset stamp (warm coral) |
+## Verification
 
-### Semantic (prefer these in new CSS)
-
-| Token | Use |
-|-------|-----|
-| `--foreground` / `--muted-foreground` / `--subtle-foreground` | Text hierarchy |
-| `--muted` / `--card` / `--secondary` | Surfaces / hover |
-| `--primary` / `--ring` | Actions, focus, chips on |
-| `--success` / `--warning` / `--destructive` | Status / footer actions |
-| `--border` / `--border-soft` / `--input` | Edges |
-| `--popover` | Settings sheet (solid) |
-| `--track` / `--track-inset` | Progress rail |
-
-Legacy aliases (`--text`, `--accent`, `--ok`, …) map to the semantic layer — keep for tracks/levels.
-
-### Do / don't
-
-- **Do** use level colors only on % text and track fills.  
-- **Do** keep header title as `--foreground`; settings On chips may use `--primary`. The opacity slider is **neutral chrome** (text-rgb), not accent blue.  
-- **Don't** purple–cyan AI gradients, gradient text headings, cream/beige “tasteful” marketing surfaces.  
-- **Don't** side-tab thick accent borders on cards.
-
-## Typography
-
-| Role | Spec |
-|------|------|
-| Family | **Pretendard** (bundled), fallback Segoe UI / system-ui |
-| Base | 13px / line-height ~1.35 |
-| Title (header) | 13px semibold, slight negative tracking, `--foreground` |
-| Provider name | 12px semibold |
-| Usage % | **12px bold**, tabular nums (same size as the name, heavier weight) |
-| Window label | 9px semibold uppercase, **right-aligned** (short: `5h`, `Week`, `30D`) |
-| Reset stamp | 9px semibold coral; secondary to % |
-
-Hierarchy: **% (loudest)** → name → reset → period label. No display serif heroes. Period/reset stay small so the bar can stay long.
-
-## Spacing & radius
-
-| Token | Value |
-|-------|--------|
-| `--space-1` … `--space-4` | 4 / 8 / 12 / 16 px |
-| `--pad-x` | 12px |
-| `--header-height` | 38px |
-| `--radius` (panel) | **8px** — match Win11 `DWMWCP_ROUND` so the 1px border follows the clip |
-| `--radius-sm` … `--radius-xl` | 6 / 8 / 10 / 12 |
-| `--radius-card` | 12px |
-| `--radius-full` | pills / switches |
-
-Prefer spacing scale over one-off px.
-
-## Layout contracts
-
-### Provider card
-
-- Card: `--card` fill, soft border, `--radius-card`. No source chips (`vendor` / `auth` / plan).
-- **Two lines per quota window** (not a header + divider + stack):
-  - Row 1: provider name (left) · period label (`5h` / `Week` / `30D`) immediately left of refill · refill stamp (right).
-  - Row 2: capsule track · **%**.
-- Dual windows (e.g. Claude 5h + Week): two stacked two-line blocks; name only on the first.
-
-### Window row
-
-- Head grid: `name | period | refill` (`1fr` · `auto` · `auto`; text ellipsizes, does not steal columns).
-- Metrics grid: **`1fr` bar** · **`2.9em` right-aligned %**.
-- Gutters: bar→% **2px** (`margin-right` on `.track`). Do not use `column-gap` (it would also split the % column).
-- Track height: **6px**. Card padding: **10px 12px**.
-- Same pattern as EconomyWarRoom: `minmax(0, Nfr)` / fixed chrome; content length must not change column widths.
-
-### Settings
-
-- Absolute overlay; providers fade out; **window height does not grow**.
-- Solid `--popover` background.
-- Controls: switch, provider chips (last enabled locked). Opacity lives in the header pad, not here. Refresh interval is fixed (5s). Footer shows app version.
-- Footer: equal **Copy Log** / **Quit**.
-
-### Height
-
-Frontend measures content; Rust snaps window height to content floor (not grow-only).
-
-## Components (primitives)
-
-| Primitive | Class / area | Notes |
-|-----------|--------------|--------|
-| Icon button | `.icon-btn` | 28×28, `--radius-md`, focus ring |
-| Opacity slider | `.opacity-slider` | Neutral fill; 6px off-white square thumb; 5% steps |
-| App version | `.settings-version` | Footer `vX.Y.Z` from Tauri `getVersion()` |
-| Switch | `.settings-switch` | Autostart; ring on focus-visible |
-| Chip | `.provider-chip` | on/off; last-on locked |
-| Progress track | `.track` / `.track-fill` | Quiet Luxury only |
-| Action pair | `.settings-debug` / `.settings-quit` | warn / destructive |
-
-### Progress (Quiet Luxury) — do not replace casually
-
-- Pill rail + level gradient fill  
-- Soft outer glow, slow diagonal sheen, partial-fill end-cap  
-- Critical/over: soft breathe  
-- Respect `prefers-reduced-motion` and `prefers-reduced-transparency`
-
-Motion only for **live state** (usage risk, update download) — no decorative idle pulses.
-
-## Focus & a11y
-
-- Focus ring: `2px solid var(--ring)`, offset 2px; **focus-visible only**.  
-- Opacity slider: focus-visible ring on the header bar.  
-- Reduced transparency: blur off, opacities → 1.
-
-## Elevation & glass
-
-- Panel: `height: 100%` so glass fills the HWND; `backdrop-filter` blur + saturate; 8px radius matching DWM; inset highlight only (no outer halo).  
-- Settings: no glass — full opacity popover.  
-- Glass is **desktop layering**, not marketing glassmorphism everywhere.
-
-## Copy
-
-- Short: `Usage`, `5h`, `Week`, `over`, `Copy Log`, `Quit`.  
-- Reset: `↻ M/D HH:mm` local; empty when idle / no `resets_at`.  
-- Settings footer: `{hotkey} · ↻ update` (distilled).  
-- No em-dash cadences, no SaaS buzzwords.
-
-## Low opacity
-
-`applyPanelOpacity` maps `--fg-opacity` / `--accent-opacity` / `--chrome-opacity` **close to the panel glass** so type and green/amber/red fade with the slider (soft floors ~0.28–0.40, not ~0.7 solid on thin glass). Token `max(...)` floors for muted/border are similarly soft.
-
-## Anti-patterns (Impeccable-aligned)
-
-See [impeccable.style](https://impeccable.style). Reject or fix if introduced:
-
-- Nested cards, side-tab borders, cardocalypse  
-- Pulsing dots without live download/state  
-- Layout thrash from animating height of the window for settings  
-- Flat type (everything same size/weight)  
-- Functional text &lt; 10px for **primary** actions (`%` and name stay ≥12px; period/reset may be 9px)  
-- Registering `target/debug` as OS autostart  
-
-## File map
-
-| Path | Role |
-|------|------|
-| `src/styles/tokens.css` | Design tokens |
-| `src/styles/app.css` | Layout + primitives |
-| `src/ui/*.ts` | Header, providers, settings, opacity helpers |
-| `PRODUCT.md` | Product / mode / non-goals |
+Use actual Windows WebView2 on desktop backgrounds: no square black/white fringe, no clipped shoulders, stable outer contact during expand/collapse. Validate native click-through and focus separately from browser screenshot layout. See `docs/testing.md` for the matrix and recorded limitations.

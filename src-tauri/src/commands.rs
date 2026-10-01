@@ -1,10 +1,48 @@
 use crate::domain::types::{
-    CardTint, DiagnosticsSnapshot, PersistedState, ProviderId, ProviderSnapshot, WindowGeometry,
+    CardTint, DiagnosticsSnapshot, PersistedState, ProviderId, ProviderSnapshot,
 };
 use crate::infrastructure::window_ctl;
 use crate::state::AppHandleState;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, State};
+
+#[tauri::command]
+pub fn get_notch_monitors(
+    app: AppHandle,
+) -> Result<Vec<crate::domain::notch::MonitorArea>, String> {
+    crate::infrastructure::notch_window::monitors(&app)
+}
+
+#[tauri::command]
+pub fn set_notch_placement(
+    app: AppHandle,
+    state: State<'_, AppHandleState>,
+    placement: crate::domain::notch::NotchPlacement,
+) -> Result<crate::domain::notch::NotchLayout, String> {
+    let saved = state.core.set_notch_placement(placement);
+    // Always release drag capture, including a failed disk write.
+    let restored = crate::infrastructure::notch_window::preview(&app, None);
+    saved?;
+    restored
+}
+
+#[tauri::command]
+pub fn preview_notch_placement(
+    app: AppHandle,
+    placement: Option<crate::domain::notch::NotchPlacement>,
+) -> Result<crate::domain::notch::NotchLayout, String> {
+    crate::infrastructure::notch_window::preview(&app, placement)
+}
+
+#[tauri::command]
+pub fn set_notch_surface(
+    app: AppHandle,
+    revision: u64,
+    expanded: bool,
+    height: f64,
+) -> Result<crate::domain::notch::NotchLayout, String> {
+    crate::infrastructure::notch_window::apply(&app, Some((revision, expanded, height)))
+}
 
 #[tauri::command]
 pub fn get_state(state: State<'_, AppHandleState>) -> PersistedState {
@@ -70,14 +108,6 @@ pub fn set_autostart(
 }
 
 #[tauri::command]
-pub fn set_window_geometry(
-    state: State<'_, AppHandleState>,
-    geometry: WindowGeometry,
-) -> Result<(), String> {
-    state.core.set_window_geometry(geometry)
-}
-
-#[tauri::command]
 pub async fn set_provider_enabled(
     app: AppHandle,
     state: State<'_, AppHandleState>,
@@ -117,29 +147,6 @@ pub fn quit_app(app: AppHandle) {
 #[tauri::command]
 pub fn get_diagnostics(state: State<'_, AppHandleState>) -> DiagnosticsSnapshot {
     state.core.diagnostics()
-}
-
-/// Update OS min-size from measured content height (logical px).
-/// `grow_if_needed`: snap height to content (grow or shrink). False = min only (live ticks).
-#[tauri::command(rename_all = "snake_case")]
-pub fn set_content_min_size(
-    app: AppHandle,
-    state: State<'_, AppHandleState>,
-    width: f64,
-    height: f64,
-    grow_if_needed: bool,
-) -> Result<(), String> {
-    let w = width.max(1.0).ceil() as u32;
-    let h = height.max(1.0).ceil() as u32;
-    state.set_content_min(w, h);
-    let window = window_ctl::main_window(&app)?;
-    window_ctl::apply_content_min_size(&window, width, height)?;
-    if grow_if_needed {
-        // Full content-hug: avoid leftover empty glass under cards.
-        window_ctl::snap_height_to_content(&window, width, height)?;
-        let _ = window_ctl::apply_clean_glass_edge(&window);
-    }
-    Ok(())
 }
 
 #[tauri::command]

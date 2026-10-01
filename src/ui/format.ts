@@ -109,6 +109,7 @@ export function formatPct(
 ): string {
   if (idle && (pct == null || pct === 0)) return "—";
   if (pct == null || Number.isNaN(pct)) return "—";
+  if (pct > 100) return `${Math.round(pct)}%`;
   const c = clampPct(pct) ?? 0;
   if (over) return "100%";
   return `${Math.round(c)}%`;

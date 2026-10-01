@@ -1,7 +1,7 @@
-use crate::domain::constants::{clamp_geometry, clamp_opacity};
+use crate::domain::constants::clamp_opacity;
 use crate::domain::types::{
     AppSettings, CardTint, DataSource, DiagnosticsSnapshot, PersistedState, ProviderConfig,
-    ProviderId, ProviderSnapshot, SnapshotStatus, WindowGeometry,
+    ProviderId, ProviderSnapshot, SnapshotStatus,
 };
 use crate::infrastructure::store::save_state;
 use chrono::Utc;
@@ -157,11 +157,18 @@ impl AppCore {
         })
     }
 
-    pub fn set_window_geometry(&self, geometry: WindowGeometry) -> Result<(), String> {
-        let geometry = clamp_geometry(&geometry);
-        self.mutate_settings(|s| {
-            s.window = geometry;
-        })
+    pub fn set_notch_placement(
+        &self,
+        placement: crate::domain::notch::NotchPlacement,
+    ) -> Result<(), String> {
+        placement.validate()?;
+        // A failed write must not turn a transient drag into committed state.
+        let mut guard = self.lock();
+        let mut next = guard.state.clone();
+        next.settings.notch = placement;
+        save_state(&guard.app_data_dir, &next)?;
+        guard.state = next;
+        Ok(())
     }
 
     pub fn set_provider_enabled(

@@ -2,13 +2,9 @@ export type ProviderId = "claude" | "codex" | "grok";
 export const PROVIDER_IDS: ProviderId[] = ["claude", "codex", "grok"];
 
 export type WindowKind =
-  | "rolling_5h"
-  | "weekly"
-  | "daily"
-  | "monthly"
-  | "session"
-  | "unknown";
-export type SnapshotStatus = "ok" | "degraded" | "unavailable" | "auth_required";
+  "rolling_5h" | "weekly" | "daily" | "monthly" | "session" | "unknown";
+export type SnapshotStatus =
+  "ok" | "degraded" | "unavailable" | "auth_required";
 export type DataSource = "vendor" | "unavailable";
 export type UsageUnit = "percent";
 
@@ -42,13 +38,7 @@ export interface WindowGeometry {
 }
 
 export type CardTint =
-  | "none"
-  | "rose"
-  | "peach"
-  | "mint"
-  | "sky"
-  | "lavender"
-  | "lemon";
+  "none" | "rose" | "peach" | "mint" | "sky" | "lavender" | "lemon";
 
 export const CARD_TINTS: { value: CardTint; label: string }[] = [
   { value: "none", label: "Default" },
@@ -66,6 +56,7 @@ export interface ProviderConfig {
 }
 
 export interface AppSettings {
+  notch: NotchPlacement;
   opacity: number;
   window: WindowGeometry;
   hotkey: string;
@@ -74,6 +65,41 @@ export interface AppSettings {
   claude: ProviderConfig;
   codex: ProviderConfig;
   grok: ProviderConfig;
+}
+
+export type NotchEdge = "top" | "right" | "bottom" | "left";
+export interface NotchPlacement {
+  edge: NotchEdge;
+  monitor_hint: string | null;
+  offset: number;
+}
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+export interface NotchLayout {
+  metrics: {
+    depth: number;
+    cell: number;
+    shoulder: number;
+    inner_radius: number;
+    inset: number;
+    detail_radius: number;
+  };
+  edge: NotchEdge;
+  notch: Rect;
+  detail: Rect | null;
+  window: Rect;
+  scale: number;
+  monitor: string;
+}
+export interface MonitorArea {
+  name: string;
+  bounds: Rect;
+  work: Rect;
+  scale: number;
 }
 
 export interface PersistedState {

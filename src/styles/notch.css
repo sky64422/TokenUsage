@@ -1,0 +1,261 @@
+/* The HWND stays rectangular and transparent; only these two surfaces paint. */
+:root {
+  --notch-motion: 160ms;
+}
+.notch-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.notch {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  position: absolute;
+  color: var(--foreground);
+}
+.notch-shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: rgba(0, 0, 0, var(--panel-opacity));
+  pointer-events: none;
+}
+.notch-cells {
+  position: absolute;
+  top: var(--notch-inset);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+}
+.notch-cell {
+  position: relative;
+  flex: none;
+  width: var(--notch-depth);
+  height: var(--notch-cell);
+  border: 0;
+  padding: 2px 0;
+  background: none;
+  color: var(--foreground);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  cursor: pointer;
+}
+.notch-cell[hidden],
+[hidden] {
+  display: none !important;
+}
+.ring-wrap {
+  position: relative;
+  width: 40px;
+  height: 40px;
+}
+.ring-wrap svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.ring-track,
+.ring-fill {
+  fill: none;
+  stroke-width: 3.5;
+}
+.ring-track {
+  stroke: rgba(255, 255, 255, 0.17);
+}
+.ring-fill {
+  stroke: currentColor;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  stroke-dasharray: 0 100;
+  transition: stroke-dasharray var(--notch-motion) ease;
+}
+.ring-wrap img {
+  position: absolute;
+  inset: 10px;
+  width: 20px;
+  height: 20px;
+  filter: brightness(0) invert(1);
+  opacity: max(0.65, var(--fg-opacity));
+}
+.ring-pct {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.ring-period {
+  font-size: 8px;
+  line-height: 10px;
+  color: rgba(255, 255, 255, max(0.5, var(--fg-opacity)));
+}
+.level-ok {
+  color: var(--ok);
+}
+.level-warn {
+  color: var(--warn);
+}
+.level-critical,
+.level-over {
+  color: var(--critical);
+}
+.level-idle,
+.level-na {
+  color: var(--foreground);
+}
+.ring-status {
+  position: absolute;
+  right: 10px;
+  top: 2px;
+  color: var(--warn);
+  font-size: 10px;
+}
+.notch-cell:hover .ring-track,
+.notch-cell[aria-pressed="true"] .ring-track {
+  stroke: rgba(255, 255, 255, 0.35);
+}
+.notch-cell:focus-visible {
+  outline-offset: -5px;
+  border-radius: 12px;
+}
+.notch.is-dragging,
+.notch.is-dragging .notch-cell { cursor: grabbing; }
+.notch[data-edge="top"] .notch-cells,
+.notch[data-edge="bottom"] .notch-cells {
+  left: var(--notch-inset);
+  top: 0;
+  right: auto;
+  flex-direction: row;
+}
+.notch-detail {
+  position: absolute;
+  border-radius: var(--detail-radius);
+  background: rgba(8, 8, 10, max(0.88, var(--panel-opacity)));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  padding: 16px;
+  overflow: auto;
+  animation: notch-reveal var(--notch-motion) ease-out;
+}
+.notch-detail h2 {
+  font-size: 15px;
+  margin: 0;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.detail-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.detail-heading small {
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.notch-detail .provider-card {
+  background: none;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+.notch-detail .usage-row {
+  margin-bottom: 14px;
+}
+.notch-detail .provider-name {
+  font-size: 12px;
+}
+.notch-detail .settings {
+  position: static;
+  display: flex;
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  padding: 0;
+  background: none;
+  border: 0;
+  min-height: 0;
+}
+.notch-detail .header {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  padding: 0;
+  margin-bottom: 12px;
+}
+.notch-detail .header #btn-settings {
+  display: none;
+}
+.notch-detail .settings-end {
+  margin-top: 12px;
+}
+.placement-controls {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 0;
+  margin-bottom: 10px;
+  border-block: 1px solid var(--border-soft);
+}
+.placement-controls label {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.placement-controls select,
+.placement-controls button {
+  background: #202023;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  border-radius: 6px;
+  min-width: 0;
+  font: inherit;
+}
+.placement-note {
+  font-size: 10px;
+  color: var(--muted-foreground);
+  margin: 0 0 12px;
+}
+.notch-error {
+  font-size: 11px;
+  color: var(--critical);
+  overflow-wrap: anywhere;
+}
+.detail-state {
+  font-size: 11px;
+  color: var(--warn);
+  margin-top: 12px;
+}
+.detail-hint {
+  font-size: 10px;
+  color: var(--muted-foreground);
+  display: block;
+}
+.notch-detail {
+  scrollbar-width: thin;
+  scrollbar-color: #404044 transparent;
+}
+@keyframes notch-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notch-detail {
+    animation: none;
+  }
+  .ring-fill {
+    transition: none;
+  }
+}

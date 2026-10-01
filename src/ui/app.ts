@@ -1,254 +1,416 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { LogicalPosition } from "@tauri-apps/api/dpi";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { arrowNudgeDelta, shouldNudgeWindow } from "./window-nudge";
-import {
-  CHROME_MIN_H,
-  measureContentHugHeight,
-  POLICY_MIN_W,
-} from "./content-size";
-import { renderHeader, setSettingsButtonActive } from "./header";
-import { applyPanelOpacity, OPACITY_DEFAULT } from "./opacity";
+import { renderHeader } from "./header";
+import { applyPanelOpacity } from "./opacity";
 import { mountProviders } from "./providers";
 import { mountSettingsPanel } from "./settings-panel";
+import { mountNotch, position } from "./notch";
+import {
+  createCloseDelay,
+  initialNotchState,
+  reduceNotchState,
+  nudgeOffset,
+} from "./notch-state";
+import type { NotchEvent } from "./notch-state";
+import { PROVIDER_IDS } from "./types";
 import type {
-  DiagnosticsSnapshot,
   PersistedState,
   ProviderSnapshot,
+  NotchLayout,
+  NotchPlacement,
+  MonitorArea,
+  DiagnosticsSnapshot,
+  NotchEdge,
 } from "./types";
 
+const DRAG_THRESHOLD = 5; // CSS pixels along the attached edge.
+const SURFACE_PADDING = 34; // 16px padding and 1px border on both sides.
 export async function mountApp(root: HTMLElement): Promise<void> {
-  root.innerHTML = `
-    <div class="panel" id="glass-panel">
-      <div id="header-root"></div>
-      <div class="content" id="content-root">
-        <div id="settings-root"></div>
-        <div id="providers-root"></div>
-      </div>
-    </div>
-  `;
-
-  const panel = root.querySelector("#glass-panel") as HTMLElement;
-  const headerRoot = root.querySelector("#header-root") as HTMLElement;
-  const providersRoot = root.querySelector("#providers-root") as HTMLElement;
-  const settingsRoot = root.querySelector("#settings-root") as HTMLElement;
-
-  let settingsOpen = false;
-
-  const state = await invoke<PersistedState>("get_state");
-  const opacity = state.settings.opacity ?? OPACITY_DEFAULT;
-
-  applyPanelOpacity(panel, opacity);
-
-  const providers = mountProviders(providersRoot);
-  providers.setTints({
-    claude: state.settings.claude.card_tint,
-    codex: state.settings.codex.card_tint,
-    grok: state.settings.grok.card_tint,
-  });
-
-  let appVersion = "";
-  try {
-    appVersion = await getVersion();
-  } catch (err) {
-    console.warn("getVersion failed", err);
-  }
-
-  const settings = mountSettingsPanel(settingsRoot, state.settings, {
-    onAutostart: async (v) => {
-      await invoke("set_autostart", { enabled: v });
-    },
-    onProviderEnabled: async (id, enabled) => {
-      try {
-        const snaps = await invoke<ProviderSnapshot[]>("set_provider_enabled", {
-          provider: id,
-          enabled,
-        });
-        providers.setSnapshots(snaps);
-        scheduleContentMin(true);
-      } catch (err) {
-        console.error("set_provider_enabled failed", err);
-        // Re-sync checkboxes from server state if hide-all was rejected
-        try {
-          const st = await invoke<PersistedState>("get_state");
-          settings.syncProviderEnabled?.(st.settings);
-        } catch (syncErr) {
-          console.error("resync settings after provider toggle failed", syncErr);
-        }
-        throw err;
-      }
-    },
-    onDiagnostics: async () => {
-      const diag = await invoke<DiagnosticsSnapshot>("get_diagnostics");
-      const text = diag.lines.join("\n");
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch {
-        console.log(text);
-      }
-    },
-    onQuit: async () => {
-      await invoke("quit_app");
-    },
-  }, appVersion);
-
-  function toggleSettings(): void {
-    settingsOpen = !settingsOpen;
-    // Overlay only: providers fade under an opaque settings sheet. Window size
-    // stays put (no content-hug grow/shrink for the sheet).
-    if (settingsOpen) {
-      settings.show();
-      panel.classList.add("settings-open");
-    } else {
-      settings.hide();
-      panel.classList.remove("settings-open");
-    }
-    setSettingsButtonActive(headerRoot, settingsOpen);
-  }
-
-  async function doRefresh(): Promise<void> {
-    const snaps = await invoke<ProviderSnapshot[]>("refresh_now");
-    providers.setSnapshots(snaps);
-    scheduleContentMin(true);
-  }
-
-  renderHeader(headerRoot, {
-    onSettings: toggleSettings,
-    onHide: () => {
-      void invoke("hide_widget");
-    },
-    opacity,
-    onOpacityChange: (o) => {
-      applyPanelOpacity(panel, o);
-      void invoke("set_opacity", { opacity: o });
-    },
-  });
-
-  try {
-    const snaps = await invoke<ProviderSnapshot[]>("get_snapshots");
-    providers.setSnapshots(snaps);
-  } catch {
-    /* empty until first refresh */
-  }
-
-  await listen<ProviderSnapshot[]>("snapshots-updated", (ev) => {
-    providers.setSnapshots(ev.payload);
-    scheduleContentMin(true);
-  });
-
-  // —— Content-hug min size (WarRoom pattern) ——
-  let lastContentMinH = 0;
-  let contentMinTimer: ReturnType<typeof setTimeout> | null = null;
-
-  const syncContentMinSize = async (opts: { growIfNeeded: boolean }) => {
-    try {
-      const contentH = measureContentHugHeight(panel);
-      const minHeight = Math.max(CHROME_MIN_H, contentH);
-      const grew = minHeight > lastContentMinH + 0.5;
-      const shrank = minHeight < lastContentMinH - 0.5;
-      const changed = Math.abs(minHeight - lastContentMinH) >= 1;
-      // Snap when content grew/shrank (provider cards), or explicit fit (boot).
-      const fit = opts.growIfNeeded || grew || shrank;
-      if (!changed && !opts.growIfNeeded) return;
-      lastContentMinH = minHeight;
-      await invoke("set_content_min_size", {
-        width: POLICY_MIN_W,
-        height: minHeight,
-        grow_if_needed: fit,
-      });
-    } catch (err) {
-      console.error("set_content_min_size failed", err);
-    }
-  };
-
-  function scheduleContentMin(growIfNeeded: boolean): void {
-    if (contentMinTimer) clearTimeout(contentMinTimer);
-    contentMinTimer = setTimeout(() => {
-      void syncContentMinSize({ growIfNeeded });
-    }, 40);
-  }
-
-  // Content mutations only — never remeasure min from window resize
-  // (that caused min to track the drag and bounce with setSize).
-  const mutObs = new MutationObserver(() => {
-    scheduleContentMin(false);
-  });
-  mutObs.observe(panel, {
-    childList: true,
-    subtree: true,
-    characterData: true,
-    attributes: true,
-    attributeFilter: ["class", "style", "hidden"],
-  });
-
-  // Geometry persistence
+  root.innerHTML = `<div class="notch-shell"><nav class="notch" aria-label="AI usage"></nav><section class="notch-detail" aria-label="Usage detail" hidden><div class="detail-body"><div class="detail-heading"><h2>Usage</h2><button class="icon-btn detail-close" aria-label="Close detail">×</button></div><div class="detail-quota"><div class="quota-root"></div><p class="detail-state"></p><small class="detail-hint">Click a ring to keep open</small></div><div class="detail-settings" hidden><div class="header-root"></div><div class="placement-controls"><label for="edge">Edge</label><select id="edge"><option value="right">Right</option><option value="left">Left</option><option value="top">Top</option><option value="bottom">Bottom</option></select><label for="monitor">Display</label><select id="monitor"></select><span></span><button id="recentre">Recentre</button></div><p class="placement-note"></p><div class="settings-root"></div></div><p class="notch-error" role="status" hidden></p></div></section></div>`;
+  const shell = root.querySelector<HTMLElement>(".notch-shell")!;
+  const rail = root.querySelector<HTMLElement>(".notch")!;
+  const detail = root.querySelector<HTMLElement>(".notch-detail")!;
+  const body = root.querySelector<HTMLElement>(".detail-body")!;
+  const quota = root.querySelector<HTMLElement>(".detail-quota")!;
+  const settingsArea = root.querySelector<HTMLElement>(".detail-settings")!;
+  const errorEl = root.querySelector<HTMLElement>(".notch-error")!;
+  const heading = root.querySelector("h2")!;
+  let persisted = await invoke<PersistedState>("get_state");
+  let placement = persisted.settings.notch;
+  let snaps: ProviderSnapshot[] = [];
+  let interaction = initialNotchState();
+  let layout: NotchLayout | undefined;
+  let revision = Date.now();
+  let lastSurface = "";
+  let surfaceChain: Promise<void> = Promise.resolve();
+  let placementChain: Promise<void> = Promise.resolve();
+  let lastQuota = "";
+  let dragging = false;
+  let pressedPointer: number | null = null;
+  let suppressClick = false;
+  let dragStart = 0,
+    dragOffset = 0,
+    dragSpan = 1;
+  let pendingDrag: NotchPlacement | null = null;
+  let previewRunning = false;
   const win = getCurrentWindow();
-
-  let nudgeChain: Promise<void> = Promise.resolve();
-  function nudgeWindow(dx: number, dy: number): Promise<void> {
-    nudgeChain = nudgeChain.then(async () => {
-      try {
-        const factor = await win.scaleFactor();
-        const pos = await win.outerPosition();
-        await win.setPosition(
-          new LogicalPosition(pos.x / factor + dx, pos.y / factor + dy),
-        );
-      } catch (err) {
-        console.error("nudge window failed", err);
-      }
-    });
-    return nudgeChain;
-  }
-
-  document.addEventListener("keydown", (e) => {
-    if (!shouldNudgeWindow(e, { settingsOpen })) return;
-    const delta = arrowNudgeDelta(e.key, { shift: e.shiftKey, ctrl: e.ctrlKey });
-    if (!delta) return;
-    e.preventDefault();
-    void nudgeWindow(delta.dx, delta.dy);
-  });
-
-  let saveTimer: ReturnType<typeof setTimeout> | null = null;
-  const persistGeometry = async () => {
-    try {
-      const pos = await win.outerPosition();
-      const size = await win.innerSize();
-      const factor = await win.scaleFactor();
-      await invoke("set_window_geometry", {
-        geometry: {
-          x: pos.x / factor,
-          y: pos.y / factor,
-          width: size.width / factor,
-          height: size.height / factor,
-        },
-      });
-    } catch {
-      /* ignore */
-    }
+  const enabled = () =>
+    PROVIDER_IDS.filter((id) => persisted.settings[id].enabled);
+  const fail = (e: unknown) => {
+    console.error(e);
+    errorEl.textContent = String(e);
+    errorEl.hidden = false;
   };
-  await win.onMoved(() => {
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      void persistGeometry();
-    }, 250);
+  const closeDelay = createCloseDelay(() => {
+    if (!document.activeElement?.matches(":focus-visible"))
+      dispatch({ type: "leave" });
   });
-  // Persist only; OS min + Rust Resized clamp handle the hard wall.
-  await win.onResized(() => {
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      void persistGeometry();
-    }, 250);
+  const notch = mountNotch(rail, {
+    hover: (id) => {
+      if (dragging) return;
+      closeDelay.cancel();
+      dispatch({ type: "hover", id });
+    },
+    pin: (id) => dispatch({ type: "pin", id }),
+  });
+  const providers = mountProviders(
+    root.querySelector<HTMLElement>(".quota-root")!,
+  );
+  providers.setTints({
+    claude: persisted.settings.claude.card_tint,
+    codex: persisted.settings.codex.card_tint,
+    grok: persisted.settings.grok.card_tint,
+  });
+  applyPanelOpacity(shell, persisted.settings.opacity);
+  const settings = mountSettingsPanel(
+    root.querySelector<HTMLElement>(".settings-root")!,
+    persisted.settings,
+    {
+      onAutostart: (v) => {
+        void invoke("set_autostart", { enabled: v }).catch(fail);
+      },
+      onProviderEnabled: async (provider, isEnabled) => {
+        try {
+          snaps = await invoke("set_provider_enabled", {
+            provider,
+            enabled: isEnabled,
+          });
+          persisted = await invoke("get_state");
+          refreshView();
+        } catch (e) {
+          fail(e);
+          throw e;
+        }
+      },
+      onDiagnostics: async () => {
+        const diag = await invoke<DiagnosticsSnapshot>("get_diagnostics");
+        await navigator.clipboard.writeText(diag.lines.join("\n"));
+      },
+      onQuit: () => {
+        void invoke("quit_app").catch(fail);
+      },
+    },
+    await getVersion(),
+  );
+  settings.show();
+  const header = root.querySelector<HTMLElement>(".header-root")!;
+  renderHeader(header, {
+    onSettings: () => dispatch({ type: "escape" }),
+    onHide: () => {
+      dispatch({ type: "reset" });
+      void invoke("hide_widget").catch(fail);
+    },
+    opacity: persisted.settings.opacity,
+    onOpacityChange: (opacity) => {
+      applyPanelOpacity(shell, opacity);
+      void invoke("set_opacity", { opacity }).catch(fail);
+    },
+  });
+  header
+    .querySelector("[data-tauri-drag-region]")
+    ?.removeAttribute("data-tauri-drag-region");
+  const edgeSelect = root.querySelector<HTMLSelectElement>("#edge")!;
+  const monitorSelect = root.querySelector<HTMLSelectElement>("#monitor")!;
+  let areas: MonitorArea[] = await invoke("get_notch_monitors");
+  function fillMonitors() {
+    monitorSelect.replaceChildren(
+      ...areas.map((m, i) => {
+        const o = new Option(
+          `Display ${i + 1} · ${m.bounds.width} × ${m.bounds.height}`,
+          m.name,
+        );
+        return o;
+      }),
+    );
+    monitorSelect.value =
+      layout?.monitor ?? placement.monitor_hint ?? areas[0]?.name ?? "";
+  }
+  fillMonitors();
+  edgeSelect.value = placement.edge;
+  async function savePlacement(next: NotchPlacement) {
+    placement = next;
+    placementChain = placementChain
+      .then(async () => {
+        paintLayout(
+          await invoke<NotchLayout>("set_notch_placement", { placement: next }),
+        );
+        errorEl.hidden = true;
+      })
+      .catch(async (e) => {
+        fail(e);
+        try {
+          const restored = await invoke<PersistedState>("get_state");
+          placement = restored.settings.notch;
+          edgeSelect.value = placement.edge;
+          fillMonitors();
+        } catch (syncError) {
+          fail(syncError);
+        }
+      });
+    await placementChain;
+  }
+  edgeSelect.addEventListener("change", () => {
+    void savePlacement({ ...placement, edge: edgeSelect.value as NotchEdge });
+  });
+  monitorSelect.addEventListener("change", () => {
+    void savePlacement({ ...placement, monitor_hint: monitorSelect.value });
+  });
+  root.querySelector("#recentre")!.addEventListener("click", () => {
+    void savePlacement({ ...placement, offset: 0.5 });
   });
 
-  // Boot: measure after layout, install hard min, grow if restored size too small.
-  requestAnimationFrame(() => {
-    void syncContentMinSize({ growIfNeeded: true });
-    window.setTimeout(() => {
-      void syncContentMinSize({ growIfNeeded: true });
-    }, 200);
+  function paintLayout(next: NotchLayout) {
+    layout = next;
+    notch.layout(next);
+    shell.dataset.edge = next.edge;
+    shell.style.setProperty(
+      "--detail-radius",
+      `${next.metrics.detail_radius}px`,
+    );
+    if (next.detail) position(detail, next.detail, next);
+    root.querySelector(".placement-note")!.textContent =
+      next.edge !== placement.edge
+        ? `Taskbar occupies ${placement.edge}; using ${next.edge}.`
+        : `Attached to ${next.edge} edge`;
+    monitorSelect.value = next.monitor;
+    if (!detail.hidden) requestSurface();
+  }
+  function requestSurface() {
+    const expanded = interaction.settings || interaction.provider !== null;
+    const height = Math.ceil(
+      body.getBoundingClientRect().height + SURFACE_PADDING,
+    );
+    const key = JSON.stringify([expanded, height, enabled()]);
+    if (lastSurface === key) return;
+    lastSurface = key;
+    const requestRevision = ++revision;
+    surfaceChain = surfaceChain
+      .then(async () => {
+        const next = await invoke<NotchLayout>("set_notch_surface", {
+          revision: requestRevision,
+          expanded,
+          height,
+        });
+        if (requestRevision === revision) paintLayout(next);
+      })
+      .catch((e) => {
+        lastSurface = "";
+        fail(e);
+      });
+  }
+  function render() {
+    notch.select(interaction.provider, interaction.pinned);
+    detail.hidden = !interaction.settings && !interaction.provider;
+    settingsArea.hidden = !interaction.settings;
+    quota.hidden = interaction.settings;
+    heading.textContent = interaction.settings
+      ? "Settings"
+      : (snaps.find((s) => s.provider_id === interaction.provider)
+          ?.display_name ?? "Usage");
+    if (interaction.provider && !interaction.settings) {
+      const snap = snaps.find((s) => s.provider_id === interaction.provider);
+      const key = JSON.stringify(snap);
+      if (key !== lastQuota) {
+        providers.setSnapshots(snap ? [snap] : []);
+        lastQuota = key;
+      }
+      const status = root.querySelector<HTMLElement>(".detail-state")!;
+      status.textContent =
+        snap && snap.status !== "ok"
+          ? `${snap.status.replaceAll("_", " ")}${snap.message ? ` · ${snap.message}` : ""}`
+          : "";
+      status.hidden = !status.textContent;
+      root.querySelector(".detail-hint")!.textContent = interaction.pinned
+        ? "Kept open · click ring or press Esc to release"
+        : "Click ring to keep open";
+    }
+    requestSurface();
+  }
+  function dispatch(event: NotchEvent) {
+    interaction = reduceNotchState(interaction, event);
+    render();
+  }
+  function refreshView() {
+    const ids = enabled();
+    interaction = reduceNotchState(interaction, { type: "providers", ids });
+    notch.update(snaps, ids);
+    if (layout) notch.layout(layout);
+    render();
+  }
+  for (const el of [rail, detail]) {
+    el.addEventListener("pointerenter", closeDelay.cancel);
+    el.addEventListener("pointerleave", () => {
+      if (!dragging) closeDelay.schedule();
+    });
+    el.addEventListener("focusin", closeDelay.cancel);
+    el.addEventListener("focusout", closeDelay.schedule);
+  }
+  root.querySelector(".detail-close")!.addEventListener("click", () => {
+    dispatch({ type: "reset" });
   });
-
-  void doRefresh();
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    e.preventDefault();
+    const id = interaction.provider;
+    dispatch({ type: "escape" });
+    // Focus recovery must not reopen a detail via the focus handler.
+    notch.focus(id);
+  });
+  async function previewDrag(next: NotchPlacement) {
+    pendingDrag = next;
+    if (previewRunning) return;
+    previewRunning = true;
+    try {
+      while (pendingDrag && dragging) {
+        const placement = pendingDrag;
+        pendingDrag = null;
+        paintLayout(
+          await invoke<NotchLayout>("preview_notch_placement", { placement }),
+        );
+      }
+    } catch (e) {
+      fail(e);
+    } finally {
+      previewRunning = false;
+    }
+  }
+  rail.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || !layout || pressedPointer !== null) return;
+    pressedPointer = e.pointerId;
+    suppressClick = false;
+    closeDelay.cancel();
+    (e.target as Element).setPointerCapture(e.pointerId);
+    dragStart =
+      layout.edge === "left" || layout.edge === "right" ? e.screenY : e.screenX;
+    dragOffset = placement.offset;
+    const m = areas.find((m) => m.name === layout!.monitor)!;
+    dragSpan =
+      (layout.edge === "left" || layout.edge === "right"
+        ? m.work.height - layout.notch.height
+        : m.work.width - layout.notch.width) / layout.scale;
+  });
+  const dragPlacement = (e: PointerEvent): NotchPlacement => {
+    const end =
+      layout!.edge === "left" || layout!.edge === "right"
+        ? e.screenY
+        : e.screenX;
+    return {
+      ...placement,
+      offset: Math.max(
+        0,
+        Math.min(1, dragOffset + (end - dragStart) / Math.max(1, dragSpan)),
+      ),
+    };
+  };
+  rail.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== pressedPointer || !layout) return;
+    const end = layout.edge === "left" || layout.edge === "right" ? e.screenY : e.screenX;
+    if (!dragging && Math.abs(end - dragStart) < DRAG_THRESHOLD) return;
+    dragging = true;
+    suppressClick = true;
+    rail.classList.add("is-dragging");
+    rail.setPointerCapture(e.pointerId);
+    void previewDrag(dragPlacement(e));
+  });
+  rail.addEventListener("pointerup", (e) => {
+    if (e.pointerId !== pressedPointer || !layout) return;
+    pressedPointer = null;
+    const moved = dragging;
+    dragging = false;
+    rail.classList.remove("is-dragging");
+    pendingDrag = null;
+    if (moved) void savePlacement(dragPlacement(e));
+  });
+  rail.addEventListener("pointercancel", (e) => {
+    if (e.pointerId !== pressedPointer) return;
+    pressedPointer = null;
+    dragging = false;
+    rail.classList.remove("is-dragging");
+    pendingDrag = null;
+    void invoke<NotchLayout>("preview_notch_placement", { placement: null })
+      .then(paintLayout)
+      .catch(fail);
+  });
+  rail.addEventListener("click", (e) => {
+    if (suppressClick && e.detail !== 0) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+    suppressClick = false;
+  }, true);
+  function openSettings() {
+    closeDelay.cancel();
+    if (!interaction.settings) dispatch({ type: "settings" });
+    void invoke<MonitorArea[]>("get_notch_monitors")
+      .then((next) => {
+        areas = next;
+        fillMonitors();
+      })
+      .catch(fail);
+  }
+  rail.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    openSettings();
+  });
+  rail.addEventListener("keydown", (e) => {
+    if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
+      e.preventDefault();
+      openSettings();
+      return;
+    }
+    if (!layout) return;
+    const offset = nudgeOffset(
+      layout.edge,
+      placement.offset,
+      e.key,
+      e.shiftKey,
+    );
+    if (offset !== placement.offset) {
+      e.preventDefault();
+      void savePlacement({ ...placement, offset });
+    }
+  });
+  await listen<NotchLayout>("notch-layout", (ev) => paintLayout(ev.payload));
+  await listen<ProviderSnapshot[]>("snapshots-updated", (ev) => {
+    snaps = ev.payload;
+    refreshView();
+  });
+  await win.onFocusChanged(({ payload }) => {
+    if (!payload) {
+      (document.activeElement as HTMLElement | null)?.blur();
+      closeDelay.schedule();
+    }
+  });
+  snaps = await invoke("get_snapshots");
+  refreshView();
+  await surfaceChain;
+  await win.show();
+  const observer = new ResizeObserver(() => {
+    if (!detail.hidden) requestSurface();
+  });
+  observer.observe(body);
+  window.addEventListener("beforeunload", () => observer.disconnect());
+  window.addEventListener("beforeunload", closeDelay.cancel);
 }

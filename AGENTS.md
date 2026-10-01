@@ -13,15 +13,16 @@
 
 ## Product constraints
 
-- Floating **usage monitor widget**, not a billing dashboard or team admin console.
+- Screen-edge **usage monitor notch**, not a billing dashboard or team admin console.
 - **Primary data:** direct vendor OAuth quota (Claude / Codex / Grok) only. No tokscale, no local JSONL estimates.
 - **No** browser scraping of vendor dashboards without an explicit design decision.
 - **Notifications** are out of scope until requested.
 - **AGY:** removed until an official public API exists. Re-add as optional provider when `TOKENUSAGE_AGY_QUOTA_SOURCE=official` becomes available; the unofficial `cloudcode-pa v1internal` endpoint does not track Antigravity 2.0 / Gemini 3.7 usage.
-- UI: keep **fixed column geometry** — row 1 name · period · refill; row 2 `1fr` bar · `2.9em` % (2px bar→% gutter). Dual vs single layouts may differ.
-- **Progress:** Quiet Luxury 6px pill bars (glow / sheen / end-cap) — sheen & critical breathe only on **live** fills (`.is-active`); prefer glanceable bars over experimental gauges unless explicitly requested.
+- UI: logo/ring/%/period on the notch; inside the detail keep **fixed column geometry** — row 1 name · period · refill; row 2 `1fr` bar · `2.9em` % (2px gutter).
+- **Progress:** the user approved rings for the summary. Details retain Quiet Luxury 6px bars. Missing/auth-required values must not look like 0%. Preserve the backend primary percentage (currently max of windows) and its matching period.
 - **Refresh:** interval is **fixed at 5s**. Do not add a settings control; `refresh_secs()` ignores persisted values.
-- **Panel radius:** `--radius` 8px to match Win11 `DWMWCP_ROUND`; panel `height: 100%` so CSS does not draw a square frame inside the DWM clip.
+- **Window shape:** custom concave SVG notch; `DWMWCP_DONOTROUND`, transparent HWND and no native shadow. Do not reintroduce the old 240px minimum or content-hug resize loop. Rust owns physical placement; invisible areas pass input to other apps.
+- **Placement:** four physical edges; taskbar-blocked edges fall back visibly. Store monitor hint/normalized offset; drag previews do not write settings. Details open inward; hover must not activate the window.
 - **Opacity slider:** neutral chrome + small off-white thumb — not accent/cyan.
 - **Opacity:** preserve readability floors in `applyPanelOpacity` + token `max(...)` alphas; do not let glass wipe out meta/reset text.
 - **Autostart:** never call OS `enable` from debug/`tauri dev` (see `sync_os_autostart`).

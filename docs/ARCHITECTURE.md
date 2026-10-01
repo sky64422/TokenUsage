@@ -1,6 +1,6 @@
 # TokenUsage Architecture
 
-**Stack:** Tauri 2 + Rust + TypeScript (Vite), glass floating widget modeled on EconomyWarRoom.  
+**Stack:** Tauri 2 + Rust + TypeScript (Vite), screen-edge notch with inward quota details.
 **Current ship:** v0.1.34 — release notes: [docs/release.md](./release.md), GitHub [v0.1.34](https://github.com/sky64422/TokenUsage/releases/tag/v0.1.34).
 
 **Product / visual context:** [PRODUCT.md](../PRODUCT.md) (Operate mode), [DESIGN.md](../DESIGN.md) (tokens + contracts).
@@ -8,9 +8,9 @@
 ## Runtime
 
 ```
-Web UI (provider cards, Quiet Luxury tracks, reset stamp, settings)
+Web UI (provider rings, inward quota details, settings)
         │ invoke / events (snapshots-updated)
-        │ set_content_min_size (content-hug min + snap height)
+        │ set_notch_surface / notch-layout (physical edge geometry)
 Rust AppCore
         │ refresh_all()  (parallel per provider; spawn_blocking)
 1) Direct vendor OAuth  ──► source: vendor
@@ -20,15 +20,18 @@ Rust AppCore
 
 ## UI layout contracts
 
-- **Two-line card:** name + period + refill on row 1; capsule track + **%** on row 2. Dual windows stack two blocks (name on the first only).
-- **Fixed columns:** head `1fr` name · `auto` period · `auto` refill; metrics `1fr` bar · `2.9em` %; bar→% gutter 2px on `.track`. Text must not shift the rail.
-- **Progress (Quiet Luxury):** `.track` / `.track-fill` 6px pill — gradient fill by risk level, soft outer glow; **sheen + critical breathe only when `.is-active`** (live usage). Respect `prefers-reduced-motion`.
-- **Reset / meta:** 9px; `formatWindowReset` → `↻ M/D HH:mm` (local); empty when idle / no `resets_at`. Hover title may include token pair + long clock.
-- **Opacity:** `applyPanelOpacity` sets `--panel-opacity`, `--fg-opacity`, `--accent-opacity`, `--chrome-opacity` with **readability floors**; semantic tokens use `max(...)` alpha floors (see `tokens.css`).
-- **Tokens:** shadcn-inspired semantic names (`--foreground`, `--primary`, `--ring`, …) with Quiet Luxury values; legacy aliases (`--text`, `--accent`, `--ok`) kept for tracks.
-- **Height:** frontend measures unconstrained panel height; Rust `snap_height_to_content` sets size to content floor (not grow-only).
-- **Settings:** absolute overlay over provider cards (list fades out); window height does **not** grow for the sheet. **Dark-only**. Autostart switch; provider chips (last enabled locked); footer **Copy Log** / **Quit**; meta `{hotkey} · ↻ update`; app version. Refresh interval is **fixed at 5s** (no in-settings control).
-- **Focus:** `:focus-visible` + `--ring` on interactive controls.
+- `src/ui/app.ts` coordinates settings, snapshots, and the detail state machine.
+- `src/ui/notch.ts` renders keyed provider rings and the concave SVG silhouette. Ring DOM survives snapshot refreshes.
+- `src/ui/notch-state.ts` owns hover/pin/settings/escape transitions, delayed close, and headline presentation.
+- `domain/notch.rs` computes physical monitor/working-area bounds and shape hit regions. Negative coordinates and per-monitor scale are valid.
+- `infrastructure/notch_window.rs` serializes native layout requests, samples the native cursor every 32ms for transparent input, and rechecks display geometry about once per second. This is independent of the unchanged 5s quota refresh.
+- The main transparent HWND expands inward for details. The frontend renders at local DIP coordinates from the returned physical layout; it never moves or resizes the HWND itself.
+- No DWM rounded clipping, resize handles, legacy 240px width floor, or MutationObserver content-hug loop. Custom SVG owns the shape.
+- Details retain 6px pill tracks, fixed name/period/refill columns and `1fr / 2.9em` metrics with 2px gutter. Opacity readability floors remain.
+- Settings scroll inside the inward detail area if the monitor cannot fit the content. Header opacity/update/hide controls now live there.
+- Existing `settings.window` survives migration but no longer determines placement. `settings.notch` defaults to right / centre / primary display.
+- Drag preview is transient; only completed placement changes persist. Missing monitor hints fall back to primary without destroying the saved hint.
+- `ProviderSnapshot.primary_used_percent` currently means maximum vendor window utilization, not necessarily the session. UI shows its matching period; no adapter policy changes.
 
 ## Autostart
 
@@ -96,7 +99,9 @@ There is no `PlanLimits` / local-event estimate path. Poll interval is `RefreshP
 
 ## Commands
 
-`get_state`, `get_snapshots`, `refresh_now`, `set_opacity`, `set_autostart`, `set_window_geometry`, `set_provider_enabled`, `set_provider_tint`, `hide_widget`, `quit_app`, `get_diagnostics`, `set_content_min_size`, `check_for_updates`
+`get_state`, `get_snapshots`, `refresh_now`, `set_opacity`, `set_autostart`, `set_provider_enabled`, `set_provider_tint`, `hide_widget`, `quit_app`, `get_diagnostics`, `check_for_updates`
+
+Additional notch commands: `get_notch_monitors`, `set_notch_placement`, `preview_notch_placement`, `set_notch_surface`. Layout changes emit `notch-layout`.
 
 ## Updater
 

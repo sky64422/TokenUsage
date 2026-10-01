@@ -17,7 +17,7 @@
 
 ```bash
 # From repo root
-npm test                 # vitest + cargo test --lib + risk_scenarios
+npm test                 # vitest + cargo test --lib + risk_scenarios + notch
 npm run test:coverage    # scripts/coverage.sh (fail-under 75, business logic)
 npm run build            # frontend tsc + vite
 ```
@@ -61,3 +61,30 @@ npm run build
 # optional: npm run test:coverage
 # UI: npm run tauri dev  (Windows preferred)
 ```
+
+## Edge notch regression (2026-10-01)
+
+`npm test` also runs `src-tauri/tests/notch.rs`: physical edge anchoring,
+100/125/150/200% scaling math, negative origins, taskbar fallback, transparent
+corners and bridges, settings migration and failed persistence rollback.
+`src/ui/notch-state.test.ts` covers pin/settings/Escape, provider removal,
+fake-clock close cancellation, axis-constrained nudging, missing/zero/overage,
+and secondary quota warnings.
+
+Optional Windows smoke: see `windows-dev.md`. Native evidence collected on 100%
+displays (2560x1440 primary and negative-x 1024x1280 secondary): hover focus retained,
+transparent notch corner routes to another HWND, 20 expand/close cycles, settings
+retained when disabling the selected provider, last-provider lock, missing-display
+fallback, reduced motion and failed drag save releasing click-through capture.
+A real pointer drag moved the widget along its edge; placement was persisted only
+after mouse release (offset 0.5 to 0.588).
+
+Bottom edge falls back on this desktop because a non-auto-hidden taskbar occupies it.
+Bottom geometry without that obstruction is unit-tested. Native mixed-DPI,
+physical monitor unplug/replug, sleep/resume and auto-hidden taskbar remain manual
+checks; do not infer those passed from the pure geometry tests.
+
+Whole-notch gesture regression additionally covers background and ring drags on
+both axes, no persistence before release, drag-click suppression, 2px movement
+retaining ring pinning, native right-click (including repeated right-click), and
+Shift+F10 settings access. Move/settings buttons and their reserved area are removed.

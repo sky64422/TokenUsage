@@ -1,6 +1,7 @@
 import "./styles/fonts.css";
 import "./styles/tokens.css";
 import "./styles/app.css";
+import "./styles/notch.css";
 import { mountApp } from "./ui/app";
 
 window.addEventListener("DOMContentLoaded", () => {

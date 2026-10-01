@@ -1,8 +1,12 @@
 # PRODUCT.md — TokenUsage
 
-**Updated:** 2026-08-27 · **Ship:** v0.1.34  
-**Platform:** desktop (Tauri 2 / Windows primary; WebView UI)  
+**Updated:** 2026-10-01 · **Ship:** v0.1.34
+**Platform:** desktop (Tauri 2 / Windows primary; WebView UI)
 **Mode (Impeccable):** **Operate** — scan and act quickly; brand lives in precise details, not persuasion.
+
+## Approved notch interaction (2026-09-30)
+
+Default right-centred notch; left/right vertical and top/bottom horizontal. Hover or keyboard focus opens quota details inward; click pins a provider and Escape releases it. Right-click the notch for settings and edge/display selection; drag anywhere on the notch to move along that edge. Quota polling remains 5 seconds. Physical taskbar occupancy may require another edge, reported in Settings.
 
 ## Users
 
@@ -12,7 +16,7 @@
 
 ## Purpose
 
-A floating **usage monitor widget** that shows personal vendor OAuth quota (Claude / Codex / Grok) with Quiet Luxury progress tracks.
+A screen-edge **usage monitor notch** that shows personal vendor OAuth quota (Claude / Codex / Grok) with provider rings and Quiet Luxury detail tracks.
 
 **Claim a neighbor cannot copy:** desktop glass widget + direct CLI OAuth quota only — not a web billing dashboard, not session-log estimates.
 
@@ -22,8 +26,8 @@ A floating **usage monitor widget** that shows personal vendor OAuth quota (Clau
 |--------|------------|
 | Glanceable personal quota | Team admin / org billing console |
 | Vendor OAuth metadata only | Local JSONL / tokscale estimates |
-| Quiet Luxury glass monitor | Purple-gradient SaaS landing aesthetic |
-| Content-hug floating panel | Full-window dashboard |
+| Black concave edge notch | Purple-gradient SaaS landing aesthetic |
+| Edge-attached compact monitor | Full-window dashboard |
 
 ## Evidence / constraints
 
@@ -41,35 +45,35 @@ A floating **usage monitor widget** that shows personal vendor OAuth quota (Clau
 
 ## Non-goals (until explicitly requested)
 
-- Push notifications / tray alerts  
-- Browser scraping of vendor dashboards  
-- Local JSONL / plan-limit token estimates / tokscale  
-- **AGY / Gemini provider:** removed — unofficial `cloudcode-pa v1internal` does not track Antigravity 2.0 / Gemini 3.7 usage; re-add when an official public API exists  
-- Perfect parity with every vendor subscription UI  
-- Per-product Grok breakdown (GrokBuild / GrokChat) in the widget  
-- Token ledger (input / output / cache read / cache write) — quota APIs do not return it  
-- Subscription-tier chips (vendors may send `plan_type` / `subscription_type`; often omitted)  
+- Push notifications / tray alerts
+- Browser scraping of vendor dashboards
+- Local JSONL / plan-limit token estimates / tokscale
+- **AGY / Gemini provider:** removed — unofficial `cloudcode-pa v1internal` does not track Antigravity 2.0 / Gemini 3.7 usage; re-add when an official public API exists
+- Perfect parity with every vendor subscription UI
+- Per-product Grok breakdown (GrokBuild / GrokChat) in the widget
+- Token ledger (input / output / cache read / cache write) — quota APIs do not return it
+- Subscription-tier chips (vendors may send `plan_type` / `subscription_type`; often omitted)
 
 ## Surfaces
 
 | Surface | Mode | Job |
 |---------|------|-----|
-| Main widget (provider cards) | Operate | See % used / risk / reset at a glance |
-| Settings overlay | Operate | Opacity, autostart, providers, version, quit — no window growth |
+| Main notch (provider rings) | Operate | See % used / risk / reset at a glance |
+| Inward settings sheet | Operate | Opacity, autostart, providers, version, quit — bounded to monitor work area |
 | System tray | Operate | Show / hide / quit affordances |
 
 ## Anti-references
 
-- Side-tab colored card borders, nested cards-in-cards  
-- Hero metric grids, feature-card icon tiles, Inter-only SaaS homepage  
-- Glass/neon as pure decoration (our glass is **layering on the desktop**, not a marketing effect)  
-- Billing dashboards, tables of invoices, multi-page settings  
-- Experimental gauges that replace glanceable pill tracks without an explicit decision  
+- Side-tab colored card borders, nested cards-in-cards
+- Hero metric grids, feature-card icon tiles, Inter-only SaaS homepage
+- Glass/neon as pure decoration (our glass is **layering on the desktop**, not a marketing effect)
+- Billing dashboards, tables of invoices, multi-page settings
+- Decorative charts or gauges beyond the approved summary rings
 
 ## Related docs
 
-- Architecture & layout contracts: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)  
-- Visual system: [`DESIGN.md`](DESIGN.md)  
-- UI references: [ui.shadcn.com](https://ui.shadcn.com), [impeccable.style](https://impeccable.style) (also listed in `DESIGN.md`)  
-- Agent rules: [`AGENTS.md`](AGENTS.md)  
-- Releases: [`docs/release.md`](docs/release.md)  
+- Architecture & layout contracts: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- Visual system: [`DESIGN.md`](DESIGN.md)
+- UI references: [ui.shadcn.com](https://ui.shadcn.com), [impeccable.style](https://impeccable.style) (also listed in `DESIGN.md`)
+- Agent rules: [`AGENTS.md`](AGENTS.md)
+- Releases: [`docs/release.md`](docs/release.md)

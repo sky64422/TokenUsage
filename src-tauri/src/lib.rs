@@ -52,9 +52,9 @@ pub fn run() {
                 let _ = window_ctl::apply_always_on_top(&window, true);
                 // Floating widget: desktop + tray only, not the taskbar.
                 let _ = window.set_skip_taskbar(true);
-                let _ = window_ctl::apply_geometry(&window, &persisted.settings.window);
+                // Notch geometry is resolved after state registration.
                 let _ = window_ctl::apply_clean_glass_edge(&window);
-                let _ = window_ctl::show_window(&window);
+                // Frontend shows the window after its first layout.
             }
 
             if let Err(e) = infrastructure::tray::setup_system_tray(app) {
@@ -70,6 +70,8 @@ pub fn run() {
             }
 
             app.manage(handle_state);
+            app.manage(infrastructure::notch_window::NotchController::default());
+            infrastructure::notch_window::start(app.handle().clone());
             app.manage(updater::PendingUpdateState::default());
 
             updater::spawn_update_check(app.handle().clone());
@@ -78,43 +80,31 @@ pub fn run() {
             let boot_core = Arc::clone(&core);
             let boot_app = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                let snaps =
-                    match tokio::task::spawn_blocking(move || boot_core.refresh_all()).await {
-                        Ok(s) => s,
-                        Err(_) => return,
-                    };
+                let snaps = match tokio::task::spawn_blocking(move || boot_core.refresh_all()).await
+                {
+                    Ok(s) => s,
+                    Err(_) => return,
+                };
                 let _ = boot_app.emit("snapshots-updated", &snaps);
             });
 
             Ok(())
         })
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::Resized(size) = event {
-                if let Some(state) = window.app_handle().try_state::<AppHandleState>() {
-                    let (min_w, min_h) = state.content_min_logical();
-                    let _ = window_ctl::clamp_physical_size_to_content_min(
-                        window, *size, min_w, min_h,
-                    );
-                }
-                // Re-clip rounded HWND after size changes (content-hug, user drag).
-                if let Some(w) = window.app_handle().get_webview_window(window.label()) {
-                    let _ = window_ctl::apply_clean_glass_edge(&w);
-                }
-            }
-        })
         .invoke_handler(tauri::generate_handler![
             commands::get_state,
+            commands::get_notch_monitors,
+            commands::set_notch_placement,
+            commands::preview_notch_placement,
+            commands::set_notch_surface,
             commands::get_snapshots,
             commands::refresh_now,
             commands::set_opacity,
             commands::set_autostart,
-            commands::set_window_geometry,
             commands::set_provider_enabled,
             commands::set_provider_tint,
             commands::hide_widget,
             commands::quit_app,
             commands::get_diagnostics,
-            commands::set_content_min_size,
             commands::check_for_updates,
         ])
         .run(tauri::generate_context!())
