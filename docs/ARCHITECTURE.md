@@ -30,6 +30,7 @@ Rust AppCore
 - Details retain 6px pill tracks, fixed name/period/refill columns and `1fr / 2.9em` metrics with 2px gutter. Opacity readability floors remain.
 - Settings scroll inside the inward detail area if the monitor cannot fit the content. Header opacity/update/hide controls now live there.
 - Existing `settings.window` survives migration but no longer determines placement. `settings.notch` defaults to right / centre / primary display.
+- `begin_notch_drag` / `finish_notch_drag` and `notch-drag` events coordinate session IDs, capture cleanup and frontend detail restoration. Native cursor sampling selects edges/displays in physical coordinates; release outside the HWND is detected by native button state. Keyboard arrows do not move the widget.
 - Drag preview is transient; only completed placement changes persist. Missing monitor hints fall back to primary without destroying the saved hint.
 - `ProviderSnapshot.primary_used_percent` currently means maximum vendor window utilization, not necessarily the session. UI shows its matching period; no adapter policy changes.
 

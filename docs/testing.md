@@ -68,7 +68,7 @@ npm run build
 100/125/150/200% scaling math, negative origins, taskbar fallback, transparent
 corners and bridges, settings migration and failed persistence rollback.
 `src/ui/notch-state.test.ts` covers pin/settings/Escape, provider removal,
-fake-clock close cancellation, axis-constrained nudging, missing/zero/overage,
+fake-clock close cancellation, missing/zero/overage,
 and secondary quota warnings.
 
 Optional Windows smoke: see `windows-dev.md`. Native evidence collected on 100%
@@ -79,12 +79,35 @@ fallback, reduced motion and failed drag save releasing click-through capture.
 A real pointer drag moved the widget along its edge; placement was persisted only
 after mouse release (offset 0.5 to 0.588).
 
-Bottom edge falls back on this desktop because a non-auto-hidden taskbar occupies it.
-Bottom geometry without that obstruction is unit-tested. Native mixed-DPI,
-physical monitor unplug/replug, sleep/resume and auto-hidden taskbar remain manual
+Bottom docking now explicitly overlays the taskbar at the physical screen edge.
+Native mixed-DPI, physical monitor unplug/replug, sleep/resume and auto-hidden
+taskbar remain manual
 checks; do not infer those passed from the pure geometry tests.
 
 Whole-notch gesture regression additionally covers background and ring drags on
 both axes, no persistence before release, drag-click suppression, 2px movement
 retaining ring pinning, native right-click (including repeated right-click), and
 Shift+F10 settings access. Move/settings buttons and their reserved area are removed.
+
+## Edge transitions
+
+`scripts/notch-edge-drag.py` uses the isolated preview and actual mouse input.
+It checks right/top/left/right transitions, corner retention, bottom docking over the taskbar,
+release outside the HWND, Escape rollback and immediate capture release while
+LMB remains down, ignored stale completion, negative-monitor transfer including
+travel along a top edge, failed real drag-save rollback, no arrow-key movement,
+and ring containment in horizontal/vertical layouts. PNG captures are saved to tmp/drag-*.png.
+Pure Rust tests cover all four edges, 100/125/150/200% math, horizontal and stacked
+monitor seams, zero travel and preserving the grab ratio. The physical desktop
+used here has a bottom taskbar; physical bottom docking over it was exercised. Mixed-DPI hardware,
+monitor unplug and auto-hide taskbar remain separate manual checks.
+
+## Fast shared-monitor seam regression
+
+The old 24..64 DIP entry band could be skipped between native cursor samples.
+The selector now also tests the swept segment at the destination entry band.
+`scripts/notch-seam-drag.py` verifies 10 continuous crossings and 6 separate drags
+between the left monitor's right edge and the right monitor's left edge, at
+instant, 0.11s and 0.5s mouse moves. Both directions and persisted targets passed.
+Domain tests reproduce a successful first crossing followed by a skipped return
+sample, plus vertically stacked displays and 100/125/150/200% geometry.

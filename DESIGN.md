@@ -17,13 +17,13 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 
 ## Details and settings
 
-- Drag any part of the notch (including rings) along its edge. A 5px movement threshold preserves ring clicks. There are no move/settings buttons; right-click the notch or press Shift+F10/Context Menu to open settings. Arrow keys move the focused notch along its edge.
+- Drag any part of the notch (including rings) to move or dock on another edge/display. A 5 DIP two-dimensional threshold preserves ring clicks. New edges engage within 64 DIP with 16 DIP hysteresis; monitor seams use 24 DIP entry depth. There are no move/settings buttons; right-click the notch or press Shift+F10/Context Menu to open settings. Arrow keys do not move the widget. Escape cancels a held drag; release commits once.
 
 - Hover/focus opens inward; click keeps a provider open. Escape closes settings first, then pinned details, and restores focus without reopening them.
 - 180ms leave grace permits crossing into the detail. 160ms reveal; reduced-motion disables motion.
-- Detail cards use a near-black surface, 16px radius, thin quiet border, 16px padding. Max native height 560 DIP, bounded to work area. Scroll only on actual overflow.
+- Detail cards use a near-black surface, 16px radius, thin quiet border, 16px padding. Native width 228 DIP (~2/3 of previous 340 DIP), max native height 560 DIP, bounded to work area. Scroll only on actual overflow.
 - Existing detail rows keep name / period / refill and `1fr` bar / `2.9em` percentage columns, with 2px gutter. Quiet Luxury 6px pill tracks remain.
-- Existing opacity/update/hide controls live in settings, with edge/display/recentre, autostart, providers, Copy Log, Quit and version.
+- Existing opacity/update/hide controls live in settings, with autostart, providers, Copy Log, Quit and version. Edge and display placement is managed directly by dragging the notch.
 - Opacity slider remains neutral with off-white thumb. `applyPanelOpacity` and semantic `max(...)` floors preserve readability. Card tints apply only to quota detail surfaces.
 
 ## Native contracts
@@ -32,7 +32,7 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 - Rust is the sole physical geometry owner. SVG/CSS draw within returned local rectangles; no frontend resize loop or free window resizing.
 - Transparent regions must pass input to other processes. The open detail bridge intentionally accepts pointer travel. Hover must not steal focus.
 - Position uses physical screen bounds, display scale and normalized along-edge offset. Do not mix physical and logical positions or reject negative monitor coordinates.
-- A physical edge occupied by taskbar falls back to an available edge, explicitly stated in settings. The notch never floats above the taskbar pretending to touch the screen edge.
+- Bottom docking explicitly overlays the taskbar at the physical screen bottom (user preference). Other taskbar-blocked edges fall back visibly. The notch does not float above the taskbar.
 
 ## Tokens and colors
 

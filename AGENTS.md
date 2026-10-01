@@ -22,7 +22,7 @@
 - **Progress:** the user approved rings for the summary. Details retain Quiet Luxury 6px bars. Missing/auth-required values must not look like 0%. Preserve the backend primary percentage (currently max of windows) and its matching period.
 - **Refresh:** interval is **fixed at 5s**. Do not add a settings control; `refresh_secs()` ignores persisted values.
 - **Window shape:** custom concave SVG notch; `DWMWCP_DONOTROUND`, transparent HWND and no native shadow. Do not reintroduce the old 240px minimum or content-hug resize loop. Rust owns physical placement; invisible areas pass input to other apps.
-- **Placement:** four physical edges; taskbar-blocked edges fall back visibly. Store monitor hint/normalized offset; drag previews do not write settings. Details open inward; hover must not activate the window.
+- **Placement:** four physical edges; bottom explicitly overlays the taskbar; other taskbar-blocked edges fall back visibly. Store monitor hint/normalized offset; drag previews do not write settings. Details open inward; hover must not activate the window.
 - **Opacity slider:** neutral chrome + small off-white thumb — not accent/cyan.
 - **Opacity:** preserve readability floors in `applyPanelOpacity` + token `max(...)` alphas; do not let glass wipe out meta/reset text.
 - **Autostart:** never call OS `enable` from debug/`tauri dev` (see `sync_os_autostart`).

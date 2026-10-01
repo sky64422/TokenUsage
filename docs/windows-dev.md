@@ -57,6 +57,8 @@ npm run tauri dev -- --no-watch --config tmp/notch-preview.json
 # In another terminal; Python Playwright, Pillow, pyautogui required for this optional smoke:
 python -X utf8 scripts/notch-smoke.py
 python -X utf8 scripts/notch-regression.py
+python -X utf8 scripts/notch-edge-drag.py
+python -X utf8 scripts/notch-seam-drag.py
 ```
 
 These smoke scripts refuse the production identifier. They use synthetic quota data,
