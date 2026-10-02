@@ -1,7 +1,7 @@
 # Release & in-app updates
 
-**Updated:** 2026-10-01  
-**Current public tag:** v0.3.0  
+**Updated:** 2026-10-02  
+**Current public tag:** v0.3.1  
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,7 +12,8 @@
 
 | Tag | Highlights |
 |-----|------------|
-| **v0.3.0** | Notch stability: eliminate resize/render jitter on settings toggle; Detail: auto-shrink single-row model height to fit content |
+| **v0.3.1** | Notch stability: immobile corner anchoring eliminates toggle jitter; Auto-reveal: edge fold & hover reveal; Providers: official Antigravity CLI quota integration and activity affordances |
+| v0.3.0 | Notch stability: eliminate resize/render jitter on settings toggle; Detail: auto-shrink single-row model height to fit content |
 | v0.2.1 | Settings: standalone opacity meter with ticks & live alpha, removed duplicate top header; Model detail: removed redundant header/close button and bottom hint, increased model title font to 15px |
 | v0.2.0 | Screen-edge concave notch with cross-monitor drag, click-to-open detail with optional hover preview (default off), inward panel (228 DIP), horizontal 2-row layout, Quiet Luxury styling |
 | v0.1.34 | Grok: omitted weekly % at period refill shows 0% + reset, not a degraded hint |
