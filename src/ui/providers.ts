@@ -159,17 +159,20 @@ function cardHtml(s: ProviderSnapshot, tint: CardTint): string {
         isOver(w.used_percent, s.message, w.used, w.limit),
       ));
 
+  const formatGroup = (g?: string | null) => (g === "Claude/GPT" || g === "Claude and GPT" ? "Claude" : (g || ""));
   const rows = s.windows.length
     ? s.windows
-        .map((w, i) =>
-          usageRow({
-            name: w.group && s.windows[i-1]?.group !== w.group ? w.group : (i === 0 ? s.display_name : ""),
-            nameHidden: i > 0 && (!w.group || s.windows[i-1]?.group === w.group),
+        .map((w, i) => {
+          const curGroup = formatGroup(w.group);
+          const prevGroup = formatGroup(s.windows[i - 1]?.group);
+          return usageRow({
+            name: curGroup && prevGroup !== curGroup ? curGroup : (i === 0 ? s.display_name : ""),
+            nameHidden: i > 0 && (!curGroup || prevGroup === curGroup),
             window: w,
             cardMessage: s.message,
             cardIdle: idle,
-          }),
-        )
+          });
+        })
         .join("")
     : emptyUsageRow(s, idle, over);
 

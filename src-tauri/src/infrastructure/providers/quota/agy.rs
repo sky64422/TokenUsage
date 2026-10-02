@@ -79,6 +79,11 @@ fn parse_quota(text: &str) -> Result<Vec<UsageWindow>, String> {
             (family, WindowKind::Weekly, "Week")
         } else { return Err("Unrecognized Antigravity quota period".into()); };
         let group = family.replace(" Models", "").replace(" models", "").replace(" and ", "/");
+        let group = if group == "Claude/GPT" || group == "Claude and GPT" {
+            "Claude".to_string()
+        } else {
+            group
+        };
         let used = 100. - remaining;
         let window = UsageWindow {
             group: Some(group), kind, used, limit: Some(100.), unit: UsageUnit::Percent,
@@ -113,7 +118,7 @@ mod tests {
         assert_eq!(windows.len(), 4);
         assert_eq!(windows[0].used_percent, Some(75.));
         assert_eq!(windows[0].group.as_deref(), Some("Gemini"));
-        assert_eq!(windows[2].group.as_deref(), Some("Claude/GPT"));
+        assert_eq!(windows[2].group.as_deref(), Some("Claude"));
         assert_eq!(windows[2].used_percent, Some(96.));
         assert_eq!(windows[1].kind, WindowKind::Weekly);
         assert_eq!(windows[0].resets_at.as_deref(), Some("2026-10-03T01:00:00+00:00"));
