@@ -320,7 +320,11 @@ pub fn start(app: AppHandle) {
                             folded_rect(layout).contains(pos.x, pos.y)
                         }
                     });
-                    let held = rt.expanded || rt.focused || rt.drag.is_some();
+                    let always_show = app
+                        .try_state::<AppHandleState>()
+                        .map(|s| s.core.get_state().settings.always_show_notch)
+                        .unwrap_or(false);
+                    let held = rt.expanded || rt.focused || rt.drag.is_some() || always_show;
                     if let Some(shown) = rt.reveal.update(started.elapsed(), inside, held) {
                         app.emit("notch-reveal", shown).map_err(|e| e.to_string())?;
                     }

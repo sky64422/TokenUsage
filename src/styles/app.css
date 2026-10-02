@@ -294,7 +294,7 @@ body {
     0 0 0 0.5px rgba(255, 255, 255, calc(0.14 * var(--accent-opacity))) inset,
     0 0 10px rgba(var(--ok-rgb), calc(0.22 * var(--accent-opacity)));
   transition:
-    width 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.65s cubic-bezier(0.16, 1, 0.3, 1),
     background 0.25s ease,
     box-shadow 0.25s ease;
 }
@@ -501,13 +501,12 @@ body {
   overflow-y: auto;
   border: none;
   border-radius: 0;
-  padding: var(--space-3) 14px 14px;
+  padding: 2px 2px 6px;
   margin: 0;
-  /* Solid relative to the glass: ignore --panel-opacity so controls stay readable. */
-  background: var(--popover);
-  color: var(--popover-foreground);
+  background: transparent;
+  color: var(--foreground);
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   box-shadow: none;
   scrollbar-width: thin;
   scrollbar-color: var(--muted-foreground) transparent;
@@ -517,33 +516,334 @@ body {
   display: flex;
 }
 
+/* Header with title, badge, and close button */
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 4px;
+}
+
+.settings-title-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.settings-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+
+.settings-badge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.settings-close-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+.settings-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.settings-close-btn:active {
+  transform: scale(0.88);
+}
+
+/* Pill card primitive (referenced from modern tool panels) */
+.settings-card {
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.settings-card:hover {
+  background: rgba(255, 255, 255, 0.055);
+  border-color: var(--border);
+}
+
+/* Opacity slider inside unified pill container */
+.opacity-card {
+  gap: 10px;
+  padding: 9px 12px;
+}
+
+.opacity-card .settings-card-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  flex-shrink: 0;
+}
+
+.opacity-card .opacity-meter {
+  flex: 1 1 auto;
+  height: 10px;
+  margin: 0;
+  border-radius: var(--radius-full);
+}
+
+.opacity-card .opacity-value {
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  min-width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Unified grouped toggles card (clean Quiet Luxury aesthetics) */
+.settings-group {
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color var(--duration-fast) ease;
+}
+
+.settings-group:hover {
+  border-color: var(--border);
+}
+
+.settings-group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  transition: background var(--duration-fast) ease;
+}
+
+.settings-group-row:last-child {
+  border-bottom: none;
+}
+
+.settings-group-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.settings-group-title {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Section styling */
 .settings-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 6px;
   min-width: 0;
 }
 
 .settings-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--muted-foreground);
+  color: rgba(255, 255, 255, 0.45);
+  padding: 1px 3px;
 }
 
-.settings-label-row {
+/* Provider 2x2 grid (styled like tool selector in reference) */
+.provider-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.provider-card-btn {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
   justify-content: space-between;
-  gap: var(--space-2);
+  align-items: stretch;
+  height: 56px;
+  padding: 8px 10px 7px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  cursor: pointer;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: left;
+  user-select: none;
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease,
+    opacity var(--duration-fast) ease;
 }
 
-.settings-value {
-  font-size: 12px;
+.provider-card-btn:active:not(:disabled) {
+  transform: scale(0.955) translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.provider-card-btn:active:not(:disabled) .provider-card-icon {
+  transform: scale(0.92);
+}
+
+.provider-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  line-height: 1;
+}
+
+.provider-card-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+  transition: opacity var(--duration-fast) ease, transform var(--duration-fast) ease;
+}
+
+.provider-status-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1.1;
+  transition: all var(--duration-fast) ease;
+}
+
+.provider-card-name {
+  font-size: 10.5px;
+  font-weight: 550;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  margin: 0;
+  padding: 0 0 1px;
+  transition: color var(--duration-fast) ease;
+}
+
+/* ON state: bright white text and icon, emerald badge, elevated glass card */
+.provider-card-btn.on {
+  background: rgba(255, 255, 255, 0.085);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.provider-card-btn.on .provider-card-icon {
+  opacity: 1;
+  filter: brightness(0) invert(1);
+}
+
+.provider-card-btn.on .provider-status-badge {
+  background: rgba(74, 222, 128, 0.16);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+}
+
+.provider-card-btn.on .provider-card-name {
+  color: #ffffff;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--foreground);
+}
+
+/* OFF state: soft translucent white, definitely readable and NOT dark */
+.provider-card-btn.off {
+  background: rgba(255, 255, 255, 0.018);
+  border-color: rgba(255, 255, 255, 0.06);
+  opacity: 0.65;
+}
+
+.provider-card-btn.off .provider-card-icon {
+  opacity: 0.45;
+  filter: brightness(0) invert(1);
+}
+
+.provider-card-btn.off .provider-status-badge {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.provider-card-btn.off .provider-card-name {
+  color: rgba(255, 255, 255, 0.58);
+}
+
+/* Hover effects */
+.provider-card-btn:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.provider-card-btn.on:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.provider-card-btn.off:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.14);
+  opacity: 0.9;
+}
+
+.provider-card-btn.off:hover:not(:disabled) .provider-card-icon {
+  opacity: 0.8;
+  filter: brightness(0) invert(1);
+}
+
+.provider-card-btn.off:hover:not(:disabled) .provider-card-name {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+/* Locked (last remaining provider) */
+.provider-card-btn:disabled,
+.provider-card-btn.is-locked {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.provider-card-btn.is-locked .provider-status-badge {
+  background: rgba(234, 179, 8, 0.18);
+  color: #fbbf24;
+  border-color: rgba(234, 179, 8, 0.35);
 }
 
 /* Bottom chrome: meta + debug / quit action pair */
@@ -552,8 +852,8 @@ body {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-top: 12px;
+  gap: 8px;
+  padding-top: 8px;
   border-top: 1px solid var(--border-soft);
 }
 
@@ -574,24 +874,8 @@ body {
   align-items: center;
   justify-content: space-between;
   box-sizing: border-box;
-  min-height: 28px;
+  min-height: 24px;
   gap: 8px;
-}
-
-.settings-update-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--foreground);
-  line-height: 1.2;
-}
-
-.settings-update-copy {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  min-width: 0;
 }
 
 .settings-update-status {
@@ -612,11 +896,11 @@ body {
 .settings-update-btn {
   position: relative;
   flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: 1px solid var(--border-soft);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--muted-foreground);
   display: flex;
@@ -679,77 +963,79 @@ body {
 .settings-action-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   min-width: 0;
 }
 
-/* Action button base (settings footer pair) */
-.settings-debug,
-.settings-quit {
+/* Action button base (pill actions) */
+.settings-pill-action {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  height: 34px;
+  height: 28px;
   margin: 0;
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-lg);
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted-foreground);
   font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 11px;
+  font-weight: 500;
   cursor: pointer;
+  text-align: center;
   transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
     background var(--duration-fast) ease,
     border-color var(--duration-fast) ease,
-    color var(--duration-fast) ease,
-    filter var(--duration-fast) ease,
-    box-shadow var(--duration-fast) ease;
+    color var(--duration-fast) ease;
 }
 
-/* Troubleshooting export — amber/warn, like a triage action */
-.settings-debug {
-  border: 1px solid color-mix(in srgb, var(--warning) 34%, transparent);
-  background: color-mix(in srgb, var(--warning) 11%, transparent);
-  color: color-mix(in srgb, var(--warning) 88%, var(--foreground));
+.settings-pill-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--foreground);
+  border-color: var(--border);
 }
 
-.settings-debug:hover {
-  background: color-mix(in srgb, var(--warning) 18%, transparent);
-  border-color: color-mix(in srgb, var(--warning) 48%, transparent);
+.settings-pill-action:active:not(:disabled) {
+  transform: scale(0.95) translateY(1px);
 }
 
-.settings-debug.is-done {
-  border-color: color-mix(in srgb, var(--success) 40%, transparent);
-  background: color-mix(in srgb, var(--success) 12%, transparent);
-  color: var(--success);
+.settings-pill-action#btn-diag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
 }
 
-.settings-debug:active,
-.settings-quit:active {
-  filter: brightness(0.97);
+.diag-check-icon {
+  width: 11px;
+  height: 11px;
+  display: none;
+  color: #4ade80;
+  transform: scale(0.5);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
 }
 
-.settings-debug:focus-visible {
-  outline-color: color-mix(in srgb, var(--warning) 55%, transparent);
+.settings-pill-action#btn-diag.is-done {
+  border-color: rgba(74, 222, 128, 0.35);
+  background: rgba(74, 222, 128, 0.14);
+  color: #4ade80;
+  transform: scale(1.02);
 }
 
-.settings-quit {
-  border: 1px solid color-mix(in srgb, var(--destructive) 28%, transparent);
-  background: color-mix(in srgb, var(--destructive) 9%, transparent);
-  color: var(--destructive);
+.settings-pill-action#btn-diag.is-done .diag-check-icon {
+  display: inline-block;
+  transform: scale(1);
+  opacity: 1;
 }
 
-.settings-quit:hover {
+.settings-pill-action.is-quit:hover {
   background: color-mix(in srgb, var(--destructive) 16%, transparent);
   border-color: color-mix(in srgb, var(--destructive) 42%, transparent);
-}
-
-.settings-quit:focus-visible {
-  outline-color: color-mix(in srgb, var(--destructive) 50%, transparent);
+  color: var(--destructive);
 }
 
 /* Rectangular opacity meter — 5% steps with tick marks (35–100). */
@@ -888,12 +1174,12 @@ body {
 
 .settings-switch {
   flex: 0 0 auto;
-  width: 40px;
-  height: 24px;
+  width: 32px;
+  height: 18px;
   border-radius: var(--radius-full);
   background: var(--track);
   position: relative;
-  transition: background var(--duration-normal) ease;
+  transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: inset 0 1px 2px var(--track-inset);
 }
 
@@ -902,12 +1188,15 @@ body {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--primary-foreground);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
-  transition: transform var(--duration-normal) var(--ease-out);
+  transition:
+    transform 0.36s cubic-bezier(0.34, 1.56, 0.64, 1),
+    width 0.2s ease,
+    background 0.25s ease;
 }
 
 .settings-switch-input:checked + .settings-switch {
@@ -915,7 +1204,12 @@ body {
 }
 
 .settings-switch-input:checked + .settings-switch::after {
-  transform: translateX(16px);
+  transform: translateX(14px);
+}
+
+.settings-toggle-card:active .settings-switch::after,
+.settings-group-row:active .settings-switch::after {
+  width: 16px;
 }
 
 .settings-switch-input:focus-visible + .settings-switch {

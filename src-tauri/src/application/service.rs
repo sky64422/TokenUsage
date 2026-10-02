@@ -163,6 +163,12 @@ impl AppCore {
         })
     }
 
+    pub fn set_always_show_notch(&self, enabled: bool) -> Result<(), String> {
+        self.mutate_settings(|s| {
+            s.always_show_notch = enabled;
+        })
+    }
+
     pub fn set_notch_placement(
         &self,
         placement: crate::domain::notch::NotchPlacement,

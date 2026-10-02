@@ -8,7 +8,7 @@ pub const INNER_RADIUS: f64 = DEPTH - SHOULDER;
 // Content nestles into the curved ends instead of starting after the entire curve.
 pub const END_PADDING: f64 = 50.;
 pub const DETAIL_RADIUS: f64 = 16.;
-pub const DETAIL_WIDTH: f64 = 228.;
+pub const DETAIL_WIDTH: f64 = 280.;
 pub const DETAIL_HEIGHT: f64 = 560.;
 pub const MIN_DETAIL_HEIGHT: f64 = 48.;
 pub const GAP: f64 = 8.;

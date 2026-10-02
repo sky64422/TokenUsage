@@ -58,20 +58,20 @@
   display: none;
   position: absolute;
   inset: 6px;
+  box-sizing: border-box;
   border: 1.5px solid transparent;
-  border-top-color: #fff;
-  border-right-color: rgba(255, 255, 255, .3);
+  border-top-color: rgba(255, 255, 255, 0.92);
   border-radius: 50%;
   pointer-events: none;
+  z-index: 2;
 }
-.notch-cell[data-activity="running"] .activity-orbit {
+.notch-cell[data-activity="running"] .activity-orbit,
+.notch-cell[data-activity="recent"] .activity-orbit {
   display: block;
   animation: activity-turn 1.4s linear infinite;
 }
 .notch-cell[data-activity="recent"] .activity-orbit {
-  display: block;
   border-top-color: var(--warning);
-  border-right-color: transparent;
 }
 .notch.is-folded .activity-orbit { animation-play-state: paused; }
 @keyframes activity-turn { to { transform: rotate(360deg); } }
@@ -138,7 +138,7 @@
   transform: rotate(-90deg);
   transform-origin: center;
   stroke-dasharray: 0 100;
-  transition: stroke-dasharray var(--notch-motion) ease;
+  transition: stroke-dasharray 0.75s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .ring-wrap img {
   position: absolute;
@@ -231,7 +231,7 @@
 }
 .notch-detail {
   position: absolute;
-  width: 228px;
+  width: 280px;
   box-sizing: border-box;
   border-radius: var(--detail-radius);
   background: rgba(8, 8, 10, max(0.88, var(--panel-opacity)));
@@ -290,7 +290,7 @@
   min-height: 0;
 }
 .notch-detail .settings-end {
-  margin-top: 12px;
+  margin-top: 4px;
 }
 .notch-error {
   font-size: 11px;

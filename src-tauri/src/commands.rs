@@ -114,6 +114,19 @@ pub fn set_hover_detail(state: State<'_, AppHandleState>, enabled: bool) -> Resu
 }
 
 #[tauri::command]
+pub fn set_always_show_notch(
+    app: AppHandle,
+    state: State<'_, AppHandleState>,
+    enabled: bool,
+) -> Result<(), String> {
+    state.core.set_always_show_notch(enabled)?;
+    if enabled {
+        let _ = crate::infrastructure::notch_window::set_focus(&app, true);
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn set_provider_enabled(
     app: AppHandle,
     state: State<'_, AppHandleState>,

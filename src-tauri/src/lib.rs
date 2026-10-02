@@ -105,6 +105,7 @@ pub fn run() {
             commands::set_opacity,
             commands::set_autostart,
             commands::set_hover_detail,
+            commands::set_always_show_notch,
             commands::set_provider_enabled,
             commands::set_provider_tint,
             commands::quit_app,

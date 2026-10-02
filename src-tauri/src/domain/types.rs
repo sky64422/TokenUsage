@@ -141,6 +141,8 @@ pub struct AppSettings {
     pub autostart: bool,
     #[serde(default)]
     pub hover_detail: bool,
+    #[serde(default)]
+    pub always_show_notch: bool,
     /// Legacy persist field; poll interval is always `RefreshPolicy::DEFAULT_REFRESH_SECS`.
     #[serde(default = "default_refresh_secs")]
     pub refresh_secs: u64,
@@ -166,6 +168,7 @@ impl Default for AppSettings {
             hotkey: HotkeyPolicy::DEFAULT.into(),
             autostart: true,
             hover_detail: false,
+            always_show_notch: false,
             refresh_secs: RefreshPolicy::DEFAULT_REFRESH_SECS,
             claude: ProviderConfig::default(),
             codex: ProviderConfig::default(),

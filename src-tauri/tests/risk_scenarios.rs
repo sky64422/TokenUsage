@@ -188,3 +188,18 @@ fn risk_default_state_uses_notch_placement_without_legacy_window() {
         state
     );
 }
+
+#[test]
+fn risk_always_show_notch_persists_and_updates_core() {
+    let dir = tempdir().unwrap();
+    let core = AppCore::new(default_state(), dir.path().to_path_buf());
+    assert!(!core.get_state().settings.always_show_notch);
+    core.set_always_show_notch(true).unwrap();
+    assert!(core.get_state().settings.always_show_notch);
+    let loaded = load_state(dir.path()).unwrap();
+    assert!(loaded.settings.always_show_notch);
+    core.set_always_show_notch(false).unwrap();
+    assert!(!core.get_state().settings.always_show_notch);
+    let loaded_off = load_state(dir.path()).unwrap();
+    assert!(!loaded_off.settings.always_show_notch);
+}

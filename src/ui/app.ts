@@ -24,7 +24,7 @@ import type {
 
 const SURFACE_PADDING = 36; // 16px padding and 1px border on both sides + 2px headroom.
 export async function mountApp(root: HTMLElement): Promise<void> {
-  root.innerHTML = `<div class="notch-shell"><nav class="notch" aria-label="AI usage"></nav><section class="notch-detail" aria-label="Usage detail" hidden><div class="detail-body"><div class="detail-quota"><div class="quota-root"></div><p class="detail-state"></p></div><div class="detail-settings" hidden><div class="detail-heading"><h2>Settings</h2><button class="icon-btn detail-close" aria-label="Close settings">×</button></div><div class="settings-root"></div></div><p class="notch-error" role="status" hidden></p></div></section></div>`;
+  root.innerHTML = `<div class="notch-shell"><nav class="notch" aria-label="AI usage"></nav><section class="notch-detail" aria-label="Usage detail" hidden><div class="detail-body"><div class="detail-quota"><div class="quota-root"></div><p class="detail-state"></p></div><div class="detail-settings" hidden><div class="settings-root"></div></div><p class="notch-error" role="status" hidden></p></div></section></div>`;
   const shell = root.querySelector<HTMLElement>(".notch-shell")!;
   const rail = root.querySelector<HTMLElement>(".notch")!;
   const detail = root.querySelector<HTMLElement>(".notch-detail")!;
@@ -96,6 +96,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         persisted.settings.hover_detail = v;
         void invoke("set_hover_detail", { enabled: v }).catch(fail);
       },
+      onAlwaysShowNotch: (v) => {
+        persisted.settings.always_show_notch = v;
+        void invoke("set_always_show_notch", { enabled: v }).catch(fail);
+      },
       onOpacityChange: (opacity) => {
         applyPanelOpacity(shell, opacity);
         void invoke("set_opacity", { opacity }).catch(fail);
@@ -112,6 +116,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           fail(e);
           throw e;
         }
+      },
+      onClose: () => {
+        dispatch({ type: "reset" });
       },
       onDiagnostics: async () => {
         const diag = await invoke<DiagnosticsSnapshot>("get_diagnostics");
@@ -141,9 +148,16 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   }
   function requestSurface() {
     const expanded = !dragging && (interaction.settings || interaction.provider !== null);
-    const height = Math.ceil(
-      body.getBoundingClientRect().height + SURFACE_PADDING,
-    );
+    if (!expanded && layout) {
+      paintLayout({
+        ...layout,
+        window: layout.notch,
+        detail: null,
+      });
+    }
+    const height = interaction.settings
+      ? 480
+      : Math.ceil(body.getBoundingClientRect().height + SURFACE_PADDING);
     let target: number | null = null;
     if (interaction.provider && !interaction.settings) {
       const cell = root.querySelector<HTMLElement>(
@@ -223,7 +237,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     el.addEventListener("focusin", closeDelay.cancel);
     el.addEventListener("focusout", closeDelay.schedule);
   }
-  root.querySelector(".detail-close")!.addEventListener("click", () => {
+  root.querySelector(".detail-close")?.addEventListener("click", () => {
     dispatch({ type: "reset" });
   });
   document.addEventListener("keydown", (e) => {
@@ -308,7 +322,11 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   function openSettings() {
     if (dragId !== null) return;
     closeDelay.cancel();
-    if (!interaction.settings) dispatch({ type: "settings" });
+    if (interaction.settings) {
+      dispatch({ type: "reset" });
+    } else {
+      dispatch({ type: "settings" });
+    }
   }
   rail.addEventListener("contextmenu", (e) => {
     e.preventDefault();
@@ -354,7 +372,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   await surfaceChain;
   await win.show();
   const observer = new ResizeObserver(() => {
-    if (!detail.hidden) requestSurface();
+    if (!detail.hidden && !interaction.settings) requestSurface();
   });
   observer.observe(body);
   window.addEventListener("beforeunload", () => observer.disconnect());

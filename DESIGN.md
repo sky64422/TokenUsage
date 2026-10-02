@@ -21,7 +21,7 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 
 - Hover/focus opens inward; click keeps a provider open. Escape closes settings first, then pinned details, and restores focus without reopening them.
 - 180ms leave grace permits crossing into the detail. 160ms reveal; reduced-motion disables motion.
-- Detail cards use a near-black surface, 16px radius, thin quiet border, 16px padding. Native width 228 DIP (~2/3 of previous 340 DIP), max native height 560 DIP, bounded to work area. Scroll only on actual overflow.
+- Detail cards use a near-black surface, 16px radius, thin quiet border, 16px padding. Native width 280 DIP, max native height 560 DIP, bounded to work area. Scroll only on actual overflow.
 - Existing detail rows keep name / period / refill and `1fr` bar / `2.9em` percentage columns, with 2px gutter. Quiet Luxury 6px pill tracks remain.
 - Existing opacity/update/hide controls live in settings, with autostart, providers, Copy Log, Quit and version. Edge and display placement is managed directly by dragging the notch.
 - Opacity slider remains neutral with off-white thumb. `applyPanelOpacity` and semantic `max(...)` floors preserve readability. Card tints apply only to quota detail surfaces.

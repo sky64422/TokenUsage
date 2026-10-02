@@ -13,6 +13,18 @@ import {
 import type { AppSettings, ProviderId } from "./types";
 import { PROVIDER_IDS } from "./types";
 
+import claudeMark from "../assets/marks/claude.svg";
+import codexMark from "../assets/marks/codex.svg";
+import grokMark from "../assets/marks/grok.svg";
+import agyMark from "../assets/marks/agy.svg";
+
+const MARKS: Record<ProviderId, string> = {
+  claude: claudeMark,
+  codex: codexMark,
+  grok: grokMark,
+  agy: agyMark,
+};
+
 export type UpdatePhase = "idle" | "downloading" | "ready";
 
 export interface UpdateInfo {
@@ -27,7 +39,7 @@ export interface DownloadProgress {
   received: number;
 }
 
-const ICON_DOWNLOAD = `<svg class="icon-svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M8 2.5v7.5M5 7.25 8 10.25 11 7.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 12.5h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+const ICON_DOWNLOAD = `<svg class="icon-svg" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M8 2.5v7.5M5 7.25 8 10.25 11 7.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 12.5h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
 
 export function mountSettingsPanel(
   root: HTMLElement,
@@ -35,8 +47,10 @@ export function mountSettingsPanel(
   handlers: {
     onAutostart: (v: boolean) => void;
     onHoverDetail: (v: boolean) => void;
+    onAlwaysShowNotch?: (v: boolean) => void;
     onOpacityChange: (o: number) => void;
     onProviderEnabled: (id: ProviderId, enabled: boolean) => void | Promise<void>;
+    onClose?: () => void;
     onDiagnostics: () => void | Promise<void>;
     onQuit: () => void;
   },
@@ -59,11 +73,19 @@ export function mountSettingsPanel(
 
   root.innerHTML = `
     <div class="settings" id="settings-sheet">
-      <div class="settings-section">
-        <div class="settings-label-row opacity-label-row">
-          <span class="settings-label">Opacity</span>
-          <span class="settings-value opacity-value" id="opacity-val">${initialPct}%</span>
+      <div class="settings-header">
+        <div class="settings-title-group">
+          <span class="settings-title">Settings</span>
         </div>
+        <button type="button" class="settings-close-btn" id="btn-close-settings" aria-label="Close settings" title="Close settings">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-card opacity-card">
+        <span class="settings-card-label">Opacity</span>
         <div class="opacity-meter" style="--opacity-fill: ${meterFillPct(initialPct)}%">
           <div class="opacity-meter-fill" aria-hidden="true"></div>
           <div class="opacity-meter-ticks" aria-hidden="true">${opacityTicksHtml()}</div>
@@ -71,46 +93,53 @@ export function mountSettingsPanel(
             min="${OPACITY_MIN_PCT}" max="${OPACITY_MAX_PCT}" step="${OPACITY_STEP_PCT}"
             value="${initialPct}" aria-label="Opacity" />
         </div>
+        <span class="opacity-value" id="opacity-val">${initialPct}%</span>
       </div>
 
-      <div class="settings-section">
-        <label class="settings-toggle" for="autostart">
-          <span class="settings-toggle-title">Start with Windows</span>
+      <div class="settings-group">
+        <label class="settings-group-row" for="always-show">
+          <span class="settings-group-title">Always show notch</span>
+          <input type="checkbox" id="always-show" class="settings-switch-input" />
+          <span class="settings-switch" aria-hidden="true"></span>
+        </label>
+
+        <label class="settings-group-row" for="hover-detail">
+          <span class="settings-group-title">Open on hover</span>
+          <input type="checkbox" id="hover-detail" class="settings-switch-input" />
+          <span class="settings-switch" aria-hidden="true"></span>
+        </label>
+
+        <label class="settings-group-row" for="autostart">
+          <span class="settings-group-title">Start with Windows</span>
           <input type="checkbox" id="autostart" class="settings-switch-input" />
           <span class="settings-switch" aria-hidden="true"></span>
         </label>
       </div>
 
       <div class="settings-section">
-        <label class="settings-toggle" for="hover-detail">
-          <span class="settings-toggle-title">Open on hover</span>
-          <input type="checkbox" id="hover-detail" class="settings-switch-input" />
-          <span class="settings-switch" aria-hidden="true"></span>
-        </label>
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-label">Providers</div>
-        <div class="provider-chip-row" role="group" aria-label="Providers">
-          ${providerChip("claude", "Claude", settings.claude.enabled !== false)}
-          ${providerChip("codex", "Codex", settings.codex.enabled !== false)}
-          ${providerChip("grok", "Grok", settings.grok.enabled !== false)}
-          ${providerChip("agy", "Antigravity", settings.agy.enabled !== false)}
+        <span class="settings-label">Models</span>
+        <div class="provider-grid" role="group" aria-label="Models">
+          ${providerCard("claude", "Claude", MARKS.claude, settings.claude.enabled !== false)}
+          ${providerCard("codex", "Codex", MARKS.codex, settings.codex.enabled !== false)}
+          ${providerCard("grok", "Grok", MARKS.grok, settings.grok.enabled !== false)}
+          ${providerCard("agy", "Antigravity", MARKS.agy, settings.agy.enabled !== false)}
         </div>
       </div>
 
       <div class="settings-end">
         <div class="settings-update">
-          <span class="settings-update-title">Version</span>
-          <div class="settings-update-copy">
-            <span class="settings-meta">${versionStr || "v0.0.0"}</span>
-            <span class="settings-update-status" id="update-status"></span>
-            <button type="button" class="icon-btn settings-update-btn" id="btn-check-update" aria-label="Check for updates" title="Check for updates">${ICON_DOWNLOAD}</button>
-          </div>
+          <span class="settings-meta" title="${versionStr || "v0.0.0"}">${versionStr || "v0.0.0"}</span>
+          <span class="settings-update-status" id="update-status"></span>
+          <button type="button" class="icon-btn settings-update-btn" id="btn-check-update" aria-label="Check for updates" title="Check for updates">${ICON_DOWNLOAD}</button>
         </div>
         <div class="settings-action-row">
-          <button type="button" class="settings-debug" id="btn-diag" title="Copy diagnostic log for troubleshooting">Copy Log</button>
-          <button type="button" class="settings-quit" id="btn-quit">Quit</button>
+          <button type="button" class="settings-pill-action" id="btn-diag" title="Copy diagnostic log for troubleshooting">
+            <svg class="diag-check-icon" width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M2.5 6.5l2.5 2.5 4.5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="diag-text">Copy Log</span>
+          </button>
+          <button type="button" class="settings-pill-action is-quit" id="btn-quit">Quit</button>
         </div>
       </div>
     </div>
@@ -120,6 +149,7 @@ export function mountSettingsPanel(
   const opacityRange = root.querySelector("#opacity-range") as HTMLInputElement;
   const opacityVal = root.querySelector("#opacity-val") as HTMLElement;
   const opacityMeter = root.querySelector(".opacity-meter") as HTMLElement;
+  const alwaysShow = root.querySelector("#always-show") as HTMLInputElement | null;
   const autostart = root.querySelector("#autostart") as HTMLInputElement;
   const hoverDetail = root.querySelector("#hover-detail") as HTMLInputElement;
   const updateBtn = root.querySelector("#btn-check-update") as HTMLButtonElement;
@@ -144,6 +174,12 @@ export function mountSettingsPanel(
     paintOpacity(Number(opacityRange.value));
   });
 
+  if (alwaysShow) {
+    alwaysShow.checked = Boolean(settings.always_show_notch);
+    alwaysShow.addEventListener("change", () => {
+      handlers.onAlwaysShowNotch?.(alwaysShow.checked);
+    });
+  }
   autostart.checked = settings.autostart;
   hoverDetail.checked = Boolean(settings.hover_detail);
 
@@ -318,6 +354,8 @@ export function mountSettingsPanel(
     btn.classList.toggle("on", on);
     btn.classList.toggle("off", !on);
     btn.setAttribute("aria-pressed", on ? "true" : "false");
+    const badge = btn.querySelector<HTMLElement>(".provider-status-badge");
+    if (badge) badge.textContent = on ? "ON" : "OFF";
     syncProviderLocks();
   }
 
@@ -335,13 +373,17 @@ export function mountSettingsPanel(
     PROVIDER_IDS.forEach((id) => {
       const btn = providerBtn(id);
       if (!btn) return;
+      const label = btn.querySelector(".provider-card-name")?.textContent?.trim() ?? id;
       const locked = onlyOne && isProviderOn(id);
       btn.classList.toggle("is-locked", locked);
       btn.disabled = locked;
+      const badge = btn.querySelector<HTMLElement>(".provider-status-badge");
       if (locked) {
-        btn.title = `${btn.textContent?.trim() ?? id} (required)`;
+        btn.title = `${label} (required)`;
+        if (badge) badge.textContent = "REQ";
       } else {
-        btn.title = btn.textContent?.trim() ?? id;
+        btn.title = label;
+        if (badge) badge.textContent = isProviderOn(id) ? "ON" : "OFF";
       }
     });
   }
@@ -363,16 +405,21 @@ export function mountSettingsPanel(
 
   syncProviderLocks();
 
+  const closeBtn = root.querySelector<HTMLButtonElement>("#btn-close-settings");
+  if (closeBtn && handlers.onClose) {
+    closeBtn.addEventListener("click", handlers.onClose);
+  }
+
   const diagBtn = root.querySelector("#btn-diag") as HTMLButtonElement | null;
-  const diagLabel = "Copy Log";
+  const diagText = diagBtn?.querySelector<HTMLElement>(".diag-text");
   diagBtn?.addEventListener("click", () => {
     void Promise.resolve(handlers.onDiagnostics()).then(() => {
       if (!diagBtn) return;
-      diagBtn.textContent = "Copied";
+      if (diagText) diagText.textContent = "Copied";
       diagBtn.classList.add("is-done");
       window.setTimeout(() => {
         if (!diagBtn.isConnected) return;
-        diagBtn.textContent = diagLabel;
+        if (diagText) diagText.textContent = "Copy Log";
         diagBtn.classList.remove("is-done");
       }, 1400);
     });
@@ -397,6 +444,8 @@ export function mountSettingsPanel(
         btn.classList.toggle("on", on);
         btn.classList.toggle("off", !on);
         btn.setAttribute("aria-pressed", on ? "true" : "false");
+        const badge = btn.querySelector<HTMLElement>(".provider-status-badge");
+        if (badge) badge.textContent = on ? "ON" : "OFF";
       });
       syncProviderLocks();
     },
@@ -406,15 +455,20 @@ export function mountSettingsPanel(
   };
 }
 
-function providerChip(id: string, label: string, enabled: boolean): string {
+function providerCard(id: ProviderId, label: string, markUrl: string, enabled: boolean): string {
   const state = enabled ? "on" : "off";
+  const badgeText = enabled ? "ON" : "OFF";
   return `
     <button type="button"
-      class="provider-chip ${state}"
+      class="provider-card-btn ${state}"
       data-provider="${id}"
       aria-pressed="${enabled ? "true" : "false"}"
       title="${label}">
-      ${label}
+      <div class="provider-card-top">
+        <img src="${markUrl}" class="provider-card-icon" alt="" draggable="false" />
+        <span class="provider-status-badge">${badgeText}</span>
+      </div>
+      <span class="provider-card-name">${label}</span>
     </button>
   `;
 }
