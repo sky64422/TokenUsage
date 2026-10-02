@@ -14,8 +14,17 @@ use tauri::{AppHandle, Emitter, Manager};
 #[cfg(not(windows))]
 use tauri::{PhysicalPosition, PhysicalSize};
 
-const POINTER_INTERVAL: Duration = Duration::from_millis(32);
-const DISPLAY_CHECK_TICKS: usize = 32;
+const IDLE_POINTER_INTERVAL: Duration = Duration::from_millis(32);
+const DRAG_POINTER_INTERVAL: Duration = Duration::from_millis(8);
+const DISPLAY_CHECK_INTERVAL: Duration = Duration::from_secs(1);
+
+#[cfg(windows)]
+#[link(name = "winmm")]
+extern "system" {
+    fn timeBeginPeriod(uPeriod: u32) -> u32;
+    fn timeEndPeriod(uPeriod: u32) -> u32;
+}
+
 #[derive(Default)]
 pub struct NotchController(Mutex<Runtime>);
 #[derive(Default)]
@@ -31,6 +40,43 @@ struct Runtime {
     pump_pending: bool,
     reveal: NotchReveal,
     focused: bool,
+    #[cfg(windows)]
+    timer_period_active: bool,
+}
+
+impl Runtime {
+    #[cfg(windows)]
+    fn start_timer_period(&mut self) {
+        if !self.timer_period_active {
+            unsafe {
+                timeBeginPeriod(1);
+            }
+            self.timer_period_active = true;
+        }
+    }
+
+    #[cfg(windows)]
+    fn stop_timer_period(&mut self) {
+        if self.timer_period_active {
+            unsafe {
+                timeEndPeriod(1);
+            }
+            self.timer_period_active = false;
+        }
+    }
+
+    fn end_drag(&mut self) -> Option<DragSession> {
+        #[cfg(windows)]
+        self.stop_timer_period();
+        self.drag.take()
+    }
+}
+
+#[cfg(windows)]
+impl Drop for Runtime {
+    fn drop(&mut self) {
+        self.stop_timer_period();
+    }
 }
 
 pub fn get_reveal(app: &AppHandle) -> Result<bool, String> {
@@ -121,7 +167,10 @@ pub fn apply(
         .filter(|drag| drag.motion.active)
         .map(|drag| &drag.motion.placement)
         .unwrap_or(&settings.notch);
-    let areas = monitors(app)?;
+    let areas = match rt.drag.as_ref() {
+        Some(drag) => drag.monitors.clone(),
+        None => monitors(app)?,
+    };
     let monitor = areas
         .iter()
         .find(|m| Some(&m.name) == placement.monitor_hint.as_ref())
@@ -185,8 +234,21 @@ pub fn apply(
             ))
             .map_err(|e| e.to_string())?;
         }
-        app.emit("notch-layout", &layout)
-            .map_err(|e| e.to_string())?;
+        let content_changed = match &rt.layout {
+            Some(prev) => {
+                prev.edge != layout.edge
+                    || prev.scale != layout.scale
+                    || prev.monitor != layout.monitor
+                    || prev.window.width != layout.window.width
+                    || prev.window.height != layout.window.height
+                    || prev.detail != layout.detail
+            }
+            None => true,
+        };
+        if content_changed || rt.drag.is_none() {
+            app.emit("notch-layout", &layout)
+                .map_err(|e| e.to_string())?;
+        }
         rt.layout = Some(layout.clone());
     }
     Ok(layout)
@@ -195,10 +257,16 @@ pub fn apply(
 pub fn start(app: AppHandle) {
     std::thread::spawn(move || {
         let started = Instant::now();
-        let mut tick = 0;
+        let mut last_display_check = Instant::now();
         let mut last_error = String::new();
         loop {
-            if tick % DISPLAY_CHECK_TICKS == 0 {
+            let is_dragging = {
+                let controller = app.state::<NotchController>();
+                let rt = controller.0.lock().expect("Notch lock poisoned");
+                rt.drag.is_some()
+            };
+            if !is_dragging && last_display_check.elapsed() >= DISPLAY_CHECK_INTERVAL {
+                last_display_check = Instant::now();
                 let handle = app.clone();
                 if let Err(e) = app.run_on_main_thread(move || {
                     if let Err(e) = apply(&handle, None) {
@@ -208,7 +276,6 @@ pub fn start(app: AppHandle) {
                     eprintln!("notch dispatch: {e}");
                 }
             }
-            tick += 1;
             let queue_drag = {
                 let controller = app.state::<NotchController>();
                 let mut rt = controller.0.lock().expect("Notch lock poisoned");
@@ -221,13 +288,14 @@ pub fn start(app: AppHandle) {
             if queue_drag {
                 let handle = app.clone();
                 if let Err(e) = app.run_on_main_thread(move || {
+                    let res = pump_drag(&handle);
                     handle
                         .state::<NotchController>()
                         .0
                         .lock()
                         .expect("Notch lock poisoned")
                         .pump_pending = false;
-                    if let Err(e) = pump_drag(&handle) {
+                    if let Err(e) = res {
                         eprintln!("notch drag: {e}");
                     }
                 }) {
@@ -239,45 +307,52 @@ pub fn start(app: AppHandle) {
                     eprintln!("notch drag dispatch: {e}");
                 }
             }
-            let result = (|| -> Result<(), String> {
-                let win = super::window_ctl::main_window(&app)?;
-                let pos = win.cursor_position().map_err(|e| e.to_string())?;
-                let controller = app.state::<NotchController>();
-                let mut rt = controller.0.lock().map_err(|_| "Notch lock poisoned")?;
-                let inside = rt.layout.as_ref().is_some_and(|layout| {
-                    if rt.reveal.shown() {
-                        layout.hit(pos.x, pos.y)
-                    } else {
-                        folded_rect(layout).contains(pos.x, pos.y)
-                    }
-                });
-                let held = rt.expanded || rt.focused || rt.drag.is_some();
-                if let Some(shown) = rt.reveal.update(started.elapsed(), inside, held) {
-                    app.emit("notch-reveal", shown).map_err(|e| e.to_string())?;
-                }
-                // Folding changes input coverage, never HWND placement or size.
-                let ignore = rt.drag.is_none()
-                    && rt.layout.as_ref().is_none_or(|layout| {
+            if !is_dragging {
+                let result = (|| -> Result<(), String> {
+                    let win = super::window_ctl::main_window(&app)?;
+                    let pos = win.cursor_position().map_err(|e| e.to_string())?;
+                    let controller = app.state::<NotchController>();
+                    let mut rt = controller.0.lock().map_err(|_| "Notch lock poisoned")?;
+                    let inside = rt.layout.as_ref().is_some_and(|layout| {
                         if rt.reveal.shown() {
-                            !layout.hit(pos.x, pos.y)
+                            layout.hit(pos.x, pos.y)
                         } else {
-                            !folded_rect(layout).contains(pos.x, pos.y)
+                            folded_rect(layout).contains(pos.x, pos.y)
                         }
                     });
-                if ignore != rt.ignoring {
-                    win.set_ignore_cursor_events(ignore)
-                        .map_err(|e| e.to_string())?;
-                    rt.ignoring = ignore;
-                }
-                Ok(())
-            })();
-            if let Err(e) = result {
-                if e != last_error {
-                    eprintln!("notch input: {e}");
-                    last_error = e;
+                    let held = rt.expanded || rt.focused || rt.drag.is_some();
+                    if let Some(shown) = rt.reveal.update(started.elapsed(), inside, held) {
+                        app.emit("notch-reveal", shown).map_err(|e| e.to_string())?;
+                    }
+                    // Folding changes input coverage, never HWND placement or size.
+                    let ignore = rt.drag.is_none()
+                        && rt.layout.as_ref().is_none_or(|layout| {
+                            if rt.reveal.shown() {
+                                !layout.hit(pos.x, pos.y)
+                            } else {
+                                !folded_rect(layout).contains(pos.x, pos.y)
+                            }
+                        });
+                    if ignore != rt.ignoring {
+                        win.set_ignore_cursor_events(ignore)
+                            .map_err(|e| e.to_string())?;
+                        rt.ignoring = ignore;
+                    }
+                    Ok(())
+                })();
+                if let Err(e) = result {
+                    if e != last_error {
+                        eprintln!("notch input: {e}");
+                        last_error = e;
+                    }
                 }
             }
-            std::thread::sleep(POINTER_INTERVAL);
+            let sleep_interval = if is_dragging {
+                DRAG_POINTER_INTERVAL
+            } else {
+                IDLE_POINTER_INTERVAL
+            };
+            std::thread::sleep(sleep_interval);
         }
     });
 }
@@ -286,6 +361,7 @@ struct DragSession {
     id: u64,
     motion: NotchDrag,
     monitors: Vec<MonitorArea>,
+    last_pos: Option<(f64, f64)>,
 }
 #[derive(Clone, serde::Serialize)]
 pub struct DragNotice {
@@ -320,10 +396,13 @@ pub fn begin_drag(app: &AppHandle, id: u64) -> Result<(), String> {
     // Keep the actual starting offset even if no movement crosses the threshold.
     motion.placement.offset = settings.notch.offset;
     rt.last_drag_id = id;
+    #[cfg(windows)]
+    rt.start_timer_period();
     rt.drag = Some(DragSession {
         id,
         motion,
         monitors: areas,
+        last_pos: None,
     });
     Ok(())
 }
@@ -332,32 +411,36 @@ fn update_drag(app: &AppHandle, id: u64) -> Result<(), String> {
     let pos = super::window_ctl::main_window(app)?
         .cursor_position()
         .map_err(|e| e.to_string())?;
-    let areas = monitors(app)?;
     let controller = app.state::<NotchController>();
-    let notice = {
+    let (notice, moved) = {
         let mut rt = controller.0.lock().map_err(|_| "Notch lock poisoned")?;
         let Some(drag) = rt.drag.as_mut().filter(|d| d.id == id) else {
             return Ok(());
         };
-        if areas != drag.monitors {
-            return Err("Display configuration changed; drag cancelled".into());
+        if drag.last_pos == Some((pos.x, pos.y)) {
+            return Ok(());
         }
+        drag.last_pos = Some((pos.x, pos.y));
         let was_active = drag.motion.active;
-        drag.motion.update(&areas, pos.x, pos.y)?;
+        let monitors = drag.monitors.clone();
+        drag.motion.update(&monitors, pos.x, pos.y)?;
         let active = drag.motion.active;
         let placement = drag.motion.placement.clone();
-        (!was_active && active).then_some(DragNotice {
+        let notice = (!was_active && active).then_some(DragNotice {
             id,
             active,
             finished: false,
             placement,
             error: None,
-        })
+        });
+        (notice, active)
     };
     if let Some(notice) = notice {
         app.emit("notch-drag", notice).map_err(|e| e.to_string())?;
     }
-    apply(app, None)?;
+    if moved {
+        apply(app, None)?;
+    }
     Ok(())
 }
 
@@ -381,13 +464,19 @@ fn complete_drag(
         if !rt.drag.as_ref().is_some_and(|d| d.id == id) {
             return Ok(());
         }
-        let session = rt.drag.take().unwrap();
-        session
+        rt.end_drag().unwrap()
     };
     let core = &app.state::<AppHandleState>().core;
     if !cancel && error.is_none() && session.motion.active {
-        if let Err(e) = core.set_notch_placement(session.motion.placement) {
-            error = Some(e);
+        if let Ok(current_areas) = monitors(app) {
+            if current_areas != session.monitors {
+                error = Some("Display configuration changed; drag cancelled".into());
+            }
+        }
+        if error.is_none() {
+            if let Err(e) = core.set_notch_placement(session.motion.placement) {
+                error = Some(e);
+            }
         }
     }
     if let Err(e) = apply(app, None) {
