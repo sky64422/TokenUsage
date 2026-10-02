@@ -69,6 +69,7 @@ if (!args.skipBuild) {
     ["run", "tauri", "--", "build", "--config", configPath],
     {
       TAURI_SIGNING_PRIVATE_KEY: privateKey,
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || "",
       CI: process.env.CI || "true",
     },
   );
