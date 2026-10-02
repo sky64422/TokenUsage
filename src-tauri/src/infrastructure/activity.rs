@@ -21,6 +21,8 @@ use tauri::{AppHandle, Emitter, Manager};
 const DISCOVERY_SECONDS: i64 = 30;
 const CODEX_RUNNING_SECONDS: i64 = 120;
 const CLAUDE_RECENT_SECONDS: i64 = 15;
+const ANTIGRAVITY_RUNNING_SECONDS: i64 = 45;
+const ANTIGRAVITY_RECENT_SECONDS: i64 = 120;
 const IDLE_EVIDENCE_SECONDS: i64 = 86_400;
 const MAX_TAIL_BYTES: u64 = 128 * 1024;
 const MAX_SESSIONS: usize = 64;
@@ -264,14 +266,27 @@ impl ActivityMonitor {
         ProviderId::all()
             .into_iter()
             .map(|provider| {
-                aggregate(
-                    provider,
-                    self.files
-                        .iter()
-                        .filter(|((id, _), _)| *id == provider)
-                        .map(|(_, file)| &file.evidence),
-                    now,
-                )
+                if provider == ProviderId::Agy {
+                    let (state, observed_at) = if self.disabled {
+                        (ActivityState::Unknown, None)
+                    } else {
+                        antigravity_state(now)
+                    };
+                    ProviderActivity {
+                        provider_id: ProviderId::Agy,
+                        state,
+                        observed_at,
+                    }
+                } else {
+                    aggregate(
+                        provider,
+                        self.files
+                            .iter()
+                            .filter(|((id, _), _)| *id == provider)
+                            .map(|(_, file)| &file.evidence),
+                        now,
+                    )
+                }
             })
             .collect()
     }
@@ -348,6 +363,59 @@ fn collect(root: &Path, depth: usize, budget: &mut usize, files: &mut Vec<(Syste
             }
         }
     }
+}
+
+fn antigravity_state(now: DateTime<Utc>) -> (ActivityState, Option<DateTime<Utc>>) {
+    let Some(home) = dirs::home_dir() else {
+        return (ActivityState::Unknown, None);
+    };
+    antigravity_state_in(&home.join(".gemini"), now)
+}
+
+fn antigravity_state_in(gemini_dir: &Path, now: DateTime<Utc>) -> (ActivityState, Option<DateTime<Utc>>) {
+    let Ok(rd) = fs::read_dir(gemini_dir) else {
+        return (ActivityState::Unknown, None);
+    };
+    let mut newest: Option<DateTime<Utc>> = None;
+    for entry in rd.flatten() {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if !name.starts_with("antigravity") {
+            continue;
+        }
+        let brain_dir = entry.path().join("brain");
+        let Ok(brain_rd) = fs::read_dir(brain_dir) else {
+            continue;
+        };
+        for conv in brain_rd.flatten() {
+            let transcript = conv
+                .path()
+                .join(".system_generated")
+                .join("logs")
+                .join("transcript.jsonl");
+            if let Ok(meta) = fs::metadata(&transcript) {
+                if let Ok(modified) = meta.modified() {
+                    let dt: DateTime<Utc> = modified.into();
+                    if newest.map_or(true, |prev| dt > prev) {
+                        newest = Some(dt);
+                    }
+                }
+            }
+        }
+    }
+    let Some(at) = newest else {
+        return (ActivityState::Unknown, None);
+    };
+    let age = now.signed_duration_since(at).num_seconds();
+    let state = if age >= 0 && age <= ANTIGRAVITY_RUNNING_SECONDS {
+        ActivityState::Running
+    } else if age > ANTIGRAVITY_RUNNING_SECONDS && age <= ANTIGRAVITY_RECENT_SECONDS {
+        ActivityState::Recent
+    } else if age > ANTIGRAVITY_RECENT_SECONDS && age <= IDLE_EVIDENCE_SECONDS {
+        ActivityState::Idle
+    } else {
+        ActivityState::Unknown
+    };
+    (state, Some(at))
 }
 
 fn aggregate<'a>(
@@ -494,5 +562,34 @@ mod tests {
             evidence.ingest(ProviderId::Codex, bytes);
             assert_eq!(evidence.state(now()), ActivityState::Unknown);
         }
+    }
+
+    #[test]
+    fn antigravity_activity_detects_running_recent_and_idle() {
+        let dir = tempfile::tempdir().unwrap();
+        let logs_dir = dir
+            .path()
+            .join("antigravity-cli")
+            .join("brain")
+            .join("conv-1")
+            .join(".system_generated")
+            .join("logs");
+        fs::create_dir_all(&logs_dir).unwrap();
+        let transcript = logs_dir.join("transcript.jsonl");
+        fs::write(&transcript, b"{\"type\":\"done\"}\n").unwrap();
+
+        // Fresh write is running
+        let t_now = Utc::now();
+        let (state, at) = antigravity_state_in(dir.path(), t_now);
+        assert_eq!(state, ActivityState::Running);
+        assert!(at.is_some());
+
+        // Evaluated 60s in the future is recent
+        let (state_recent, _) = antigravity_state_in(dir.path(), t_now + Duration::seconds(60));
+        assert_eq!(state_recent, ActivityState::Recent);
+
+        // Evaluated 300s in the future is idle
+        let (state_idle, _) = antigravity_state_in(dir.path(), t_now + Duration::seconds(300));
+        assert_eq!(state_idle, ActivityState::Idle);
     }
 }
