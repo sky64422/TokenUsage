@@ -23,6 +23,7 @@ struct Runtime {
     revision: u64,
     expanded: bool,
     height: f64,
+    target: Option<f64>,
     layout: Option<NotchLayout>,
     ignoring: bool,
     drag: Option<DragSession>,
@@ -89,10 +90,13 @@ pub fn monitors(app: &AppHandle) -> Result<Vec<MonitorArea>, String> {
         .collect())
 }
 
-pub fn apply(app: &AppHandle, request: Option<(u64, bool, f64)>) -> Result<NotchLayout, String> {
+pub fn apply(
+    app: &AppHandle,
+    request: Option<(u64, bool, f64, Option<f64>)>,
+) -> Result<NotchLayout, String> {
     let controller = app.state::<NotchController>();
     let mut rt = controller.0.lock().map_err(|_| "Notch lock poisoned")?;
-    if let Some((revision, expanded, height)) = request {
+    if let Some((revision, expanded, height, target)) = request {
         if revision <= rt.revision {
             return rt.layout.clone().ok_or("Notch not ready".into());
         }
@@ -102,6 +106,7 @@ pub fn apply(app: &AppHandle, request: Option<(u64, bool, f64)>) -> Result<Notch
         rt.revision = revision;
         rt.expanded = expanded;
         rt.height = height;
+        rt.target = target;
         if expanded {
             if let Some(shown) = rt.reveal.open() {
                 app.emit("notch-reveal", shown).map_err(|e| e.to_string())?;
@@ -131,7 +136,7 @@ pub fn apply(app: &AppHandle, request: Option<(u64, bool, f64)>) -> Result<Notch
     .into_iter()
     .filter(|v| *v)
     .count();
-    let layout = calculate_layout(
+    let layout = calculate_layout_target(
         monitor,
         placement,
         count,
@@ -139,6 +144,7 @@ pub fn apply(app: &AppHandle, request: Option<(u64, bool, f64)>) -> Result<Notch
             && !rt.drag.as_ref().is_some_and(|d| d.motion.active)
             && state.core.is_visible(),
         rt.height,
+        rt.target,
     )?;
     let changed = rt.layout.as_ref() != Some(&layout);
     if changed {

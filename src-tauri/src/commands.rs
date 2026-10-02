@@ -53,8 +53,9 @@ pub fn set_notch_surface(
     revision: u64,
     expanded: bool,
     height: f64,
+    target: Option<f64>,
 ) -> Result<crate::domain::notch::NotchLayout, String> {
-    crate::infrastructure::notch_window::apply(&app, Some((revision, expanded, height)))
+    crate::infrastructure::notch_window::apply(&app, Some((revision, expanded, height, target)))
 }
 
 #[tauri::command]

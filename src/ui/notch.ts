@@ -142,18 +142,22 @@ export function positionNotch(el: HTMLElement, r: Rect, l: NotchLayout) {
   if (el.style.height !== height) el.style.height = height;
 
   if (l.anchor_x === "right") {
-    if (el.style.right !== "0px") el.style.right = "0px";
+    const right = `${((l.window.x + l.window.width) - (r.x + r.width)) / l.scale}px`;
+    if (el.style.right !== right) el.style.right = right;
     if (el.style.left !== "") el.style.left = "";
   } else {
-    if (el.style.left !== "0px") el.style.left = "0px";
+    const left = `${(r.x - l.window.x) / l.scale}px`;
+    if (el.style.left !== left) el.style.left = left;
     if (el.style.right !== "") el.style.right = "";
   }
 
   if (l.anchor_y === "bottom") {
-    if (el.style.bottom !== "0px") el.style.bottom = "0px";
+    const bottom = `${((l.window.y + l.window.height) - (r.y + r.height)) / l.scale}px`;
+    if (el.style.bottom !== bottom) el.style.bottom = bottom;
     if (el.style.top !== "") el.style.top = "";
   } else {
-    if (el.style.top !== "0px") el.style.top = "0px";
+    const top = `${(r.y - l.window.y) / l.scale}px`;
+    if (el.style.top !== top) el.style.top = top;
     if (el.style.bottom !== "") el.style.bottom = "";
   }
 }

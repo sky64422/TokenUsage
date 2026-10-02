@@ -144,7 +144,27 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     const height = Math.ceil(
       body.getBoundingClientRect().height + SURFACE_PADDING,
     );
-    const key = JSON.stringify([expanded, height, enabled()]);
+    let target: number | null = null;
+    if (interaction.provider && !interaction.settings) {
+      const cell = root.querySelector<HTMLElement>(
+        `.notch-cell[data-id="${interaction.provider}"]`,
+      );
+      if (cell && cell.offsetHeight > 0) {
+        const vertical = layout ? layout.edge === "left" || layout.edge === "right" : true;
+        target = vertical
+          ? cell.offsetTop + cell.offsetHeight / 2
+          : cell.offsetLeft + cell.offsetWidth / 2;
+      } else {
+        const ids = enabled();
+        const index = ids.indexOf(interaction.provider);
+        if (index >= 0) {
+          const cellSize = layout?.metrics.cell ?? 70;
+          const inset = layout?.metrics.inset ?? 6;
+          target = inset + index * cellSize + cellSize / 2;
+        }
+      }
+    }
+    const key = JSON.stringify([expanded, height, target, enabled()]);
     if (lastSurface === key) return;
     lastSurface = key;
     const requestRevision = ++revision;
@@ -154,6 +174,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           revision: requestRevision,
           expanded,
           height,
+          target,
         });
         if (requestRevision === revision) paintLayout(next);
       })

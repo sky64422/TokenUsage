@@ -197,6 +197,17 @@ pub fn calculate_layout(
     expanded: bool,
     detail_height: f64,
 ) -> Result<NotchLayout, String> {
+    calculate_layout_target(m, p, count, expanded, detail_height, None)
+}
+
+pub fn calculate_layout_target(
+    m: &MonitorArea,
+    p: &NotchPlacement,
+    count: usize,
+    expanded: bool,
+    detail_height: f64,
+    target: Option<f64>,
+) -> Result<NotchLayout, String> {
     p.validate()?;
     if !m.scale.is_finite() || m.scale <= 0. || count == 0 || count > super::types::ProviderId::all().len() {
         return Err("Invalid notch dimensions".into());
@@ -292,10 +303,20 @@ pub fn calculate_layout(
                 NotchEdge::Left => notch.x + depth + GAP * s,
                 _ => unreachable!(),
             };
-            let y = match anchor_y {
-                AnchorY::Top => notch.y.clamp(w.y, (w.y + w.height - dh).max(w.y)),
-                AnchorY::Bottom => {
-                    (notch.y + notch.height - dh).clamp(w.y, (w.y + w.height - dh).max(w.y))
+            let y = if let Some(t) = target {
+                let center = notch.y + t * s;
+                let ideal = center - dh / 2.0;
+                if dh <= notch.height {
+                    ideal.clamp(notch.y, notch.y + notch.height - dh)
+                } else {
+                    ideal.clamp(w.y, (w.y + w.height - dh).max(w.y))
+                }
+            } else {
+                match anchor_y {
+                    AnchorY::Top => notch.y.clamp(w.y, (w.y + w.height - dh).max(w.y)),
+                    AnchorY::Bottom => {
+                        (notch.y + notch.height - dh).clamp(w.y, (w.y + w.height - dh).max(w.y))
+                    }
                 }
             };
             (x, y)
@@ -305,10 +326,20 @@ pub fn calculate_layout(
                 NotchEdge::Bottom => notch.y - GAP * s - dh,
                 _ => unreachable!(),
             };
-            let x = match anchor_x {
-                AnchorX::Left => notch.x.clamp(w.x, (w.x + w.width - dw).max(w.x)),
-                AnchorX::Right => {
-                    (notch.x + notch.width - dw).clamp(w.x, (w.x + w.width - dw).max(w.x))
+            let x = if let Some(t) = target {
+                let center = notch.x + t * s;
+                let ideal = center - dw / 2.0;
+                if dw <= notch.width {
+                    ideal.clamp(notch.x, notch.x + notch.width - dw)
+                } else {
+                    ideal.clamp(w.x, (w.x + w.width - dw).max(w.x))
+                }
+            } else {
+                match anchor_x {
+                    AnchorX::Left => notch.x.clamp(w.x, (w.x + w.width - dw).max(w.x)),
+                    AnchorX::Right => {
+                        (notch.x + notch.width - dw).clamp(w.x, (w.x + w.width - dw).max(w.x))
+                    }
                 }
             };
             (x, y)

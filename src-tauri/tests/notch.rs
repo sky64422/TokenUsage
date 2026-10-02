@@ -402,3 +402,57 @@ fn all_current_providers_fit_each_edge() {
         assert_eq!(layout.edge, edge);
     }
 }
+
+#[test]
+fn model_detail_window_centers_on_target_cell_across_providers() {
+    use token_usage_lib::domain::notch::calculate_layout_target;
+    let m = monitor(1.);
+    let p = NotchPlacement {
+        edge: NotchEdge::Right,
+        offset: 0.9,
+        monitor_hint: None,
+    };
+    let l_claude = calculate_layout_target(&m, &p, 4, true, 78., Some(41.)).unwrap();
+    let l_codex = calculate_layout_target(&m, &p, 4, true, 130., Some(111.)).unwrap();
+    let l_grok = calculate_layout_target(&m, &p, 4, true, 78., Some(181.)).unwrap();
+    let l_agy = calculate_layout_target(&m, &p, 4, true, 78., Some(251.)).unwrap();
+
+    let d_claude = l_claude.detail.unwrap();
+    let d_codex = l_codex.detail.unwrap();
+    let d_grok = l_grok.detail.unwrap();
+    let d_agy = l_agy.detail.unwrap();
+
+    assert!(d_claude.y < d_codex.y);
+    assert!(d_codex.y < d_grok.y);
+    assert!(d_grok.y < d_agy.y);
+
+    assert!(l_claude.hit(l_claude.notch.x - 4., d_claude.y + d_claude.height / 2.));
+    assert!(l_codex.hit(l_codex.notch.x - 4., d_codex.y + d_codex.height / 2.));
+    assert!(l_grok.hit(l_grok.notch.x - 4., d_grok.y + d_grok.height / 2.));
+    assert!(l_agy.hit(l_agy.notch.x - 4., d_agy.y + d_agy.height / 2.));
+
+    assert_eq!(l_claude.window.height, l_claude.notch.height);
+    assert_eq!(l_codex.window.height, l_codex.notch.height);
+    assert_eq!(l_grok.window.height, l_grok.notch.height);
+    assert_eq!(l_agy.window.height, l_agy.notch.height);
+}
+
+#[test]
+fn horizontal_notch_detail_window_centers_on_target_cell() {
+    use token_usage_lib::domain::notch::calculate_layout_target;
+    let m = monitor(1.);
+    let p = NotchPlacement {
+        edge: NotchEdge::Top,
+        offset: 0.5,
+        monitor_hint: None,
+    };
+    let l_first = calculate_layout_target(&m, &p, 4, true, 78., Some(41.)).unwrap();
+    let l_last = calculate_layout_target(&m, &p, 4, true, 78., Some(251.)).unwrap();
+
+    let d_first = l_first.detail.unwrap();
+    let d_last = l_last.detail.unwrap();
+
+    assert!(d_first.x < d_last.x);
+    assert!(l_first.hit(d_first.x + d_first.width / 2., l_first.notch.y + l_first.notch.height + 4.));
+    assert!(l_last.hit(d_last.x + d_last.width / 2., l_last.notch.y + l_last.notch.height + 4.));
+}
