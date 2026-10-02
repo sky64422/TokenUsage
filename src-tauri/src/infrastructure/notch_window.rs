@@ -1,6 +1,15 @@
 //! Owns physical geometry and transparent input; frontend never moves the HWND.
-use crate::{domain::notch::*, state::AppHandleState};
-use std::{sync::Mutex, time::Duration};
+use crate::{
+    domain::{
+        notch::*,
+        reveal::{folded_rect, NotchReveal},
+    },
+    state::AppHandleState,
+};
+use std::{
+    sync::Mutex,
+    time::{Duration, Instant},
+};
 use tauri::{AppHandle, Emitter, Manager};
 #[cfg(not(windows))]
 use tauri::{PhysicalPosition, PhysicalSize};
@@ -16,22 +25,33 @@ struct Runtime {
     height: f64,
     layout: Option<NotchLayout>,
     ignoring: bool,
-    preview: Option<NotchPlacement>,
     drag: Option<DragSession>,
     last_drag_id: u64,
     pump_pending: bool,
+    reveal: NotchReveal,
+    focused: bool,
 }
 
-pub fn preview(app: &AppHandle, placement: Option<NotchPlacement>) -> Result<NotchLayout, String> {
-    if let Some(p) = &placement {
-        p.validate()?;
-    }
-    app.state::<NotchController>()
+pub fn get_reveal(app: &AppHandle) -> Result<bool, String> {
+    Ok(app
+        .state::<NotchController>()
         .0
         .lock()
         .map_err(|_| "Notch lock poisoned")?
-        .preview = placement;
-    apply(app, None)
+        .reveal
+        .shown())
+}
+
+pub fn set_focus(app: &AppHandle, focused: bool) -> Result<bool, String> {
+    let controller = app.state::<NotchController>();
+    let mut rt = controller.0.lock().map_err(|_| "Notch lock poisoned")?;
+    rt.focused = focused;
+    if focused {
+        if let Some(shown) = rt.reveal.open() {
+            app.emit("notch-reveal", shown).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(rt.reveal.shown())
 }
 
 pub fn monitors(app: &AppHandle) -> Result<Vec<MonitorArea>, String> {
@@ -82,10 +102,20 @@ pub fn apply(app: &AppHandle, request: Option<(u64, bool, f64)>) -> Result<Notch
         rt.revision = revision;
         rt.expanded = expanded;
         rt.height = height;
+        if expanded {
+            if let Some(shown) = rt.reveal.open() {
+                app.emit("notch-reveal", shown).map_err(|e| e.to_string())?;
+            }
+        }
     }
     let state = app.state::<AppHandleState>();
     let settings = state.core.get_state().settings;
-    let placement = rt.preview.as_ref().unwrap_or(&settings.notch);
+    let placement = rt
+        .drag
+        .as_ref()
+        .filter(|drag| drag.motion.active)
+        .map(|drag| &drag.motion.placement)
+        .unwrap_or(&settings.notch);
     let areas = monitors(app)?;
     let monitor = areas
         .iter()
@@ -96,6 +126,7 @@ pub fn apply(app: &AppHandle, request: Option<(u64, bool, f64)>) -> Result<Notch
         settings.claude.enabled,
         settings.codex.enabled,
         settings.grok.enabled,
+        settings.agy.enabled,
     ]
     .into_iter()
     .filter(|v| *v)
@@ -116,7 +147,9 @@ pub fn apply(app: &AppHandle, request: Option<(u64, bool, f64)>) -> Result<Notch
         {
             use windows::Win32::{
                 Foundation::HWND,
-                UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER},
+                UI::WindowsAndMessaging::{
+                    SetWindowPos, SWP_NOACTIVATE, SWP_NOCOPYBITS, SWP_NOZORDER,
+                },
             };
             let hwnd = win.hwnd().map_err(|e| e.to_string())?;
             // One native move+resize keeps the screen-edge contact fixed throughout.
@@ -128,7 +161,7 @@ pub fn apply(app: &AppHandle, request: Option<(u64, bool, f64)>) -> Result<Notch
                     layout.window.y as i32,
                     layout.window.width as i32,
                     layout.window.height as i32,
-                    SWP_NOACTIVATE | SWP_NOZORDER,
+                    SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOCOPYBITS,
                 )
                 .map_err(|e| e.to_string())?;
             }
@@ -155,6 +188,7 @@ pub fn apply(app: &AppHandle, request: Option<(u64, bool, f64)>) -> Result<Notch
 
 pub fn start(app: AppHandle) {
     std::thread::spawn(move || {
+        let started = Instant::now();
         let mut tick = 0;
         let mut last_error = String::new();
         loop {
@@ -203,21 +237,31 @@ pub fn start(app: AppHandle) {
                 let win = super::window_ctl::main_window(&app)?;
                 let pos = win.cursor_position().map_err(|e| e.to_string())?;
                 let controller = app.state::<NotchController>();
-                let (ignore, changed) = {
-                    let rt = controller.0.lock().map_err(|_| "Notch lock poisoned")?;
-                    let ignore = rt.drag.is_none()
-                        && rt.preview.is_none()
-                        && rt.layout.as_ref().is_none_or(|l| !l.hit(pos.x, pos.y));
-                    (ignore, ignore != rt.ignoring)
-                };
-                if changed {
+                let mut rt = controller.0.lock().map_err(|_| "Notch lock poisoned")?;
+                let inside = rt.layout.as_ref().is_some_and(|layout| {
+                    if rt.reveal.shown() {
+                        layout.hit(pos.x, pos.y)
+                    } else {
+                        folded_rect(layout).contains(pos.x, pos.y)
+                    }
+                });
+                let held = rt.expanded || rt.focused || rt.drag.is_some();
+                if let Some(shown) = rt.reveal.update(started.elapsed(), inside, held) {
+                    app.emit("notch-reveal", shown).map_err(|e| e.to_string())?;
+                }
+                // Folding changes input coverage, never HWND placement or size.
+                let ignore = rt.drag.is_none()
+                    && rt.layout.as_ref().is_none_or(|layout| {
+                        if rt.reveal.shown() {
+                            !layout.hit(pos.x, pos.y)
+                        } else {
+                            !folded_rect(layout).contains(pos.x, pos.y)
+                        }
+                    });
+                if ignore != rt.ignoring {
                     win.set_ignore_cursor_events(ignore)
                         .map_err(|e| e.to_string())?;
-                    controller
-                        .0
-                        .lock()
-                        .map_err(|_| "Notch lock poisoned")?
-                        .ignoring = ignore;
+                    rt.ignoring = ignore;
                 }
                 Ok(())
             })();
@@ -255,6 +299,7 @@ pub fn begin_drag(app: &AppHandle, id: u64) -> Result<(), String> {
         settings.claude.enabled,
         settings.codex.enabled,
         settings.grok.enabled,
+        settings.agy.enabled,
     ]
     .into_iter()
     .filter(|v| *v)
@@ -295,9 +340,6 @@ fn update_drag(app: &AppHandle, id: u64) -> Result<(), String> {
         drag.motion.update(&areas, pos.x, pos.y)?;
         let active = drag.motion.active;
         let placement = drag.motion.placement.clone();
-        if active {
-            rt.preview = Some(placement.clone());
-        }
         (!was_active && active).then_some(DragNotice {
             id,
             active,
@@ -334,7 +376,6 @@ fn complete_drag(
             return Ok(());
         }
         let session = rt.drag.take().unwrap();
-        rt.preview = None;
         session
     };
     let core = &app.state::<AppHandleState>().core;

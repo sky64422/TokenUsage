@@ -45,6 +45,8 @@
       "icons/icon.ico"
     ],
     "resources": {
+      "../third-party/codenotch/LICENSE": "licenses/codenotch-LICENSE.txt",
+      "../third-party/codenotch/NOTICE.md": "licenses/codenotch-NOTICE.md",
       "../src/assets/marks/LICENSE": "licenses/provider-marks-LICENSE.txt",
       "../src/assets/marks/NOTICE.md": "licenses/provider-marks-NOTICE.md"
     }

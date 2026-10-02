@@ -1,18 +1,7 @@
-use crate::domain::types::WindowGeometry;
-
 pub struct RefreshPolicy;
 impl RefreshPolicy {
     pub const TICK_SECS: u64 = 1;
     pub const DEFAULT_REFRESH_SECS: u64 = 5;
-}
-
-pub struct WindowPolicy;
-impl WindowPolicy {
-    pub const MIN_WIDTH: f64 = 240.0;
-    pub const MIN_HEIGHT: f64 = 120.0;
-    pub const DEFAULT_WIDTH: f64 = 320.0;
-    /// Tall enough for 3 cards; content-hug snaps down on boot.
-    pub const DEFAULT_HEIGHT: f64 = 360.0;
 }
 
 pub struct OpacityPolicy;
@@ -32,35 +21,13 @@ pub fn clamp_opacity(v: f64) -> f64 {
     v.clamp(OpacityPolicy::MIN, OpacityPolicy::MAX)
 }
 
-pub fn clamp_geometry(g: &WindowGeometry) -> WindowGeometry {
-    WindowGeometry {
-        x: g.x,
-        y: g.y,
-        width: g.width.max(WindowPolicy::MIN_WIDTH),
-        height: g.height.max(WindowPolicy::MIN_HEIGHT),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::types::WindowGeometry;
 
     #[test]
     fn clamps_opacity() {
         assert!((clamp_opacity(0.1) - OpacityPolicy::MIN).abs() < 0.001);
         assert!((clamp_opacity(2.0) - OpacityPolicy::MAX).abs() < 0.001);
-    }
-
-    #[test]
-    fn clamps_geometry_min() {
-        let g = clamp_geometry(&WindowGeometry {
-            x: 0.0,
-            y: 0.0,
-            width: 10.0,
-            height: 10.0,
-        });
-        assert!(g.width >= WindowPolicy::MIN_WIDTH);
-        assert!(g.height >= WindowPolicy::MIN_HEIGHT);
     }
 }

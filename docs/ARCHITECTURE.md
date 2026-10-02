@@ -29,7 +29,7 @@ Rust AppCore
 - No DWM rounded clipping, resize handles, legacy 240px width floor, or MutationObserver content-hug loop. Custom SVG owns the shape.
 - Details retain 6px pill tracks, fixed name/period/refill columns and `1fr / 2.9em` metrics with 2px gutter. Opacity readability floors remain.
 - Settings scroll inside the inward detail area if the monitor cannot fit the content. Opacity and update controls live directly in the settings sheet.
-- Existing `settings.window` survives migration but no longer determines placement. `settings.notch` defaults to right / centre / primary display.
+- Legacy `settings.window` is accepted on load and omitted on save. `settings.notch` defaults to right / centre / primary display.
 - `begin_notch_drag` / `finish_notch_drag` and `notch-drag` events coordinate session IDs, capture cleanup and frontend detail restoration. Native cursor sampling selects edges/displays in physical coordinates; release outside the HWND is detected by native button state. Keyboard arrows do not move the widget.
 - Drag preview is transient; only completed placement changes persist. Missing monitor hints fall back to primary without destroying the saved hint.
 - `ProviderSnapshot.primary_used_percent` currently means maximum vendor window utilization, not necessarily the session. UI shows its matching period; no adapter policy changes.
@@ -57,7 +57,7 @@ Usage/limit HTTP is metadata only (does not consume coding tokens).
 Window labels are short at the adapter (`5h` / `Week` / `Month` / `30d`).  
 Env `TOKENUSAGE_SKIP_DIRECT_QUOTA=1` for tests.
 
-> **AGY / Gemini:** removed as of 2026-08-15. The unofficial `cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` endpoint only returns legacy Code Assist free-tier buckets (gemini-2.5-flash etc.) with `remainingFraction: 1` — it does **not** track Antigravity 2.0 / Gemini 3.7 session usage. Re-add when an official public API exists (`TOKENUSAGE_AGY_QUOTA_SOURCE=official` stub is reserved).
+- **Antigravity (AGY):** official installed `agy --sandbox --print-timeout 30s --print /usage` only (added by user request 2026-10-02). Gemini and Claude/GPT 5h/week quotas remain separate. No legacy cloudcode-pa API, browser scraping, or token estimates.
 
 #### What these quota APIs return
 
@@ -100,9 +100,9 @@ There is no `PlanLimits` / local-event estimate path. Poll interval is `RefreshP
 
 ## Commands
 
-`get_state`, `get_snapshots`, `refresh_now`, `set_opacity`, `set_autostart`, `set_provider_enabled`, `set_provider_tint`, `hide_widget`, `quit_app`, `get_diagnostics`, `check_for_updates`
+`get_state`, `get_snapshots`, `set_opacity`, `set_autostart`, `set_provider_enabled`, `set_provider_tint`, `quit_app`, `get_diagnostics`, `check_for_updates`
 
-Additional notch commands: `get_notch_monitors`, `set_notch_placement`, `preview_notch_placement`, `set_notch_surface`. Layout changes emit `notch-layout`.
+Additional notch commands: `get_notch_monitors`, `set_notch_placement`, `set_notch_surface`. Layout changes emit `notch-layout`. `get_notch_reveal` / `set_notch_focus` and `notch-reveal` own rail concealment. `get_provider_activity` / `provider-activity` expose separate local activity hints. See [notch polish](notch-polish.md).
 
 ## Updater
 

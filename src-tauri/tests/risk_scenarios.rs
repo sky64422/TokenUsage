@@ -61,6 +61,12 @@ fn risk_partial_state_deserializes_with_defaults() {
     assert!((loaded.settings.opacity - 0.5).abs() < 0.001);
     assert!(loaded.settings.claude.enabled);
     assert_eq!(loaded.settings.refresh_secs, 45);
+    assert_eq!(loaded.settings.notch, Default::default());
+    save_state(dir.path(), &loaded).unwrap();
+    let saved: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(state_path(dir.path())).unwrap()).unwrap();
+    assert!(saved["settings"].get("window").is_none());
+    assert_eq!(load_state(dir.path()).unwrap(), loaded);
 }
 
 #[test]
@@ -141,6 +147,7 @@ fn risk_last_provider_cannot_be_disabled() {
     let core = AppCore::new(default_state(), dir.path().to_path_buf());
     core.set_provider_enabled(ProviderId::Grok, false).unwrap();
     core.set_provider_enabled(ProviderId::Codex, false).unwrap();
+    core.set_provider_enabled(ProviderId::Agy, false).unwrap();
     let err = core
         .set_provider_enabled(ProviderId::Claude, false)
         .unwrap_err();
@@ -171,8 +178,13 @@ fn risk_persisted_state_version_round_trip() {
 }
 
 #[test]
-fn risk_default_state_matches_policy_window() {
-    let s = default_state();
-    assert!((s.settings.window.width - 320.0).abs() < 0.01);
-    assert!((s.settings.window.height - 360.0).abs() < 0.01);
+fn risk_default_state_uses_notch_placement_without_legacy_window() {
+    let state = default_state();
+    assert_eq!(state.settings.notch, Default::default());
+    let saved = serde_json::to_value(&state).unwrap();
+    assert!(saved["settings"].get("window").is_none());
+    assert_eq!(
+        serde_json::from_value::<PersistedState>(saved).unwrap(),
+        state
+    );
 }

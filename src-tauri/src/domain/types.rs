@@ -1,4 +1,4 @@
-use crate::domain::constants::{HotkeyPolicy, OpacityPolicy, RefreshPolicy, WindowPolicy};
+use crate::domain::constants::{HotkeyPolicy, OpacityPolicy, RefreshPolicy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -7,6 +7,7 @@ pub enum ProviderId {
     Claude,
     Codex,
     Grok,
+    Agy,
 }
 
 impl ProviderId {
@@ -15,6 +16,7 @@ impl ProviderId {
             ProviderId::Claude => "claude",
             ProviderId::Codex => "codex",
             ProviderId::Grok => "grok",
+            ProviderId::Agy => "agy",
         }
     }
 
@@ -23,11 +25,12 @@ impl ProviderId {
             ProviderId::Claude => "Claude",
             ProviderId::Codex => "Codex",
             ProviderId::Grok => "Grok",
+            ProviderId::Agy => "Antigravity",
         }
     }
 
-    pub fn all() -> [ProviderId; 3] {
-        [ProviderId::Claude, ProviderId::Codex, ProviderId::Grok]
+    pub fn all() -> [ProviderId; 4] {
+        [ProviderId::Claude, ProviderId::Codex, ProviderId::Grok, ProviderId::Agy]
     }
 }
 
@@ -60,7 +63,7 @@ pub enum SnapshotStatus {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DataSource {
-    /// Direct OAuth call to the vendor quota endpoint (personal CLI credentials).
+    /// Vendor quota from OAuth endpoints or the official Antigravity CLI.
     Vendor,
     /// Vendor miss — no secondary estimate path.
     Unavailable,
@@ -81,8 +84,10 @@ pub enum CardTint {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UsageWindow {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
     pub kind: WindowKind,
-    /// Used amount in the unit of this window (tokens, or percent value when unit=percent).
+    /// Used percentage reported by the vendor.
     pub used: f64,
     pub limit: Option<f64>,
     pub unit: UsageUnit,
@@ -105,14 +110,6 @@ pub struct ProviderSnapshot {
     /// Primary (most urgent) reset ISO time for glanceable UI.
     pub primary_resets_at: Option<String>,
     pub primary_used_percent: Option<f64>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct WindowGeometry {
-    pub x: f64,
-    pub y: f64,
-    pub width: f64,
-    pub height: f64,
 }
 
 fn default_card_tint() -> CardTint {
@@ -140,7 +137,6 @@ pub struct AppSettings {
     #[serde(default)]
     pub notch: super::notch::NotchPlacement,
     pub opacity: f64,
-    pub window: WindowGeometry,
     pub hotkey: String,
     pub autostart: bool,
     #[serde(default)]
@@ -154,6 +150,8 @@ pub struct AppSettings {
     pub codex: ProviderConfig,
     #[serde(default)]
     pub grok: ProviderConfig,
+    #[serde(default)]
+    pub agy: ProviderConfig,
 }
 
 fn default_refresh_secs() -> u64 {
@@ -165,12 +163,6 @@ impl Default for AppSettings {
         Self {
             notch: super::notch::NotchPlacement::default(),
             opacity: OpacityPolicy::DEFAULT,
-            window: WindowGeometry {
-                x: 80.0,
-                y: 80.0,
-                width: WindowPolicy::DEFAULT_WIDTH,
-                height: WindowPolicy::DEFAULT_HEIGHT,
-            },
             hotkey: HotkeyPolicy::DEFAULT.into(),
             autostart: true,
             hover_detail: false,
@@ -178,6 +170,7 @@ impl Default for AppSettings {
             claude: ProviderConfig::default(),
             codex: ProviderConfig::default(),
             grok: ProviderConfig::default(),
+            agy: ProviderConfig::default(),
         }
     }
 }

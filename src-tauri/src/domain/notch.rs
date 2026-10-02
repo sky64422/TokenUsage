@@ -80,9 +80,25 @@ pub struct MonitorArea {
     pub work: Rect,
     pub scale: f64,
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AnchorX {
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AnchorY {
+    Top,
+    Bottom,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct NotchLayout {
     pub edge: NotchEdge,
+    pub anchor_x: AnchorX,
+    pub anchor_y: AnchorY,
     pub notch: Rect,
     pub detail: Option<Rect>,
     pub window: Rect,
@@ -100,6 +116,8 @@ pub struct NotchMetrics {
     pub inset: f64,
     pub detail_radius: f64,
     pub drag_threshold: f64,
+    pub rest_depth: f64,
+    pub rest_length: f64,
 }
 impl NotchLayout {
     pub fn hit(&self, x: f64, y: f64) -> bool {
@@ -180,7 +198,7 @@ pub fn calculate_layout(
     detail_height: f64,
 ) -> Result<NotchLayout, String> {
     p.validate()?;
-    if !m.scale.is_finite() || m.scale <= 0. || count == 0 || count > 3 {
+    if !m.scale.is_finite() || m.scale <= 0. || count == 0 || count > super::types::ProviderId::all().len() {
         return Err("Invalid notch dimensions".into());
     }
     let b = m.bounds;
@@ -236,6 +254,28 @@ pub fn calculate_layout(
             height: depth,
         },
     };
+    let anchor_x = match edge {
+        NotchEdge::Left => AnchorX::Left,
+        NotchEdge::Right => AnchorX::Right,
+        NotchEdge::Top | NotchEdge::Bottom => {
+            if p.offset <= 0.5 {
+                AnchorX::Left
+            } else {
+                AnchorX::Right
+            }
+        }
+    };
+    let anchor_y = match edge {
+        NotchEdge::Top => AnchorY::Top,
+        NotchEdge::Bottom => AnchorY::Bottom,
+        NotchEdge::Left | NotchEdge::Right => {
+            if p.offset <= 0.5 {
+                AnchorY::Top
+            } else {
+                AnchorY::Bottom
+            }
+        }
+    };
     let detail = if expanded {
         let dw = (DETAIL_WIDTH * s)
             .ceil()
@@ -246,20 +286,39 @@ pub fn calculate_layout(
         if dw <= 0. || dh <= 0. {
             return Err("Display is too small for usage details".into());
         }
-        let mut d = Rect {
-            x: (notch.x + notch.width / 2. - dw / 2.).clamp(w.x, w.x + w.width - dw),
-            y: (notch.y + notch.height / 2. - dh / 2.).clamp(w.y, w.y + w.height - dh),
+        let (dx, dy) = if edge.vertical() {
+            let x = match edge {
+                NotchEdge::Right => notch.x - GAP * s - dw,
+                NotchEdge::Left => notch.x + depth + GAP * s,
+                _ => unreachable!(),
+            };
+            let y = match anchor_y {
+                AnchorY::Top => notch.y.clamp(w.y, (w.y + w.height - dh).max(w.y)),
+                AnchorY::Bottom => {
+                    (notch.y + notch.height - dh).clamp(w.y, (w.y + w.height - dh).max(w.y))
+                }
+            };
+            (x, y)
+        } else {
+            let y = match edge {
+                NotchEdge::Top => notch.y + depth + GAP * s,
+                NotchEdge::Bottom => notch.y - GAP * s - dh,
+                _ => unreachable!(),
+            };
+            let x = match anchor_x {
+                AnchorX::Left => notch.x.clamp(w.x, (w.x + w.width - dw).max(w.x)),
+                AnchorX::Right => {
+                    (notch.x + notch.width - dw).clamp(w.x, (w.x + w.width - dw).max(w.x))
+                }
+            };
+            (x, y)
+        };
+        let d = Rect {
+            x: dx.round(),
+            y: dy.round(),
             width: dw,
             height: dh,
         };
-        match edge {
-            NotchEdge::Right => d.x = notch.x - GAP * s - dw,
-            NotchEdge::Left => d.x = notch.x + depth + GAP * s,
-            NotchEdge::Top => d.y = notch.y + depth + GAP * s,
-            NotchEdge::Bottom => d.y = notch.y - GAP * s - dh,
-        }
-        d.x = d.x.round();
-        d.y = d.y.round();
         Some(d)
     } else {
         None
@@ -267,6 +326,8 @@ pub fn calculate_layout(
     let window = detail.map(|d| notch.union(d)).unwrap_or(notch);
     Ok(NotchLayout {
         edge,
+        anchor_x,
+        anchor_y,
         notch,
         detail,
         window,
@@ -280,6 +341,8 @@ pub fn calculate_layout(
             inset: END_PADDING,
             detail_radius: DETAIL_RADIUS,
             drag_threshold: DRAG_THRESHOLD,
+            rest_depth: super::reveal::REST_DEPTH,
+            rest_length: super::reveal::REST_LENGTH,
         },
     })
 }

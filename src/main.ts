@@ -12,6 +12,9 @@ window.addEventListener("DOMContentLoaded", () => {
   }
   void mountApp(root as HTMLElement).catch((err) => {
     console.error("Failed to mount app", err);
-    root.innerHTML = `<div class="panel" style="padding:16px;color:var(--text,#fff)">Failed to load: ${String(err)}</div>`;
+    const message = document.createElement("div");
+    message.className = "startup-error";
+    message.textContent = `Failed to load: ${String(err)}`;
+    root.replaceChildren(message);
   });
 });

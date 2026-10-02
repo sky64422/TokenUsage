@@ -16,18 +16,23 @@ Default right-centred notch; left/right vertical and top/bottom horizontal. Clic
 
 ## Purpose
 
-A screen-edge **usage monitor notch** that shows personal vendor OAuth quota (Claude / Codex / Grok) with provider rings and Quiet Luxury detail tracks.
+A screen-edge **usage monitor notch** that shows personal vendor quota (Claude / Codex / Grok OAuth and Antigravity official CLI) with provider rings and Quiet Luxury detail tracks.
 
-**Claim a neighbor cannot copy:** desktop glass widget + direct CLI OAuth quota only — not a web billing dashboard, not session-log estimates.
+**Claim a neighbor cannot copy:** desktop glass widget + vendor quota only — not a web billing dashboard, not session-log estimates.
 
 ## Positioning
 
 | We are | We are not |
 |--------|------------|
 | Glanceable personal quota | Team admin / org billing console |
-| Vendor OAuth metadata only | Local JSONL / tokscale estimates |
+| Vendor OAuth / official CLI quota | Local JSONL / tokscale estimates |
 | Black concave edge notch | Purple-gradient SaaS landing aesthetic |
 | Edge-attached compact monitor | Full-window dashboard |
+
+## Antigravity and auto-hide (2026-10-02)
+
+- **Antigravity (AGY):** official installed `agy --sandbox --print-timeout 30s --print /usage` only (added by user request 2026-10-02). Gemini and Claude/GPT 5h/week quotas remain separate. No legacy cloudcode-pa API, browser scraping, or token estimates.
+- The rail folds to a thin edge tab after the pointer leaves; hover reveals it. Local activity evidence drives a separate ring, never quota estimates. See [implementation and limits](docs/notch-polish.md).
 
 ## Evidence / constraints
 
@@ -48,7 +53,6 @@ A screen-edge **usage monitor notch** that shows personal vendor OAuth quota (Cl
 - Push notifications / tray alerts
 - Browser scraping of vendor dashboards
 - Local JSONL / plan-limit token estimates / tokscale
-- **AGY / Gemini provider:** removed — unofficial `cloudcode-pa v1internal` does not track Antigravity 2.0 / Gemini 3.7 usage; re-add when an official public API exists
 - Perfect parity with every vendor subscription UI
 - Per-product Grok breakdown (GrokBuild / GrokChat) in the widget
 - Token ledger (input / output / cache read / cache write) — quota APIs do not return it

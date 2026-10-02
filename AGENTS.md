@@ -14,10 +14,10 @@
 ## Product constraints
 
 - Screen-edge **usage monitor notch**, not a billing dashboard or team admin console.
-- **Primary data:** direct vendor OAuth quota (Claude / Codex / Grok) only. No tokscale, no local JSONL estimates.
+- **Primary data:** vendor quota: direct OAuth (Claude / Codex / Grok) and official CLI (Antigravity). No tokscale, no local JSONL estimates.
 - **No** browser scraping of vendor dashboards without an explicit design decision.
 - **Notifications** are out of scope until requested.
-- **AGY:** removed until an official public API exists. Re-add as optional provider when `TOKENUSAGE_AGY_QUOTA_SOURCE=official` becomes available; the unofficial `cloudcode-pa v1internal` endpoint does not track Antigravity 2.0 / Gemini 3.7 usage.
+- **Antigravity (AGY):** official installed `agy --sandbox --print-timeout 30s --print /usage` only (added by user request 2026-10-02). Gemini and Claude/GPT 5h/week quotas remain separate. No legacy cloudcode-pa API, browser scraping, or token estimates.
 - UI: logo/ring/%/period on the notch; inside the detail keep **fixed column geometry** — row 1 name · period · refill; row 2 `1fr` bar · `2.9em` % (2px gutter).
 - **Progress:** the user approved rings for the summary. Details retain Quiet Luxury 6px bars. Missing/auth-required values must not look like 0%. Preserve the backend primary percentage (currently max of windows) and its matching period.
 - **Refresh:** interval is **fixed at 5s**. Do not add a settings control; `refresh_secs()` ignores persisted values.

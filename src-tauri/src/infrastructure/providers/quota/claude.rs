@@ -134,7 +134,7 @@ fn push_window(out: &mut Vec<UsageWindow>, kind: WindowKind, label: &str, obj: O
     let resets_at = extract_resets_at(obj);
 
     out.push(UsageWindow {
-        kind,
+            group: None,        kind,
         used: clamped_pct,
         limit: Some(100.0),
         unit: UsageUnit::Percent,

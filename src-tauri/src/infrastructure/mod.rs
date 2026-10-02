@@ -5,3 +5,4 @@ pub mod store;
 pub mod tray;
 pub mod updater;
 pub mod window_ctl;
+pub mod activity;

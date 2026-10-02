@@ -1,6 +1,6 @@
 # Token Usage
 
-Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent **quota usage vs reset times** — personal CLI OAuth, with **reset-time–first** display. Design language follows [EconomyWarRoom](../EconomyWarRoom) (glass, always-on-top, hotkey).
+Floating Windows widget that tracks **Claude / Codex / Grok / Antigravity** coding-agent **quota usage vs reset times** — personal CLI OAuth, with **reset-time–first** display. Design language follows [EconomyWarRoom](../EconomyWarRoom) (glass, always-on-top, hotkey).
 
 **Current release:** [v0.2.0](https://github.com/sky64422/TokenUsage/releases/tag/v0.2.0)
 
@@ -26,7 +26,7 @@ Floating Windows widget that tracks **Claude / Codex / Grok** coding-agent **quo
 - **Autostart:** OS login item uses **release/install** binary only (`tauri dev` does not overwrite Run key)
 - **In-app updates** (header ↻ badge + background download → click to restart; release startup check)
 - **No notifications yet** (planned later)
-- **Antigravity (AGY)** not in app yet — deferred for Windows widget
+- **Antigravity (AGY):** official installed `agy --sandbox --print-timeout 30s --print /usage` only (added by user request 2026-10-02). Gemini and Claude/GPT 5h/week quotas remain separate. No legacy cloudcode-pa API, browser scraping, or token estimates.
 
 ## Data sources
 

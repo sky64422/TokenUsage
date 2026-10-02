@@ -1,5 +1,5 @@
-export type ProviderId = "claude" | "codex" | "grok";
-export const PROVIDER_IDS: ProviderId[] = ["claude", "codex", "grok"];
+export type ProviderId = "claude" | "codex" | "grok" | "agy";
+export const PROVIDER_IDS: ProviderId[] = ["claude", "codex", "grok", "agy"];
 
 export type WindowKind =
   "rolling_5h" | "weekly" | "daily" | "monthly" | "session" | "unknown";
@@ -9,6 +9,7 @@ export type DataSource = "vendor" | "unavailable";
 export type UsageUnit = "percent";
 
 export interface UsageWindow {
+  group?: string | null;
   kind: WindowKind;
   used: number;
   limit: number | null;
@@ -28,13 +29,6 @@ export interface ProviderSnapshot {
   message: string | null;
   primary_resets_at: string | null;
   primary_used_percent: number | null;
-}
-
-export interface WindowGeometry {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
 }
 
 export type CardTint =
@@ -58,7 +52,6 @@ export interface ProviderConfig {
 export interface AppSettings {
   notch: NotchPlacement;
   opacity: number;
-  window: WindowGeometry;
   hotkey: string;
   autostart: boolean;
   hover_detail: boolean;
@@ -66,6 +59,7 @@ export interface AppSettings {
   claude: ProviderConfig;
   codex: ProviderConfig;
   grok: ProviderConfig;
+  agy: ProviderConfig;
 }
 
 export type NotchEdge = "top" | "right" | "bottom" | "left";
@@ -80,8 +74,14 @@ export interface Rect {
   width: number;
   height: number;
 }
+
+export type AnchorX = "left" | "right";
+export type AnchorY = "top" | "bottom";
+
 export interface NotchLayout {
   metrics: {
+    rest_depth: number;
+    rest_length: number;
     depth: number;
     cell: number;
     shoulder: number;
@@ -91,6 +91,8 @@ export interface NotchLayout {
     drag_threshold: number;
   };
   edge: NotchEdge;
+  anchor_x: AnchorX;
+  anchor_y: AnchorY;
   notch: Rect;
   detail: Rect | null;
   window: Rect;
@@ -111,4 +113,9 @@ export interface PersistedState {
 
 export interface DiagnosticsSnapshot {
   lines: string[];
+}
+export interface ProviderActivity {
+  provider_id: ProviderId;
+  state: "unknown" | "idle" | "running" | "recent";
+  observed_at: string | null;
 }

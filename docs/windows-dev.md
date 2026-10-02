@@ -59,9 +59,10 @@ python -X utf8 scripts/notch-smoke.py
 python -X utf8 scripts/notch-regression.py
 python -X utf8 scripts/notch-edge-drag.py
 python -X utf8 scripts/notch-seam-drag.py
+python -X utf8 scripts/notch-polish.py
 ```
 
 These smoke scripts refuse the production identifier. They use synthetic quota data,
-move the pointer and exercise preview settings. Close the preview before Rust rebuilds
+move the pointer and exercise notch interactions. Close the preview before Rust rebuilds
 (Windows locks its running executable). Remove the three environment variables before
 normal development. Actual vendor data is not validated by these fixture runs.

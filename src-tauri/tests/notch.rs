@@ -361,3 +361,44 @@ fn fast_stacked_monitor_crossing_preserves_entry_hysteresis() {
     d.update(&monitors, 1000., -180.).unwrap();
     assert_eq!(d.placement.monitor_hint.as_deref(), Some("top"));
 }
+
+#[test]
+fn anchor_corner_stays_immobile_on_detail_expansion() {
+    let m = monitor(1.);
+    for edge in [NotchEdge::Right, NotchEdge::Left, NotchEdge::Top, NotchEdge::Bottom] {
+        for offset in [0.1, 0.5, 0.9] {
+            let p = NotchPlacement {
+                edge,
+                offset,
+                monitor_hint: None,
+            };
+            let closed = calculate_layout(&m, &p, 2, false, 350.).unwrap();
+            let open = calculate_layout(&m, &p, 2, true, 350.).unwrap();
+
+            assert_eq!(closed.anchor_x, open.anchor_x);
+            assert_eq!(closed.anchor_y, open.anchor_y);
+
+            // Anchor corner must be identical between closed and open states.
+            match open.anchor_x {
+                AnchorX::Left => assert_eq!(closed.window.x, open.window.x),
+                AnchorX::Right => {
+                    assert_eq!(closed.window.x + closed.window.width, open.window.x + open.window.width)
+                }
+            }
+            match open.anchor_y {
+                AnchorY::Top => assert_eq!(closed.window.y, open.window.y),
+                AnchorY::Bottom => {
+                    assert_eq!(closed.window.y + closed.window.height, open.window.y + open.window.height)
+                }
+            }
+        }
+    }
+}
+#[test]
+fn all_current_providers_fit_each_edge() {
+    use token_usage_lib::domain::types::ProviderId;
+    for edge in [NotchEdge::Left, NotchEdge::Right, NotchEdge::Top, NotchEdge::Bottom] {
+        let layout = calculate_layout(&monitor(1.), &NotchPlacement { edge, ..Default::default() }, ProviderId::all().len(), false, 0.).unwrap();
+        assert_eq!(layout.edge, edge);
+    }
+}

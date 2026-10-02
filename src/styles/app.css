@@ -39,27 +39,6 @@ body {
   background: transparent;
 }
 
-.panel {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  /* Fill the HWND. max-content left a short square frame inside the
-     DWM-rounded window (two right-angle edges + a rounded clip). */
-  height: 100%;
-  max-height: 100%;
-  min-height: 0;
-  border-radius: var(--radius);
-  background: rgba(var(--bg-glass-rgb-active), var(--panel-opacity, 0.92));
-  backdrop-filter: saturate(180%) blur(var(--blur));
-  -webkit-backdrop-filter: saturate(180%) blur(var(--blur));
-  border: 1px solid var(--border);
-  /* Inset only — outer box-shadow = halo in transparent zone on WebView2 */
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
-  overflow: hidden;
-  margin: 0;
-}
-
-
 /* Icon button primitive */
 .icon-btn {
   width: 28px;
@@ -88,107 +67,13 @@ body {
   background: color-mix(in srgb, var(--secondary) 80%, transparent);
 }
 
-.icon-btn.active {
-  color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 14%, transparent);
-}
-
 .icon-btn:disabled,
 .icon-btn.busy {
   opacity: 0.45;
   pointer-events: none;
 }
 
-/* Soft update badge on header ↻ — downloading pulse, ready solid. */
-.icon-btn.update-available {
-  position: relative;
-  color: var(--primary);
-}
-
-.icon-btn.update-available::after {
-  content: "";
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--primary);
-  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--primary) 35%, transparent);
-  pointer-events: none;
-}
-
-.icon-btn.update-downloading::after {
-  animation: update-dot-pulse 1.8s ease-in-out infinite;
-}
-
-.icon-btn.update-ready {
-  color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 14%, transparent);
-}
-
-.icon-btn.update-ready::after {
-  animation: none;
-  opacity: 1;
-}
-
-@keyframes update-dot-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.55;
-    transform: scale(0.85);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .icon-btn.update-downloading::after {
-    animation: none;
-  }
-}
-
-.content {
-  position: relative;
-  padding: 2px var(--pad-x) 8px;
-  overflow: hidden;
-  min-height: 0;
-}
-
-#providers-root {
-  transition: opacity 0.15s ease;
-}
-
-/* Settings: absolute overlay over providers — no layout growth / window hug. */
-#settings-root {
-  position: absolute;
-  inset: 0;
-  z-index: 10;
-  display: none;
-  flex-direction: column;
-  overflow: hidden;
-  min-height: 0;
-  pointer-events: auto;
-}
-
-.panel:not(.settings-open) #settings-root {
-  display: none;
-}
-
-.panel.settings-open #settings-root {
-  display: flex;
-}
-
-/* Existing list fully transparent under the opaque settings sheet. */
-.panel.settings-open #providers-root {
-  opacity: 0;
-  pointer-events: none;
-  user-select: none;
-}
-
-/* —— One-line usage rows: name | label | bar | pct | reset —— */
+/* Quota detail rows */
 .provider-list {
   display: flex;
   flex-direction: column;
@@ -379,11 +264,6 @@ body {
 .provider-pct.level-na {
   color: var(--text-tertiary);
   font-weight: 500;
-}
-
-.provider-meta .over-tag {
-  color: var(--critical);
-  font-weight: 600;
 }
 
 /* Graphic pill track — Quiet Luxury: glow + sheen, still a single glance bar */
@@ -611,7 +491,7 @@ body {
   font-weight: 500;
 }
 
-/* —— Settings overlay card (WarRoom-aligned) —— */
+/* Settings sheet inside the inward notch detail */
 .settings {
   display: none;
   flex: 1 1 auto;
@@ -664,13 +544,6 @@ body {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--foreground);
-}
-
-.settings-lede {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--text-tertiary);
 }
 
 /* Bottom chrome: meta + debug / quit action pair */
@@ -790,6 +663,12 @@ body {
 .settings-update-btn.busy {
   opacity: 0.55;
   cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-update-btn.update-downloading::after {
+    animation: none;
+  }
 }
 
 @keyframes update-dot-pulse {
@@ -1100,38 +979,3 @@ body {
   cursor: not-allowed;
   filter: none;
 }
-
-.provider-limits {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.limit-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.limit-field-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-
-.limit-field input[type="number"] {
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  padding: 6px 8px;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-

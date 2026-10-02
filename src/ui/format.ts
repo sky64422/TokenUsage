@@ -76,7 +76,7 @@ export function formatWindowReset(opts: {
   over: boolean;
   now?: number;
 }): string {
-  // Idle: no label — empty track + %/tokens tell the story
+  // Idle: no label — empty track + percentage tell the story
   if (opts.idle) return "";
   if (opts.over && !opts.resetsAt) return "Over limit";
   if (!opts.resetsAt) return "";
@@ -113,22 +113,6 @@ export function formatPct(
   const c = clampPct(pct) ?? 0;
   if (over) return "100%";
   return `${Math.round(c)}%`;
-}
-
-export function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return `${Math.round(n)}`;
-}
-
-export function formatTokenPair(
-  used: number,
-  limit: number | null | undefined,
-  _over = false,
-): string {
-  if (limit == null) return formatTokens(used);
-  // Compact "used / limit" only — over is shown via color / meta tag
-  return `${formatTokens(used)} / ${formatTokens(limit)}`;
 }
 
 export function formatWindowLabel(labelOrKind: string | null | undefined): string {

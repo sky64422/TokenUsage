@@ -3,8 +3,6 @@ import {
   clampPct,
   formatCountdown,
   formatPct,
-  formatTokenPair,
-  formatTokens,
   formatWindowLabel,
   formatWindowReset,
   isOver,
@@ -119,18 +117,5 @@ describe("formatCountdown", () => {
 
     const twoDays = new Date(base + 48 * 3600 * 1000).toISOString();
     expect(formatCountdown(twoDays, base)).toBe("2d");
-  });
-});
-
-describe("formatTokens & formatTokenPair", () => {
-  it("formats number magnitudes", () => {
-    expect(formatTokens(500)).toBe("500");
-    expect(formatTokens(1500)).toBe("1.5k");
-    expect(formatTokens(2_500_000)).toBe("2.5M");
-  });
-
-  it("formats token pairs", () => {
-    expect(formatTokenPair(1500, null)).toBe("1.5k");
-    expect(formatTokenPair(1500, 3000)).toBe("1.5k / 3.0k");
   });
 });

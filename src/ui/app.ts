@@ -16,12 +16,13 @@ import { PROVIDER_IDS } from "./types";
 import type {
   PersistedState,
   ProviderSnapshot,
+  ProviderActivity,
   NotchLayout,
   NotchPlacement,
   DiagnosticsSnapshot,
 } from "./types";
 
-const SURFACE_PADDING = 34; // 16px padding and 1px border on both sides.
+const SURFACE_PADDING = 36; // 16px padding and 1px border on both sides + 2px headroom.
 export async function mountApp(root: HTMLElement): Promise<void> {
   root.innerHTML = `<div class="notch-shell"><nav class="notch" aria-label="AI usage"></nav><section class="notch-detail" aria-label="Usage detail" hidden><div class="detail-body"><div class="detail-quota"><div class="quota-root"></div><p class="detail-state"></p></div><div class="detail-settings" hidden><div class="detail-heading"><h2>Settings</h2><button class="icon-btn detail-close" aria-label="Close settings">×</button></div><div class="settings-root"></div></div><p class="notch-error" role="status" hidden></p></div></section></div>`;
   const shell = root.querySelector<HTMLElement>(".notch-shell")!;
@@ -81,6 +82,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     claude: persisted.settings.claude.card_tint,
     codex: persisted.settings.codex.card_tint,
     grok: persisted.settings.grok.card_tint,
+    agy: persisted.settings.agy.card_tint,
   });
   applyPanelOpacity(shell, persisted.settings.opacity);
   const settings = mountSettingsPanel(
@@ -292,6 +294,11 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     openSettings();
   });
   rail.addEventListener("keydown", (e) => {
+    if (e.key === "Tab" && rail.classList.contains("is-folded")) {
+      e.preventDefault();
+      void invoke<boolean>("set_notch_focus", { focused: true }).then(notch.reveal).catch(fail);
+      return;
+    }
     if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
       e.preventDefault();
       openSettings();
@@ -299,6 +306,16 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     }
   });
   await listen<NotchLayout>("notch-layout", (ev) => paintLayout(ev.payload));
+  await listen<boolean>("notch-reveal", (ev) => notch.reveal(ev.payload));
+  await listen<ProviderActivity[]>("provider-activity", (ev) => notch.activity(ev.payload));
+  rail.addEventListener("focusin", () => {
+    if (document.activeElement?.matches(":focus-visible"))
+      void invoke<boolean>("set_notch_focus", { focused: true }).then(notch.reveal).catch(fail);
+  });
+  rail.addEventListener("focusout", () => {
+    if (!rail.contains(document.activeElement))
+      void invoke<boolean>("set_notch_focus", { focused: false }).then(notch.reveal).catch(fail);
+  });
   await listen<ProviderSnapshot[]>("snapshots-updated", (ev) => {
     snaps = ev.payload;
     refreshView();
@@ -310,6 +327,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     }
   });
   snaps = await invoke("get_snapshots");
+  notch.reveal(await invoke<boolean>("get_notch_reveal"));
+  notch.activity(await invoke<ProviderActivity[]>("get_provider_activity"));
   refreshView();
   await surfaceChain;
   await win.show();

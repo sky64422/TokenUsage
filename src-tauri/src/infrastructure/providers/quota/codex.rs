@@ -143,7 +143,7 @@ fn window_from_rate_window(w: Option<&RateWindow>, fallback_label: &str) -> Opti
     let resets_at = parse_reset_at(w.reset_at.as_ref(), w.reset_after_seconds);
 
     Some(UsageWindow {
-        kind,
+            group: None,        kind,
         used: clamped_pct,
         limit: Some(100.0),
         unit: UsageUnit::Percent,

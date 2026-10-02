@@ -96,7 +96,7 @@ pub fn parse_billing_json(raw: &str) -> Result<ProviderSnapshot, String> {
                 .or_else(|| cfg.billing_period_end.clone());
 
             windows.push(UsageWindow {
-                kind,
+            group: None,                kind,
                 used: used_percent,
                 limit: Some(100.0),
                 unit: UsageUnit::Percent,

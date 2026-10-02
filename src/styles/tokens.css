@@ -81,11 +81,6 @@
   --track: rgba(255, 255, 255, max(0.07, calc(0.14 * var(--chrome-opacity))));
   --track-inset: rgba(0, 0, 0, calc(0.28 * var(--chrome-opacity)));
 
-  /*
-   * Match Win11 DWMWCP_ROUND (~8px). Radius 0 left a square CSS border
-   * inside the rounded HWND clip (right-angle lines at the bottom corners).
-   */
-  --radius: 8px;
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 10px;
@@ -93,15 +88,12 @@
   --radius-card: var(--radius-xl);
   --radius-full: 9999px;
 
-  --blur: 36px;
-  --header-height: 38px;
 
   /* Spacing scale (4px base) — prefer steps over ad-hoc px */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --pad-x: var(--space-3);
 
   /*
    * Two-line usage row — fr shares (EconomyWarRoom pattern).
@@ -122,7 +114,6 @@
 
 @media (prefers-reduced-transparency: reduce) {
   :root {
-    --blur: 0px;
     --panel-opacity: 1;
     --fg-opacity: 1;
     --accent-opacity: 1;

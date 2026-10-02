@@ -250,6 +250,7 @@ fn provider_config(settings: &AppSettings, id: ProviderId) -> &ProviderConfig {
         ProviderId::Claude => &settings.claude,
         ProviderId::Codex => &settings.codex,
         ProviderId::Grok => &settings.grok,
+        ProviderId::Agy => &settings.agy,
     }
 }
 
@@ -258,6 +259,7 @@ fn provider_config_mut(settings: &mut AppSettings, id: ProviderId) -> &mut Provi
         ProviderId::Claude => &mut settings.claude,
         ProviderId::Codex => &mut settings.codex,
         ProviderId::Grok => &mut settings.grok,
+        ProviderId::Agy => &mut settings.agy,
     }
 }
 
@@ -275,6 +277,7 @@ fn missing_quota_snapshot(id: ProviderId, vendor_err: Option<&str>) -> ProviderS
         match id {
             ProviderId::Claude => "No Claude quota — login with `claude` CLI".into(),
             ProviderId::Codex => "No Codex quota — login with `codex` CLI".into(),
+            ProviderId::Agy => "No Antigravity quota - sign in with `agy`".into(),
             ProviderId::Grok => "No Grok quota — login with `grok` CLI".into(),
         }
     };

@@ -7,6 +7,21 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 #[tauri::command]
+pub fn get_provider_activity(app: AppHandle) -> Vec<crate::domain::activity::ProviderActivity> {
+    crate::infrastructure::activity::get(&app)
+}
+
+#[tauri::command]
+pub fn get_notch_reveal(app: AppHandle) -> Result<bool, String> {
+    crate::infrastructure::notch_window::get_reveal(&app)
+}
+
+#[tauri::command]
+pub fn set_notch_focus(app: AppHandle, focused: bool) -> Result<bool, String> {
+    crate::infrastructure::notch_window::set_focus(&app, focused)
+}
+
+#[tauri::command]
 pub fn get_notch_monitors(
     app: AppHandle,
 ) -> Result<Vec<crate::domain::notch::MonitorArea>, String> {
@@ -19,19 +34,8 @@ pub fn set_notch_placement(
     state: State<'_, AppHandleState>,
     placement: crate::domain::notch::NotchPlacement,
 ) -> Result<crate::domain::notch::NotchLayout, String> {
-    let saved = state.core.set_notch_placement(placement);
-    // Always release drag capture, including a failed disk write.
-    let restored = crate::infrastructure::notch_window::preview(&app, None);
-    saved?;
-    restored
-}
-
-#[tauri::command]
-pub fn preview_notch_placement(
-    app: AppHandle,
-    placement: Option<crate::domain::notch::NotchPlacement>,
-) -> Result<crate::domain::notch::NotchLayout, String> {
-    crate::infrastructure::notch_window::preview(&app, placement)
+    state.core.set_notch_placement(placement)?;
+    crate::infrastructure::notch_window::apply(&app, None)
 }
 
 #[tauri::command]
@@ -61,19 +65,6 @@ pub fn get_state(state: State<'_, AppHandleState>) -> PersistedState {
 #[tauri::command]
 pub fn get_snapshots(state: State<'_, AppHandleState>) -> Vec<ProviderSnapshot> {
     state.core.get_snapshots()
-}
-
-#[tauri::command]
-pub async fn refresh_now(
-    app: AppHandle,
-    state: State<'_, AppHandleState>,
-) -> Result<Vec<ProviderSnapshot>, String> {
-    let core = Arc::clone(&state.core);
-    let snaps = tokio::task::spawn_blocking(move || core.refresh_all())
-        .await
-        .map_err(|e| e.to_string())?;
-    let _ = app.emit("snapshots-updated", &snaps);
-    Ok(snaps)
 }
 
 #[tauri::command]
@@ -117,10 +108,7 @@ pub fn set_autostart(
 }
 
 #[tauri::command]
-pub fn set_hover_detail(
-    state: State<'_, AppHandleState>,
-    enabled: bool,
-) -> Result<(), String> {
+pub fn set_hover_detail(state: State<'_, AppHandleState>, enabled: bool) -> Result<(), String> {
     state.core.set_hover_detail(enabled)
 }
 
@@ -146,14 +134,6 @@ pub fn set_provider_tint(
     tint: CardTint,
 ) -> Result<(), String> {
     state.core.set_provider_tint(provider, tint)
-}
-
-#[tauri::command]
-pub fn hide_widget(app: AppHandle, state: State<'_, AppHandleState>) -> Result<(), String> {
-    let window = window_ctl::main_window(&app)?;
-    window_ctl::hide_window(&window)?;
-    state.core.set_visible(false);
-    Ok(())
 }
 
 #[tauri::command]

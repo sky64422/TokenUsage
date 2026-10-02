@@ -4,7 +4,6 @@ import {
   formatCountdown,
   formatPct,
   formatResetClock,
-  formatTokenPair,
   formatWindowLabel,
   formatWindowReset,
   isOver,
@@ -26,6 +25,7 @@ export function mountProviders(root: HTMLElement): {
     claude: "none",
     codex: "none",
     grok: "none",
+    agy: "none",
   };
   let tintMenuEl: HTMLElement | null = null;
 
@@ -163,8 +163,8 @@ function cardHtml(s: ProviderSnapshot, tint: CardTint): string {
     ? s.windows
         .map((w, i) =>
           usageRow({
-            name: i === 0 ? s.display_name : "",
-            nameHidden: i > 0,
+            name: w.group && s.windows[i-1]?.group !== w.group ? w.group : (i === 0 ? s.display_name : ""),
+            nameHidden: i > 0 && (!w.group || s.windows[i-1]?.group === w.group),
             window: w,
             cardMessage: s.message,
             cardIdle: idle,
@@ -204,13 +204,6 @@ function emptyUsageRow(
   `;
 }
 
-function tokenDetail(w: UsageWindow, over: boolean): string | null {
-  if (w.limit != null) {
-    return formatTokenPair(w.used, w.limit, over);
-  }
-  return null;
-}
-
 function usageRow(opts: {
   name: string;
   nameHidden: boolean;
@@ -231,14 +224,13 @@ function usageRow(opts: {
   const label = formatWindowLabel(w.label ?? w.kind);
 
   const pctText = formatPct(w.used_percent, over, idle);
-  const detail = tokenDetail(w, over);
   const reset = formatWindowReset({
     resetsAt: w.resets_at,
     idle,
     over,
   });
   const clockLong = formatResetClock(w.resets_at);
-  const title = [opts.name, detail ?? pctText, clockLong || reset]
+  const title = [opts.name, pctText, clockLong || reset]
     .filter(Boolean)
     .join(" · ");
   const urgent =

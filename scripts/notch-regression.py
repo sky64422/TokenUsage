@@ -81,12 +81,11 @@ with sync_playwright() as p:
  l=invoke('set_notch_placement',{'placement':{'edge':'right','offset':.5,'monitor_hint':'missing-display'}})
  assert l['monitor']==areas[0]['name']
  reset();l=layout()
- # A blocked settings file reproduces a write failure after drag preview.
+ # A blocked settings file reproduces a write failure during placement save.
  data=Path(page.evaluate('async()=>window.__TAURI__.path.appDataDir()'))
  state=data/'token-usage-state.json';backup=data/'token-usage-state.smoke-backup.json'
  assert not backup.exists()
  committed=invoke('get_state')['settings']['notch']
- invoke('preview_notch_placement',{'placement':{**committed,'offset':.3}})
  state.rename(backup);state.mkdir()
  try:
   try:invoke('set_notch_placement',{'placement':{**committed,'offset':.3}})

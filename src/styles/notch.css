@@ -15,6 +15,67 @@
   color: var(--foreground);
   contain: layout style;
 }
+.notch-surface {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 round 0);
+  transition: clip-path 360ms cubic-bezier(.22, .72, .24, 1);
+}
+.notch[data-edge="right"] { --rest-clip: inset(calc(50% - var(--rest-length) / 2) 0 calc(50% - var(--rest-length) / 2) calc(100% - var(--rest-depth)) round 6px 0 0 6px); }
+.notch[data-edge="left"] { --rest-clip: inset(calc(50% - var(--rest-length) / 2) calc(100% - var(--rest-depth)) calc(50% - var(--rest-length) / 2) 0 round 0 6px 6px 0); }
+.notch[data-edge="top"] { --rest-clip: inset(0 calc(50% - var(--rest-length) / 2) calc(100% - var(--rest-depth)) calc(50% - var(--rest-length) / 2) round 0 0 6px 6px); }
+.notch[data-edge="bottom"] { --rest-clip: inset(calc(100% - var(--rest-depth)) calc(50% - var(--rest-length) / 2) 0 calc(50% - var(--rest-length) / 2) round 6px 6px 0 0); }
+.notch.is-folded .notch-surface { clip-path: var(--rest-clip); }
+.notch-rest {
+  z-index: 1;
+  position: absolute;
+  background: rgba(0, 0, 0, var(--panel-opacity));
+  border: 1px solid rgba(255, 255, 255, .24);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease;
+}
+.notch[data-edge="right"] .notch-rest,
+.notch[data-edge="left"] .notch-rest {
+  top: calc(50% - var(--rest-length) / 2);
+  height: var(--rest-length);
+  width: var(--rest-depth);
+}
+.notch[data-edge="right"] .notch-rest { right: 0; border-right: 0; border-radius: 6px 0 0 6px; }
+.notch[data-edge="left"] .notch-rest { left: 0; border-left: 0; border-radius: 0 6px 6px 0; }
+.notch[data-edge="top"] .notch-rest,
+.notch[data-edge="bottom"] .notch-rest {
+  left: calc(50% - var(--rest-length) / 2);
+  width: var(--rest-length);
+  height: var(--rest-depth);
+}
+.notch[data-edge="top"] .notch-rest { top: 0; border-top: 0; border-radius: 0 0 6px 6px; }
+.notch[data-edge="bottom"] .notch-rest { bottom: 0; border-bottom: 0; border-radius: 6px 6px 0 0; }
+.notch.is-folded .notch-rest { opacity: 1; }
+.notch-cells { transition: opacity 180ms ease; }
+.notch.is-folded .notch-cells { opacity: 0; pointer-events: none; }
+.activity-orbit {
+  display: none;
+  position: absolute;
+  inset: 6px;
+  border: 1.5px solid transparent;
+  border-top-color: #fff;
+  border-right-color: rgba(255, 255, 255, .3);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.notch-cell[data-activity="running"] .activity-orbit {
+  display: block;
+  animation: activity-turn 1.4s linear infinite;
+}
+.notch-cell[data-activity="recent"] .activity-orbit {
+  display: block;
+  border-top-color: var(--warning);
+  border-right-color: transparent;
+}
+.notch.is-folded .activity-orbit { animation-play-state: paused; }
+@keyframes activity-turn { to { transform: rotate(360deg); } }
+.startup-error { padding: 16px; color: var(--foreground); background: #111; border-radius: 16px; }
 .notch-shape {
   position: absolute;
   inset: 0;
@@ -256,6 +317,8 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .notch-surface, .notch-rest, .notch-cells { transition: none; }
+  .activity-orbit { animation: none !important; }
   .notch-detail {
     animation: none;
   }

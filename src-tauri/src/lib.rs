@@ -70,6 +70,7 @@ pub fn run() {
             }
 
             app.manage(handle_state);
+            infrastructure::activity::start(app.handle());
             app.manage(infrastructure::notch_window::NotchController::default());
             infrastructure::notch_window::start(app.handle().clone());
             app.manage(updater::PendingUpdateState::default());
@@ -92,20 +93,20 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_state,
+            commands::get_provider_activity,
             commands::get_notch_monitors,
+            commands::get_notch_reveal,
+            commands::set_notch_focus,
             commands::set_notch_placement,
-            commands::preview_notch_placement,
             commands::begin_notch_drag,
             commands::finish_notch_drag,
             commands::set_notch_surface,
             commands::get_snapshots,
-            commands::refresh_now,
             commands::set_opacity,
             commands::set_autostart,
             commands::set_hover_detail,
             commands::set_provider_enabled,
             commands::set_provider_tint,
-            commands::hide_widget,
             commands::quit_app,
             commands::get_diagnostics,
             commands::check_for_updates,

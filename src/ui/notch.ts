@@ -3,9 +3,11 @@ import codex from "../assets/marks/codex.svg";
 import grok from "../assets/marks/grok.svg";
 import { headline } from "./notch-state";
 import { PROVIDER_IDS } from "./types";
-import type { ProviderId, ProviderSnapshot, NotchLayout, Rect } from "./types";
+import type { ProviderId, ProviderSnapshot, ProviderActivity, NotchLayout, Rect } from "./types";
 
-const MARKS = { claude, codex, grok };
+import agy from "../assets/marks/agy.svg";
+
+const MARKS = { claude, codex, grok, agy };
 export function mountNotch(
   root: HTMLElement,
   callbacks: {
@@ -15,7 +17,7 @@ export function mountNotch(
 ) {
   root.tabIndex = 0;
   root.setAttribute("aria-label", "AI usage. Drag to move; right-click or Shift+F10 for settings.");
-  root.innerHTML = `<svg class="notch-shape" aria-hidden="true"><path/></svg><div class="notch-cells"></div>`;
+  root.innerHTML = `<span class="notch-rest" aria-hidden="true"></span><div class="notch-surface"><svg class="notch-shape" aria-hidden="true"><path/></svg><div class="notch-cells"></div></div>`;
   const cells = root.querySelector<HTMLElement>(".notch-cells")!;
   const buttons = new Map<ProviderId, HTMLButtonElement>();
   let restoringFocus = false;
@@ -25,6 +27,10 @@ export function mountNotch(
     b.dataset.id = id;
     b.innerHTML = `<span class="ring-wrap"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="ring-track" cx="22" cy="22" r="19"/><circle class="ring-fill" cx="22" cy="22" r="19" pathLength="100"/></svg><img src="${MARKS[id]}" alt="" draggable="false"/><span class="ring-status" hidden>!</span></span><span class="ring-meta"><span class="ring-pct">—</span><span class="ring-period">No data</span></span>`;
     b.addEventListener("pointerenter", () => callbacks.hover(id));
+    const orbit = document.createElement("span");
+    orbit.className = "activity-orbit";
+    orbit.setAttribute("aria-hidden", "true");
+    b.querySelector(".ring-wrap")!.append(orbit);
     b.addEventListener("focus", () => {
       if (!restoringFocus) callbacks.hover(id);
     });
@@ -49,6 +55,8 @@ export function mountNotch(
     root.style.setProperty("--notch-depth", `${layout.metrics.depth}px`);
     root.style.setProperty("--notch-cell", `${layout.metrics.cell}px`);
     root.style.setProperty("--notch-inset", `${layout.metrics.inset}px`);
+    root.style.setProperty("--rest-depth", `${layout.metrics.rest_depth}px`);
+    root.style.setProperty("--rest-length", `${layout.metrics.rest_length}px`);
     const svg = root.querySelector("svg")!;
     svg.setAttribute(
       "viewBox",
@@ -71,6 +79,22 @@ export function mountNotch(
     );
   }
   return {
+    reveal(open: boolean) {
+      root.classList.toggle("is-folded", !open);
+      cells.inert = !open;
+      root.setAttribute("aria-expanded", String(open));
+    },
+    activity(states: ProviderActivity[]) {
+      for (const [id, button] of buttons) {
+        const state = states.find((s) => s.provider_id === id)?.state ?? "unknown";
+        button.dataset.activity = state;
+        const label = state === "running" ? "Working in local Codex session" :
+          state === "recent" ? "Recent local activity (inferred)" : "";
+        button.title = label;
+        if (label) button.setAttribute("aria-description", label);
+        else button.removeAttribute("aria-description");
+      }
+    },
     update(snaps: ProviderSnapshot[], enabled: ProviderId[]) {
       for (const [id, b] of buttons) {
         b.hidden = !enabled.includes(id);
@@ -96,7 +120,7 @@ export function mountNotch(
     },
     layout(l: NotchLayout) {
       if (root.dataset.edge !== l.edge) root.dataset.edge = l.edge;
-      position(root, l.notch, l);
+      positionNotch(root, l.notch, l);
       shape(l);
     },
     select(id: ProviderId | null, pinned: boolean) {
@@ -110,6 +134,28 @@ export function mountNotch(
       restoringFocus = false;
     },
   };
+}
+export function positionNotch(el: HTMLElement, r: Rect, l: NotchLayout) {
+  const width = `${r.width / l.scale}px`;
+  const height = `${r.height / l.scale}px`;
+  if (el.style.width !== width) el.style.width = width;
+  if (el.style.height !== height) el.style.height = height;
+
+  if (l.anchor_x === "right") {
+    if (el.style.right !== "0px") el.style.right = "0px";
+    if (el.style.left !== "") el.style.left = "";
+  } else {
+    if (el.style.left !== "0px") el.style.left = "0px";
+    if (el.style.right !== "") el.style.right = "";
+  }
+
+  if (l.anchor_y === "bottom") {
+    if (el.style.bottom !== "0px") el.style.bottom = "0px";
+    if (el.style.top !== "") el.style.top = "";
+  } else {
+    if (el.style.top !== "0px") el.style.top = "0px";
+    if (el.style.bottom !== "") el.style.bottom = "";
+  }
 }
 export function position(el: HTMLElement, r: Rect, l: NotchLayout) {
   const left = `${(r.x - l.window.x) / l.scale}px`;

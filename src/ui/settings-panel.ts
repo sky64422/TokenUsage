@@ -95,6 +95,7 @@ export function mountSettingsPanel(
           ${providerChip("claude", "Claude", settings.claude.enabled !== false)}
           ${providerChip("codex", "Codex", settings.codex.enabled !== false)}
           ${providerChip("grok", "Grok", settings.grok.enabled !== false)}
+          ${providerChip("agy", "Antigravity", settings.agy.enabled !== false)}
         </div>
       </div>
 

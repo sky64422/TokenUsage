@@ -54,7 +54,7 @@ mod tests {
 
     fn win(pct: f64, reset: &str) -> UsageWindow {
         UsageWindow {
-            kind: WindowKind::Weekly,
+            group: None,            kind: WindowKind::Weekly,
             used: pct,
             limit: Some(100.0),
             unit: UsageUnit::Percent,
