@@ -3,6 +3,16 @@ export function clampPct(pct: number | null | undefined): number | null {
   return Math.min(100, Math.max(0, pct));
 }
 
+/** Compact card copy; callers retain the vendor detail in the title/diagnostics. */
+export function formatProviderStatus(status: string, message?: string | null): string {
+  if (status === "ok") return "";
+  if (status === "auth_required") return "Sign in required";
+  if (/^reading\b/i.test(message ?? "")) return "Loading…";
+  if (/timed?\s*out|timeout/i.test(message ?? "")) return "Request timed out";
+  if (status === "degraded") return "Usage unavailable";
+  return "Unable to fetch usage";
+}
+
 export function isOver(
   pct: number | null | undefined,
   message?: string | null,

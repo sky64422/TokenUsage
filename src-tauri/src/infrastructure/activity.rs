@@ -344,7 +344,7 @@ impl ActivityMonitor {
                 }
                 _ => {}
             }
-            candidates.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+            candidates.sort_unstable_by_key(|b| std::cmp::Reverse(b.0));
             selected.extend(
                 candidates
                     .into_iter()
@@ -450,7 +450,7 @@ fn antigravity_state_in(gemini_dir: &Path, now: DateTime<Utc>) -> (ActivityState
             if let Ok(meta) = fs::metadata(&transcript) {
                 if let Ok(modified) = meta.modified() {
                     let dt: DateTime<Utc> = modified.into();
-                    if newest.map_or(true, |prev| dt > prev) {
+                    if newest.is_none_or(|prev| dt > prev) {
                         newest = Some(dt);
                     }
                 }
@@ -461,7 +461,7 @@ fn antigravity_state_in(gemini_dir: &Path, now: DateTime<Utc>) -> (ActivityState
         return (ActivityState::Unknown, None);
     };
     let age = now.signed_duration_since(at).num_seconds();
-    let state = if age >= 0 && age <= ANTIGRAVITY_RUNNING_SECONDS {
+    let state = if (0..=ANTIGRAVITY_RUNNING_SECONDS).contains(&age) {
         ActivityState::Running
     } else if age > ANTIGRAVITY_RUNNING_SECONDS && age <= ANTIGRAVITY_RECENT_SECONDS {
         ActivityState::Recent

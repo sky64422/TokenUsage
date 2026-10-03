@@ -1,11 +1,13 @@
 //! Grok Build subscription credits via CLI chat proxy billing API.
 
-use crate::domain::types::{ProviderId, ProviderSnapshot, UsageUnit, UsageWindow, WindowKind};
+use crate::domain::types::{ProviderId, ProviderSnapshot, SnapshotStatus, UsageUnit, UsageWindow, WindowKind};
 use crate::infrastructure::providers::credentials::grok as grok_creds;
 use chrono::{Duration, Utc};
 use serde::Deserialize;
 
 use super::grok_fetch;
+
+const MISSING_USAGE: &str = "Usage unavailable — Grok did not report a percentage";
 
 pub fn fetch() -> Result<ProviderSnapshot, String> {
     if super::http::skip_direct_quota() {
@@ -84,10 +86,9 @@ pub fn parse_billing_json(raw: &str) -> Result<ProviderSnapshot, String> {
 
         let has_period = cfg.current_period.is_some() || cfg.billing_period_end.is_some();
         if pct.is_some() || has_period {
-            // Omitted percent at period start (vendor drops default 0) → 0%.
-            let raw_pct = pct.unwrap_or(0.0);
-            let over = raw_pct > 100.0;
-            let used_percent = raw_pct.clamp(0.0, 100.0);
+            // Period metadata alone does not establish usage (e.g. free-tier limits).
+            let over = pct.is_some_and(|value| value > 100.0);
+            let used_percent = pct.map(|value| value.clamp(0.0, 100.0));
             let (kind, label) = classify_period(cfg.current_period.as_ref());
             let resets_at = cfg
                 .current_period
@@ -96,12 +97,13 @@ pub fn parse_billing_json(raw: &str) -> Result<ProviderSnapshot, String> {
                 .or_else(|| cfg.billing_period_end.clone());
 
             windows.push(UsageWindow {
-            group: None,                kind,
-                used: used_percent,
+                group: None,
+                kind,
+                used: used_percent.unwrap_or(0.0),
                 limit: Some(100.0),
                 unit: UsageUnit::Percent,
                 resets_at,
-                used_percent: Some(used_percent),
+                used_percent,
                 label: Some(if over {
                     format!("{label} · over")
                 } else {
@@ -122,18 +124,25 @@ pub fn parse_billing_json(raw: &str) -> Result<ProviderSnapshot, String> {
         .and_then(|c| c.is_unified_billing_user)
         .unwrap_or(false);
 
-    let message = if windows.is_empty() && unified {
+    let missing_usage = !windows.is_empty() && windows.iter().all(|w| w.used_percent.is_none());
+    let message = if missing_usage {
+        Some(MISSING_USAGE.into())
+    } else if windows.is_empty() && unified {
         Some("unified billing — vendor omitted weekly %".into())
     } else {
         plan
     };
 
-    Ok(super::snapshot::finish_snapshot(
+    let mut snapshot = super::snapshot::finish_snapshot(
         ProviderId::Grok,
         windows,
         message,
         now,
-    ))
+    );
+    if missing_usage {
+        snapshot.status = SnapshotStatus::Degraded;
+    }
+    Ok(snapshot)
 }
 
 fn classify_period(period: Option<&UsagePeriod>) -> (WindowKind, String) {
@@ -275,8 +284,8 @@ mod tests {
     }
 
     #[test]
-    fn unified_billing_omitted_percent_is_zero_when_period_present() {
-        // Period rollover: vendor omits creditUsagePercent when usage is 0.
+    fn omitted_percent_preserves_period_without_claiming_zero() {
+        // Also seen on free accounts with usage limits; a period cannot prove zero.
         let raw = r#"{
           "config": {
             "currentPeriod": {
@@ -292,19 +301,36 @@ mod tests {
           }
         }"#;
         let snap = parse_billing_json(raw).unwrap();
-        assert_eq!(snap.status, SnapshotStatus::Ok);
+        assert_eq!(snap.status, SnapshotStatus::Degraded);
         assert_eq!(snap.source, DataSource::Vendor);
         assert_eq!(snap.windows.len(), 1);
         assert_eq!(snap.windows[0].kind, WindowKind::Weekly);
         assert_eq!(snap.windows[0].label.as_deref(), Some("Week"));
-        assert!((snap.windows[0].used_percent.unwrap() - 0.0).abs() < 0.01);
-        assert!((snap.primary_used_percent.unwrap() - 0.0).abs() < 0.01);
+        assert!(snap.windows[0].used_percent.is_none());
+        assert!(snap.primary_used_percent.is_none());
         assert!(snap
             .primary_resets_at
             .as_ref()
             .unwrap()
             .starts_with("2026-09-03"));
-        assert!(snap.message.is_none());
+        assert!(snap.message.as_deref().unwrap().contains("unavailable"));
+    }
+
+    #[test]
+    fn explicit_zero_is_healthy_usage() {
+        let snap = parse_billing_json(r#"{"config":{"creditUsagePercent":0,
+            "currentPeriod":{"type":"USAGE_PERIOD_TYPE_WEEKLY","end":"2026-10-08T12:36:54Z"}}}"#).unwrap();
+        assert_eq!(snap.status, SnapshotStatus::Ok);
+        assert_eq!(snap.primary_used_percent, Some(0.0));
+    }
+
+    #[test]
+    fn period_only_does_not_use_product_breakdown_as_primary() {
+        let snap = parse_billing_json(r#"{"config":{"billingPeriodEnd":"2026-10-08T12:36:54Z",
+            "productUsage":[{"product":"GrokBuild","usagePercent":75}]}}"#).unwrap();
+        assert_eq!(snap.status, SnapshotStatus::Degraded);
+        assert!(snap.primary_used_percent.is_none());
+        assert_eq!(snap.primary_resets_at.as_deref(), Some("2026-10-08T12:36:54Z"));
     }
 
     #[test]

@@ -41,6 +41,12 @@ npm run release:publish -- --dry-run
 - Hotkey and autostart need a packaged/dev Tauri process, not plain `vite` alone.
 - Design tokens: `src/styles/tokens.css`; UI primitives: `src/styles/app.css`.
 
+## Background quota reads
+
+Quota-reader AGY processes receive `AGY_CLI_DISABLE_AUTO_UPDATE=true` in their own
+Unicode environment block. Usage reads must not launch the CLI's self-updater.
+The widget does not change the user/system environment or interactive AGY sessions.
+
 ## Isolated notch smoke test
 
 Use a separate identifier to avoid touching installed preferences. With the Vite dev server already running, create `tmp/notch-preview.json`:

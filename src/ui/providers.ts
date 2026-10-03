@@ -3,6 +3,7 @@ import {
   clampPct,
   formatCountdown,
   formatPct,
+  formatProviderStatus,
   formatResetClock,
   formatWindowLabel,
   formatWindowReset,
@@ -157,6 +158,7 @@ function cardHtml(s: ProviderSnapshot, tint: CardTint, isRunning: boolean): stri
   const idle =
     s.message === "idle" ||
     (!hasUsage &&
+      !s.windows.some((w) => w.used_percent == null && w.resets_at) &&
       (s.status === "degraded" || s.status === "unavailable"));
 
   const over =
@@ -202,7 +204,7 @@ function emptyUsageRow(
 ): string {
   const pct = idle ? 0 : clampPct(s.primary_used_percent);
   const lvl = levelClass(pct, over, idle);
-  const msg = s.message ?? (s.status === "unavailable" ? "Unavailable" : "");
+  const msg = formatProviderStatus(s.status, s.message);
   return `
     <div class="usage-row${idle ? " is-idle" : ""}">
       <div class="usage-head">
@@ -211,7 +213,7 @@ function emptyUsageRow(
         <span class="window-reset"></span>
       </div>
       <div class="usage-metrics">
-        <span class="usage-msg">${escapeHtml(msg)}</span>
+        <span class="usage-msg" title="${escapeAttr(s.message ?? msg)}">${escapeHtml(msg)}</span>
         <span class="provider-pct ${lvl}">${escapeHtml(formatPct(pct, over, idle))}</span>
       </div>
     </div>

@@ -25,7 +25,7 @@ export function mountNotch(
     const b = document.createElement("button");
     b.className = "notch-cell";
     b.dataset.id = id;
-    b.innerHTML = `<span class="ring-wrap"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="ring-track" cx="22" cy="22" r="19"/><circle class="ring-fill" cx="22" cy="22" r="19" pathLength="100"/></svg><img src="${MARKS[id]}" alt="" draggable="false"/><span class="ring-status" hidden>!</span></span><span class="ring-meta"><span class="ring-pct">—</span><span class="ring-period">No data</span></span>`;
+    b.innerHTML = `<span class="ring-wrap"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="ring-track" cx="22" cy="22" r="19"/><circle class="ring-fill" cx="22" cy="22" r="19" pathLength="100"/></svg><img src="${MARKS[id]}" alt="" draggable="false"/><span class="ring-status" hidden>!</span></span><span class="ring-meta"><span class="ring-pct">—</span></span>`;
     b.addEventListener("pointerenter", () => callbacks.hover(id));
     const orbit = document.createElement("span");
     orbit.className = "activity-orbit";
@@ -105,7 +105,6 @@ export function mountNotch(
         const h = headline(s);
         b.className = `notch-cell ${h.level}`;
         b.querySelector(".ring-pct")!.textContent = h.text;
-        b.querySelector(".ring-period")!.textContent = h.label;
         b.querySelector<SVGElement>(".ring-fill")!.style.strokeDasharray =
           `${h.fill} 100`;
         b.querySelector<HTMLElement>(".ring-status")!.hidden = !h.degraded;

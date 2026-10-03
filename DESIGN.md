@@ -1,6 +1,6 @@
-# TokenUsage visual system ? edge notch
+# TokenUsage visual system — edge notch
 
-Updated: 2026-09-30. Implements the user-approved [edge notch design](docs/superpowers/specs/2026-09-30-edge-notch-design.md). Windows is the native validation target.
+Updated: 2026-10-03. Implements the user-approved [edge notch design](docs/superpowers/specs/2026-09-30-edge-notch-design.md). Windows is the native validation target.
 
 ## Purpose
 
@@ -9,10 +9,10 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 ## Main surface
 
 - Right edge, centred by default. Four edge choices; left/right are vertical and top/bottom horizontal.
-- 64 DIP depth, 88 DIP provider cells, two tangent 32 DIP circular arcs at each end, with no flat ledge between them: **44 DIP content inset at both ends**. Content sits within the curved end region with breathing room around the first ring and last label. Rings are 40 DIP (12 DIP lateral margins); quiet grey track, colored usage arc, monochrome provider logo.
-- Percentage and period are always visible. Backend primary percentage is retained; currently it is the maximum across windows. Do not silently relabel it as session usage.
+- 64 DIP depth, 72 DIP provider cells, two tangent 32 DIP circular arcs at each end, with no flat ledge between them: **44 DIP content inset at both ends**. Content sits within the curved end region with breathing room around the first ring and last label. Rings are 40 DIP (12 DIP lateral margins); quiet grey track, colored usage arc, monochrome provider logo.
+- The notch shows percentage only; periods are available in quota details. There is no period-display preference. Backend primary percentage is retained; do not silently relabel it as session usage.
 - Missing/auth-required values show a dash with explicit status, never a zero. Overage preserves the number while only the arc is clamped.
-- Provider icons identify Claude, Codex, and Grok. Source/license notices live in `src/assets/marks`.
+- Provider icons identify Claude, Codex, Grok, and Antigravity. Source/license notices live in `src/assets/marks`.
 - Dark-only; Pretendard, tabular numbers; no continuous decorative ring motion.
 
 ## Details and settings
@@ -21,9 +21,9 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 
 - Hover/focus opens inward; click keeps a provider open. Escape closes settings first, then pinned details, and restores focus without reopening them.
 - 180ms leave grace permits crossing into the detail. 160ms reveal; reduced-motion disables motion.
-- Detail cards use a near-black surface, 16px radius, thin quiet border, 16px padding. Native width 280 DIP, max native height 560 DIP, bounded to work area. Scroll only on actual overflow.
-- Existing detail rows keep name / period / refill and `1fr` bar / `2.9em` percentage columns, with 2px gutter. Quiet Luxury 6px pill tracks remain.
-- Existing opacity/update/hide controls live in settings, with autostart, providers, Copy Log, Quit and version. Edge and display placement is managed directly by dragging the notch.
+- Detail cards use a near-black surface, 16px radius, thin quiet border, 16px padding. Native width 260 DIP, max native height 560 DIP, bounded to work area. Scroll only on actual overflow.
+- Existing detail rows keep name / period / refill and `1fr` bar / `2.9em` percentage columns, with 2px gutter. Dual and grouped rows use compact `--usage-row-gap: 8px`. Quiet Luxury 6px pill tracks remain.
+- Settings sheet uses a 3-tab layout (`모양`, `서비스`, `일반`) with fixed header and tab bar while the body scrolls. Standardized controls: `불투명도` (opacity meter), `노치 항상 표시` (always show), `마우스 올릴 때 상세 열기` (hover detail), `작업 중 궤도 회전` (show orbit), `작업 중 아이콘 발광` (show icon glow), `서비스` on/off grid (`표시`/`숨김`, minimum 1 locked), `로그 복사` (copy diagnostics), and `종료` (quit). Edge and display placement is managed directly by dragging the notch.
 - Opacity slider remains neutral with off-white thumb. `applyPanelOpacity` and semantic `max(...)` floors preserve readability. Card tints apply only to quota detail surfaces.
 
 ## Native contracts

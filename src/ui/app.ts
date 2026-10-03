@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyPanelOpacity } from "./opacity";
+import { formatProviderStatus } from "./format";
 import { mountProviders } from "./providers";
 import { mountSettingsPanel } from "./settings-panel";
 import { mountNotch, position } from "./notch";
@@ -87,7 +88,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     agy: persisted.settings.agy.card_tint,
   });
   function applyAppearanceClasses(st: AppSettings) {
-    rail.classList.toggle("hide-period", st.show_period === false);
     rail.classList.toggle("hide-orbit", st.show_orbit === false);
     rail.classList.toggle("hide-icon-glow", st.show_icon_glow === false);
   }
@@ -98,31 +98,27 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     root.querySelector<HTMLElement>(".settings-root")!,
     persisted.settings,
     {
-      onAutostart: (v) => {
-        void invoke("set_autostart", { enabled: v }).catch(fail);
+      onAutostart: async (v) => {
+        await invoke("set_autostart", { enabled: v });
+        persisted.settings.autostart = v;
       },
-      onHoverDetail: (v) => {
+      onHoverDetail: async (v) => {
+        await invoke("set_hover_detail", { enabled: v });
         persisted.settings.hover_detail = v;
-        void invoke("set_hover_detail", { enabled: v }).catch(fail);
       },
-      onAlwaysShowNotch: (v) => {
+      onAlwaysShowNotch: async (v) => {
+        await invoke("set_always_show_notch", { enabled: v });
         persisted.settings.always_show_notch = v;
-        void invoke("set_always_show_notch", { enabled: v }).catch(fail);
       },
-      onShowOrbit: (v) => {
+      onShowOrbit: async (v) => {
+        await invoke("set_show_orbit", { enabled: v });
         persisted.settings.show_orbit = v;
         applyAppearanceClasses(persisted.settings);
-        void invoke("set_show_orbit", { enabled: v }).catch(fail);
       },
-      onShowPeriod: (v) => {
-        persisted.settings.show_period = v;
-        applyAppearanceClasses(persisted.settings);
-        void invoke("set_show_period", { enabled: v }).catch(fail);
-      },
-      onShowIconGlow: (v) => {
+      onShowIconGlow: async (v) => {
+        await invoke("set_show_icon_glow", { enabled: v });
         persisted.settings.show_icon_glow = v;
         applyAppearanceClasses(persisted.settings);
-        void invoke("set_show_icon_glow", { enabled: v }).catch(fail);
       },
       onOpacityChange: (opacity) => {
         applyPanelOpacity(shell, opacity);
@@ -218,6 +214,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     notch.select(interaction.provider, interaction.pinned);
     detail.hidden = dragging || (!interaction.settings && !interaction.provider);
     settingsArea.hidden = !interaction.settings;
+    detail.classList.toggle("is-settings", interaction.settings);
     quota.hidden = interaction.settings;
     if (interaction.provider && !interaction.settings) {
       const snap = snaps.find((s) => s.provider_id === interaction.provider);
@@ -228,9 +225,11 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         lastQuota = key;
       }
       const status = root.querySelector<HTMLElement>(".detail-state")!;
+      status.title = snap?.message ?? "";
       if (snap && snap.status !== "ok") {
-        status.textContent = `${snap.status.replaceAll("_", " ")}${snap.message ? ` · ${snap.message}` : ""}`;
-        status.hidden = false;
+        status.textContent = formatProviderStatus(snap.status, snap.message);
+        // Empty rows already carry the summary; don't repeat it beneath the card.
+        status.hidden = snap.windows.length === 0;
         status.classList.remove("is-running");
       } else if (act === "running") {
         status.innerHTML = `<span class="activity-pulse-dot" aria-hidden="true"></span>Working`;

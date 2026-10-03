@@ -211,21 +211,17 @@ fn risk_appearance_toggles_persist_and_update_core() {
 
     // Defaults should be true
     assert!(core.get_state().settings.show_orbit);
-    assert!(core.get_state().settings.show_period);
     assert!(core.get_state().settings.show_icon_glow);
 
     // Toggle off
     core.set_show_orbit(false).unwrap();
-    core.set_show_period(false).unwrap();
     core.set_show_icon_glow(false).unwrap();
 
     assert!(!core.get_state().settings.show_orbit);
-    assert!(!core.get_state().settings.show_period);
     assert!(!core.get_state().settings.show_icon_glow);
 
     let loaded = load_state(dir.path()).unwrap();
     assert!(!loaded.settings.show_orbit);
-    assert!(!loaded.settings.show_period);
     assert!(!loaded.settings.show_icon_glow);
 
     // Toggle on
@@ -233,4 +229,13 @@ fn risk_appearance_toggles_persist_and_update_core() {
     assert!(core.get_state().settings.show_orbit);
     let loaded_on = load_state(dir.path()).unwrap();
     assert!(loaded_on.settings.show_orbit);
+}
+
+#[test]
+fn legacy_period_setting_is_ignored_and_not_saved() {
+    let mut legacy = serde_json::to_value(default_state()).unwrap();
+    legacy["settings"]["show_period"] = serde_json::json!(true);
+    let state: PersistedState = serde_json::from_value(legacy).unwrap();
+    let saved = serde_json::to_value(state).unwrap();
+    assert!(saved["settings"].get("show_period").is_none());
 }

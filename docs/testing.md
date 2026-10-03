@@ -9,11 +9,20 @@
 | Unit | `src-tauri/src/**` `#[cfg(test)]` | quota parsers, snapshot finish, TTL cache / HTTP map |
 | Front | `src/ui/format.test.ts` | `formatWindowLabel`, `formatCountdown`, percentage formatting |
 | Opacity | `src/ui/opacity.test.ts` | opacity snapping, conversions, meter calc, CSS var styling |
-| Grok | `quota/grok.rs` tests | weekly credits, legacy cents, **ignores productUsage**, omitted % + period → **0%** |
+| Grok | `quota/grok.rs` tests | weekly credits, legacy cents, **ignores productUsage**, omitted % + period → **unknown**, explicit zero → **0%** |
 | Risk | `src-tauri/tests/risk_scenarios.rs` | Corrupt JSON, AppCore visibility, legacy settings |
 | GUI | Manual `npm run tauri dev` / `run:exe` | Glass chrome, Quiet Luxury tracks, hotkey, updater, opacity floors |
 
 ## Commands
+
+With Vite running (`npm run dev`), optional Edge/Playwright browser checks:
+`python scripts/settings-smoke.py` verifies fixed settings navigation with body scrolling,
+save failure rollback/retry, pending controls, the last-provider lock and updater states.
+`python scripts/grok-usage-smoke.py` verifies unknown/zero/nonzero quota rendering.
+Both use simulated data and do not change persisted settings or install updates.
+`python scripts/detail-layout-smoke.py` reproduces the Grok status-margin overflow and
+checks that a single-row detail fits without a scrollbar. Legacy `show_period` values
+are ignored and omitted on the next settings save (Rust risk regression).
 
 ```bash
 # From repo root

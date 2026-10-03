@@ -1,6 +1,6 @@
 # PRODUCT.md — TokenUsage
 
-**Updated:** 2026-10-01 · **Ship:** v0.2.0
+**Updated:** 2026-10-03 · **Ship:** v0.3.4
 **Platform:** desktop (Tauri 2 / Windows primary; WebView UI)
 **Mode (Impeccable):** **Operate** — scan and act quickly; brand lives in precise details, not persuasion.
 
@@ -10,7 +10,7 @@ Default right-centred notch; left/right vertical and top/bottom horizontal. Clic
 
 ## Users
 
-- Individual developers using Claude Code, Codex CLI, and/or Grok CLI.
+- Individual developers using Claude Code, Codex CLI, Grok CLI, and/or Antigravity.
 - Often multi-monitor; widget sits above other work (always-on-top, skip taskbar).
 - Reading **usage remaining / risk level** at a glance, not reconciling invoices.
 
@@ -31,12 +31,12 @@ A screen-edge **usage monitor notch** that shows personal vendor quota (Claude /
 
 ## Antigravity and auto-hide (2026-10-02)
 
-- **Antigravity (AGY):** official installed `agy --sandbox --print-timeout 30s --print /usage` only (added by user request 2026-10-02). Gemini and Claude/GPT 5h/week quotas remain separate. No legacy cloudcode-pa API, browser scraping, or token estimates.
+- **Antigravity (AGY):** official installed `agy --sandbox --print-timeout 30s --print /usage` only (added by user request 2026-10-02). Cached to disk (`quota-cache/agy_snapshot.json`) for 0ms cold-start; background CLI completion notifies immediately via `poll::notify_refresh()`. Gemini and Claude/GPT 5h/week quotas remain separate. No legacy cloudcode-pa API, browser scraping, or token estimates.
 - The rail folds to a thin edge tab after the pointer leaves; hover reveals it. Local activity evidence drives a separate ring, never quota estimates. See [implementation and limits](docs/notch-polish.md).
 
 ## Evidence / constraints
 
-- Auth: local CLI credential files only (no in-app login flow).
+- Auth: local CLI credential files and official CLI only (no in-app login flow).
 - HTTP usage endpoints are metadata (do not burn coding tokens).
 - Default hotkey: `Ctrl+Shift+U` (toggle; refresh on show).
 - In-app updater via signed GitHub releases (`latest.json`).
@@ -46,7 +46,7 @@ A screen-edge **usage monitor notch** that shows personal vendor quota (Claude /
 
 - **Voice:** calm, short labels, no marketing buzzwords (“supercharge”, “unlock potential”).
 - **Dark-only** UI (no light theme switch).
-- English UI chrome; local time for reset stamps.
+- Standardized, concise Korean UI chrome (`설정`, `모양`, `서비스`, `일반`, `불투명도`, `노치 항상 표시`, `마우스 올릴 때 상세 열기`, `작업 중 궤도 회전`, `작업 중 아이콘 발광`, `로그 복사`, `종료`); local time for reset stamps.
 
 ## Non-goals (until explicitly requested)
 
@@ -63,7 +63,7 @@ A screen-edge **usage monitor notch** that shows personal vendor quota (Claude /
 | Surface | Mode | Job |
 |---------|------|-----|
 | Main notch (provider rings) | Operate | See % used / risk / reset at a glance |
-| Inward settings sheet | Operate | Opacity, autostart, providers, version, quit — bounded to monitor work area |
+| Inward settings sheet | Operate | 3-tab layout: 불투명도, 노치 항상 표시, 마우스 올릴 때 상세 열기, 애니메이션, 서비스 표시/숨김, autostart, 버전, 로그 복사, 종료 |
 | System tray | Operate | Show / hide / quit affordances |
 
 ## Anti-references
@@ -77,6 +77,7 @@ A screen-edge **usage monitor notch** that shows personal vendor quota (Claude /
 ## Related docs
 
 - Architecture & layout contracts: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- Provider integration guide: [`docs/providers.md`](docs/providers.md)
 - Visual system: [`DESIGN.md`](DESIGN.md)
 - UI references: [ui.shadcn.com](https://ui.shadcn.com), [impeccable.style](https://impeccable.style) (also listed in `DESIGN.md`)
 - Agent rules: [`AGENTS.md`](AGENTS.md)

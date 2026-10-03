@@ -132,11 +132,6 @@ pub fn set_show_orbit(state: State<'_, AppHandleState>, enabled: bool) -> Result
 }
 
 #[tauri::command]
-pub fn set_show_period(state: State<'_, AppHandleState>, enabled: bool) -> Result<(), String> {
-    state.core.set_show_period(enabled)
-}
-
-#[tauri::command]
 pub fn set_show_icon_glow(state: State<'_, AppHandleState>, enabled: bool) -> Result<(), String> {
     state.core.set_show_icon_glow(enabled)
 }

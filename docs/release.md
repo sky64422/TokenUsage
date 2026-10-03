@@ -1,7 +1,7 @@
 # Release & in-app updates
 
 **Updated:** 2026-10-03  
-**Current public tag:** v0.3.3  
+**Current public tag:** v0.3.4  
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,7 +12,8 @@
 
 | Tag | Highlights |
 |-----|------------|
-| **v0.3.3** | Settings: 3-tab layout ('¸ð¾ç', '¸ðµ¨', 'ÀÏ¹Ý'), appearance toggles (period, orbit, icon glow), refined readability & spacing; Notch: active-only orbit, default top-window metric |
+| **v0.3.4** | Settings: standardized Korean terminology, inline version badge with sky tint next to update button, uniform 40px row height cadence; Clippy & activity detection refinements |
+| v0.3.3 | Settings: 3-tab layout ('ï¿½ï¿½ï¿½', 'ï¿½ï¿½', 'ï¿½Ï¹ï¿½'), appearance toggles (period, orbit, icon glow), refined readability & spacing; Notch: active-only orbit, default top-window metric |
 | v0.3.2 | Drag smoothness: 125 FPS high-refresh mouse tracking with 1ms timer precision; Model detail: dynamic centering on active provider cell |
 | v0.3.1 | Notch stability: immobile corner anchoring eliminates toggle jitter; Auto-reveal: edge fold & hover reveal; Providers: official Antigravity CLI quota integration and activity affordances |
 | v0.3.0 | Notch stability: eliminate resize/render jitter on settings toggle; Detail: auto-shrink single-row model height to fit content |
@@ -32,7 +33,7 @@
 
 ---
 
-## What ?œpublish??means
+## What ?ï¿½publish??means
 
 In-app **Check for updates** (header **??*) does **not** read git `main`.  
 It downloads:
@@ -113,7 +114,7 @@ npm run run:exe
 
 | Path | Behavior |
 |------|----------|
-| Startup (release) | After ~30s, check + **background download**; badge ?? ready ???œclick to restart??|
+| Startup (release) | After ~30s, check + **background download**; badge ?? ready ???ï¿½click to restart??|
 | Header **??* (ready) | Install cached package + restart |
 | Header **??* (idle) | Full check ??download ??install if newer |
 | `tauri dev` | Startup check skipped; manual check may still fail without a published `latest.json` |

@@ -7,7 +7,21 @@ import {
   formatWindowReset,
   isOver,
   levelClass,
+  formatProviderStatus,
 } from "./format";
+
+describe("provider status summaries", () => {
+  it.each([
+    ["unavailable", "Reading Antigravity CLI quota", "Loading…"],
+    ["auth_required", "OAuth expired; run login again", "Sign in required"],
+    ["unavailable", "agy timed out after 30 seconds with no usage response", "Request timed out"],
+    ["degraded", "Usage unavailable — Grok did not report a percentage", "Usage unavailable"],
+    ["unavailable", "Unexpected response\nvery long backend detail", "Unable to fetch usage"],
+    ["ok", null, ""],
+  ])("summarizes %s / %s", (status, message, expected) => {
+    expect(formatProviderStatus(status, message)).toBe(expected);
+  });
+});
 
 describe("clampPct", () => {
   it("returns null for missing values", () => {

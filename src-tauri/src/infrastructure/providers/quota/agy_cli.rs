@@ -5,6 +5,29 @@ use std::time::Duration;
 #[cfg(windows)]
 use std::os::windows::ffi::OsStrExt;
 
+#[cfg(windows)]
+const DISABLE_AUTO_UPDATE: &str = "AGY_CLI_DISABLE_AUTO_UPDATE";
+
+/// Override only the quota reader's environment; leave interactive AGY sessions alone.
+#[cfg(windows)]
+fn quota_environment(entries: impl IntoIterator<Item = (std::ffi::OsString, std::ffi::OsString)>) -> Vec<u16> {
+    let mut entries: Vec<_> = entries.into_iter()
+        .filter(|(key, _)| !key.to_string_lossy().eq_ignore_ascii_case(DISABLE_AUTO_UPDATE))
+        .collect();
+    // AGY requires the literal "true", not "1".
+    entries.push((DISABLE_AUTO_UPDATE.into(), "true".into()));
+    entries.sort_by_cached_key(|(key, _)| key.to_string_lossy().to_uppercase());
+    let mut block = Vec::new();
+    for (key, value) in entries {
+        block.extend(key.encode_wide());
+        block.push('=' as u16);
+        block.extend(value.encode_wide());
+        block.push(0);
+    }
+    block.push(0);
+    block
+}
+
 /// Discover installed official Antigravity CLI (`agy.exe`).
 /// Checks `%LOCALAPPDATA%\agy\bin\agy.exe` and `PATH` only (only `.exe` binaries).
 pub fn find_agy() -> Option<PathBuf> {
@@ -133,7 +156,7 @@ pub(super) fn run_cmd_conpty(
     use windows::Win32::System::Threading::{
         CreateProcessW, DeleteProcThreadAttributeList, GetExitCodeProcess,
         InitializeProcThreadAttributeList, ResumeThread, UpdateProcThreadAttribute,
-        WaitForSingleObject, CREATE_SUSPENDED,
+        WaitForSingleObject, CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT,
         EXTENDED_STARTUPINFO_PRESENT, LPPROC_THREAD_ATTRIBUTE_LIST,
         PROCESS_INFORMATION, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, STARTUPINFOEXW,
         STARTF_USESTDHANDLES, STARTF_USESHOWWINDOW,
@@ -283,6 +306,7 @@ pub(super) fn run_cmd_conpty(
     si_ex.lpAttributeList = attr_list;
 
     let mut proc_info = PROCESS_INFORMATION::default();
+    let environment = quota_environment(std::env::vars_os());
 
     let spawn_res = unsafe {
         CreateProcessW(
@@ -291,8 +315,8 @@ pub(super) fn run_cmd_conpty(
             None,
             None,
             false,
-            EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED,
-            None,
+            EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT,
+            Some(environment.as_ptr() as *const core::ffi::c_void),
             cwd_u16.as_ref().map_or(PCWSTR::null(), |v| PCWSTR(v.as_ptr())),
             &si_ex.StartupInfo,
             &mut proc_info,
@@ -372,5 +396,22 @@ pub(super) fn run_cmd_conpty(
     _timeout: Duration,
 ) -> Result<String, String> {
     Err("Antigravity CLI runner requires Windows".into())
+}
+
+#[cfg(all(test, windows))]
+mod environment_tests {
+    use super::*;
+
+    #[test]
+    fn quota_environment_preserves_values_and_overrides_case_insensitively() {
+        let block = quota_environment([
+            ("Path".into(), "C:\\도구;C:\\Windows".into()),
+            ("agy_cli_disable_auto_update".into(), "false".into()),
+            ("EMPTY".into(), "".into()),
+        ]);
+        let decoded = String::from_utf16(&block).unwrap();
+        assert_eq!(decoded, format!("{DISABLE_AUTO_UPDATE}=true\0EMPTY=\0Path=C:\\도구;C:\\Windows\0\0"));
+        assert_eq!(String::from_utf16(&quota_environment([])).unwrap(), format!("{DISABLE_AUTO_UPDATE}=true\0\0"));
+    }
 }
 
