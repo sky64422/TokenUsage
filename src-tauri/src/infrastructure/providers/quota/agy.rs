@@ -1,20 +1,53 @@
 //! Official CLI quotas only. Never uses cloudcode-pa, browser scraping or estimates.
-use crate::domain::types::{ProviderId, ProviderSnapshot, SnapshotStatus, UsageUnit, UsageWindow, WindowKind};
+use crate::domain::types::{DataSource, ProviderId, ProviderSnapshot, SnapshotStatus, UsageUnit, UsageWindow, WindowKind};
 use chrono::Utc;
 use std::{sync::{Mutex, OnceLock}, time::{Duration, Instant}};
 use super::{agy_cli, snapshot::finish_snapshot};
 
 const CLI_CACHE_TTL: Duration = Duration::from_secs(60);
+const CLI_ERROR_TTL: Duration = Duration::from_secs(15);
 const CLI_TIMEOUT: Duration = Duration::from_secs(40);
 const WAITING: &str = "Reading Antigravity CLI quota";
 
-#[derive(Default)]
+fn cache_file_path() -> Option<std::path::PathBuf> {
+    dirs::cache_dir().map(|d| d.join("TokenUsage").join("quota-cache").join("agy_snapshot.json"))
+}
+
+fn save_disk_cache(snapshot: &ProviderSnapshot) {
+    if let Some(path) = cache_file_path() {
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        if let Ok(json) = serde_json::to_string(snapshot) {
+            let _ = std::fs::write(path, json);
+        }
+    }
+}
+
+fn load_disk_cache() -> Option<ProviderSnapshot> {
+    let path = cache_file_path()?;
+    let text = std::fs::read_to_string(path).ok()?;
+    serde_json::from_str::<ProviderSnapshot>(&text).ok()
+}
+
 struct Cache {
     pending: bool,
     completed: Option<Instant>,
     snapshot: Option<ProviderSnapshot>,
     error: Option<String>,
 }
+
+impl Default for Cache {
+    fn default() -> Self {
+        Self {
+            pending: false,
+            completed: None,
+            snapshot: load_disk_cache(),
+            error: None,
+        }
+    }
+}
+
 static CACHE: OnceLock<Mutex<Cache>> = OnceLock::new();
 
 pub fn fetch() -> Result<ProviderSnapshot, String> {
@@ -23,7 +56,8 @@ pub fn fetch() -> Result<ProviderSnapshot, String> {
     }
     let cache = CACHE.get_or_init(Default::default);
     let mut state = cache.lock().map_err(|_| "Antigravity cache lock poisoned")?;
-    if !state.pending && state.completed.is_none_or(|at| at.elapsed() >= CLI_CACHE_TTL) {
+    let ttl = if state.error.is_some() { CLI_ERROR_TTL } else { CLI_CACHE_TTL };
+    if !state.pending && state.completed.is_none_or(|at| at.elapsed() >= ttl) {
         state.pending = true;
         // CLI startup must not delay other providers or the fixed 5s UI refresh.
         std::thread::spawn(move || {
@@ -32,9 +66,15 @@ pub fn fetch() -> Result<ProviderSnapshot, String> {
             state.pending = false;
             state.completed = Some(Instant::now());
             match result {
-                Ok(snapshot) => { state.snapshot = Some(snapshot); state.error = None; }
+                Ok(snapshot) => {
+                    save_disk_cache(&snapshot);
+                    state.snapshot = Some(snapshot);
+                    state.error = None;
+                }
                 Err(error) => state.error = Some(error),
             }
+            drop(state);
+            crate::infrastructure::poll::notify_refresh();
         });
     }
     if let Some(mut snapshot) = state.snapshot.clone() {
@@ -43,6 +83,19 @@ pub fn fetch() -> Result<ProviderSnapshot, String> {
             snapshot.message = Some(format!("Last known quota: {error}"));
         }
         return Ok(snapshot);
+    }
+    if state.pending && state.error.is_none() {
+        return Ok(ProviderSnapshot {
+            provider_id: ProviderId::Agy,
+            display_name: ProviderId::Agy.display_name().into(),
+            windows: vec![],
+            status: SnapshotStatus::Ok,
+            source: DataSource::Vendor,
+            as_of: Utc::now().to_rfc3339(),
+            message: Some(WAITING.into()),
+            primary_resets_at: None,
+            primary_used_percent: None,
+        });
     }
     Err(state.error.clone().unwrap_or_else(|| WAITING.into()))
 }
@@ -103,7 +156,7 @@ fn parse_reset_time(raw: &str) -> Result<chrono::DateTime<Utc>, String> {
 
 fn parse_quota(text: &str) -> Result<Vec<UsageWindow>, String> {
     let clean = agy_cli::sanitize_terminal_output(text);
-    if !clean.lines().any(|line| line.trim() == "Quota:") {
+    if !clean.contains("Limit Remaining") && !clean.lines().any(|line| line.trim() == "Quota:") {
         return Err("No Antigravity quota report; check agy sign-in".into());
     }
     let mut windows = Vec::new();
@@ -216,5 +269,20 @@ Claude and GPT models  Five Hour Limit Remaining  100%  2026-10-03 14:00 KST\n";
         assert_eq!(windows[3].group.as_deref(), Some("Claude"));
         assert_eq!(windows[3].kind, WindowKind::Weekly);
         assert_eq!(windows[3].used_percent, Some(98.));
+    }
+
+    #[test]
+    fn parses_pipe_output_without_quota_header() {
+        const PIPE_REPORT: &str = "\
+Gemini Models\tWeekly Limit Remaining\t24%\t2026-10-03T15:55:06Z\n\
+Gemini Models\tFive Hour Limit Remaining\t20%\t2026-10-03T04:30:10Z\n\
+Claude and GPT models\tWeekly Limit Remaining\t2%\t2026-10-04T08:33:40Z\n\
+Claude and GPT models\tFive Hour Limit Remaining\t100%\t2026-10-03T06:25:35Z\n";
+
+        let windows = parse_quota(PIPE_REPORT).expect("parse pipe report");
+        assert_eq!(windows.len(), 4);
+        assert_eq!(windows[0].group.as_deref(), Some("Gemini"));
+        assert_eq!(windows[0].kind, WindowKind::Rolling5h);
+        assert_eq!(windows[0].used_percent, Some(80.));
     }
 }

@@ -134,7 +134,7 @@ fn all_four_edges_and_open_corridors_work_without_taskbar() {
 #[test]
 fn insufficient_detail_space_is_an_error_not_a_negative_rectangle() {
     let mut m = monitor(1.);
-    m.bounds.width = 75.;
+    m.bounds.width = 68.;
     m.work = m.bounds;
     assert!(calculate_layout(&m, &NotchPlacement::default(), 1, true, 200.).is_err());
 }
@@ -172,7 +172,7 @@ fn circular_end_hit_regions_follow_the_visible_silhouette() {
         let l =
             calculate_layout(&monitor(scale), &NotchPlacement::default(), 3, false, 360.).unwrap();
         // Midpoints on each half of the S curve; check both sides of the arc.
-        for (along, boundary) in [(18., 36. + 972_f64.sqrt()), (54., 36. - 972_f64.sqrt())] {
+        for (along, boundary) in [(16., 32. + 768_f64.sqrt()), (48., 32. - 768_f64.sqrt())] {
             for end in [along * scale, l.notch.height - along * scale] {
                 assert!(!l.hit(l.notch.x + (boundary - 0.5) * scale, l.notch.y + end));
                 assert!(l.hit(l.notch.x + (boundary + 0.5) * scale, l.notch.y + end));

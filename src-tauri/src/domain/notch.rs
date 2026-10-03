@@ -1,12 +1,12 @@
 //! Physical screen placement; no OS calls, persistence, or vendor policy.
 use serde::{Deserialize, Serialize};
 
-pub const DEPTH: f64 = 72.;
+pub const DEPTH: f64 = 64.;
 pub const CELL: f64 = 88.;
 pub const SHOULDER: f64 = DEPTH / 2.;
 pub const INNER_RADIUS: f64 = DEPTH - SHOULDER;
 // Content nestles into the curved ends instead of starting after the entire curve.
-pub const END_PADDING: f64 = 50.;
+pub const END_PADDING: f64 = 44.;
 pub const DETAIL_RADIUS: f64 = 16.;
 pub const DETAIL_WIDTH: f64 = 280.;
 pub const DETAIL_HEIGHT: f64 = 560.;

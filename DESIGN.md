@@ -9,7 +9,7 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 ## Main surface
 
 - Right edge, centred by default. Four edge choices; left/right are vertical and top/bottom horizontal.
-- 72 DIP depth, 104 DIP provider cells, two tangent 36 DIP circular arcs at each end, with no flat ledge between them: **50 DIP content inset at both ends**. Content sits within the curved end region with breathing room around the first ring and last label. Rings are 40 DIP; quiet grey track, colored usage arc, monochrome provider logo.
+- 64 DIP depth, 88 DIP provider cells, two tangent 32 DIP circular arcs at each end, with no flat ledge between them: **44 DIP content inset at both ends**. Content sits within the curved end region with breathing room around the first ring and last label. Rings are 40 DIP (12 DIP lateral margins); quiet grey track, colored usage arc, monochrome provider logo.
 - Percentage and period are always visible. Backend primary percentage is retained; currently it is the maximum across windows. Do not silently relabel it as session usage.
 - Missing/auth-required values show a dash with explicit status, never a zero. Overage preserves the number while only the arc is clamped.
 - Provider icons identify Claude, Codex, and Grok. Source/license notices live in `src/assets/marks`.

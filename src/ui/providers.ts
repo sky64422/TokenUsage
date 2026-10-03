@@ -172,9 +172,11 @@ function cardHtml(s: ProviderSnapshot, tint: CardTint, isRunning: boolean): stri
         .map((w, i) => {
           const curGroup = formatGroup(w.group);
           const prevGroup = formatGroup(s.windows[i - 1]?.group);
+          const isGroupStart = i > 0 && Boolean(curGroup) && prevGroup !== curGroup;
           return usageRow({
             name: curGroup && prevGroup !== curGroup ? curGroup : (i === 0 ? s.display_name : ""),
             nameHidden: i > 0 && (!curGroup || prevGroup === curGroup),
+            isGroupStart,
             window: w,
             cardMessage: s.message,
             cardIdle: idle,
@@ -219,6 +221,7 @@ function emptyUsageRow(
 function usageRow(opts: {
   name: string;
   nameHidden: boolean;
+  isGroupStart?: boolean;
   window: UsageWindow;
   cardMessage: string | null;
   cardIdle: boolean;
@@ -248,9 +251,10 @@ function usageRow(opts: {
     .join(" · ");
   const urgent =
     over || (!idle && formatCountdown(w.resets_at) === "soon");
+  const groupClass = opts.isGroupStart ? " is-group-start" : "";
 
   return `
-    <div class="usage-row${idle ? " is-idle" : ""}" title="${escapeAttr(title)}">
+    <div class="usage-row${idle ? " is-idle" : ""}${groupClass}" title="${escapeAttr(title)}">
       <div class="usage-head">
         <span class="provider-name"${opts.nameHidden ? ' aria-hidden="true"' : ""}>${escapeHtml(opts.name)}</span>
         <span class="window-label">${escapeHtml(label)}</span>
