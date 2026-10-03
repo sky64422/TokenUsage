@@ -32,6 +32,7 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 
 - Transparent rectangular HWND, no native shadow; `DWMWCP_DONOTROUND`. The former 8px DWM panel contract applies to neither the notch nor its shoulders.
 - Rust is the sole physical geometry owner. SVG/CSS draw within returned local rectangles; no frontend resize loop or free window resizing.
+- Opening or switching details keeps the native canvas and notch local origin fixed. Reserve transparent space for supported detail sizes; only visible notch/detail/bridge regions receive input. Moving the HWND to fit each provider races WebView layout and causes a one-frame jump.
 - Transparent regions must pass input to other processes. The open detail bridge intentionally accepts pointer travel. Hover must not steal focus.
 - Position uses physical screen bounds, display scale and normalized along-edge offset. Do not mix physical and logical positions or reject negative monitor coordinates.
 - Bottom docking explicitly overlays the taskbar at the physical screen bottom (user preference). Other taskbar-blocked edges fall back visibly. The notch does not float above the taskbar.

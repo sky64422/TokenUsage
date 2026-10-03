@@ -80,6 +80,22 @@ corners and bridges, settings migration and failed persistence rollback.
 fake-clock close cancellation, missing/zero/overage,
 and secondary quota warnings.
 
+Hover stability is a required regression when changing notch/detail geometry.
+`changing_detail_preserves_native_canvas_and_notch_position` checks all four edges,
+100/125/150/200% scales, start/middle/end placements, one through four providers,
+first/last targets, settings, and 78/150/234/400/560 DIP detail heights. The native
+canvas and notch must stay identical when opening or changing detail; every detail
+must fit and reserved pixels must remain noninteractive when closed.
+
+For the native WebView timing regression, launch a debug app with
+`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9250`, enable hover
+and two providers with unequal detail heights, close settings and unpin details.
+Run `python scripts/notch-hover-stability.py --port 9250` with the pointer away.
+It alternates visible providers ten times and checks window origin/size and notch
+local geometry on every animation frame, including the first frame after switching.
+Evidence is saved to `tmp/notch-hover-stability.json` and `.png`. This catches the
+one-frame HWND/WebView offset race that final-position assertions alone miss.
+
 Optional Windows smoke: see `windows-dev.md`. Native evidence collected on 100%
 displays (2560x1440 primary and negative-x 1024x1280 secondary): hover focus retained,
 transparent notch corner routes to another HWND, 20 expand/close cycles, settings

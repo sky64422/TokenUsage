@@ -431,10 +431,39 @@ fn model_detail_window_centers_on_target_cell_across_providers() {
     assert!(l_grok.hit(l_grok.notch.x - 4., d_grok.y + d_grok.height / 2.));
     assert!(l_agy.hit(l_agy.notch.x - 4., d_agy.y + d_agy.height / 2.));
 
-    assert_eq!(l_claude.window.height, l_claude.notch.height);
-    assert_eq!(l_codex.window.height, l_codex.notch.height);
-    assert_eq!(l_grok.window.height, l_grok.notch.height);
-    assert_eq!(l_agy.window.height, l_agy.notch.height);
+    assert_eq!(l_claude.window, l_codex.window);
+    assert_eq!(l_codex.window, l_grok.window);
+    assert_eq!(l_grok.window, l_agy.window);
+}
+
+#[test]
+fn changing_detail_preserves_native_canvas_and_notch_position() {
+    for edge in [NotchEdge::Left, NotchEdge::Right, NotchEdge::Top, NotchEdge::Bottom] {
+        for scale in [1., 1.25, 1.5, 2.] {
+            for offset in [0., 0.5, 1.] {
+                for count in 1..=4 {
+                    let m = monitor(scale);
+                    let p = NotchPlacement { edge, offset, monitor_hint: None };
+                    let closed = calculate_layout(&m, &p, count, false, 0.).unwrap();
+                    let last = END_PADDING + CELL * (count as f64 - 0.5);
+                    for target in [None, Some(END_PADDING + CELL / 2.), Some(last)] {
+                        for height in [78., 150., 234., 400., DETAIL_HEIGHT] {
+                            let open = calculate_layout_target(&m, &p, count, true, height, target).unwrap();
+                            assert_eq!(closed.window, open.window);
+                            assert_eq!(closed.notch, open.notch);
+                            let d = open.detail.unwrap();
+                            let w = open.window;
+                            assert!(d.x >= w.x && d.y >= w.y, "edge={edge:?} scale={scale} offset={offset} count={count} target={target:?} height={height} detail={d:?} window={w:?}");
+                            assert!(d.x + d.width <= w.x + w.width);
+                            assert!(d.y + d.height <= w.y + w.height);
+                            // Reserved pixels must not intercept input with details closed.
+                            assert!(!closed.hit(d.x + d.width / 2., d.y + d.height / 2.));
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[test]

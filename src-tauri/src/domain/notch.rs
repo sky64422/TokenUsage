@@ -345,7 +345,9 @@ pub fn calculate_layout_target(
     } else {
         None
     };
-    let window = detail.map(|d| notch.union(d)).unwrap_or(notch);
+    // A stable transparent canvas prevents HWND moves racing the WebView's local
+    // notch offset when a taller provider card extends above the rail.
+    let window = surface_canvas(notch, w, edge, s);
     Ok(NotchLayout {
         edge,
         anchor_x,
@@ -367,6 +369,32 @@ pub fn calculate_layout_target(
             rest_length: super::reveal::REST_LENGTH,
         },
     })
+}
+
+fn surface_canvas(notch: Rect, work: Rect, edge: NotchEdge, scale: f64) -> Rect {
+    let gap = GAP * scale;
+    let width = (DETAIL_WIDTH * scale).ceil()
+        .min(work.width - if edge.vertical() { notch.width + gap } else { 0. });
+    let height = (DETAIL_HEIGHT * scale).ceil()
+        .min(work.height - if edge.vertical() { 0. } else { notch.height + gap });
+    if width <= 0. || height <= 0. { return notch; }
+    let reserve = if edge.vertical() {
+        let top = (notch.y - height / 2.).floor().clamp(work.y, work.y + work.height - height);
+        let bottom = (notch.y + notch.height + height).ceil().min(work.y + work.height);
+        Rect {
+            x: if edge == NotchEdge::Left { notch.x + notch.width + gap } else { notch.x - gap - width },
+            y: top, width, height: bottom - top,
+        }
+    } else {
+        let left = (notch.x - width / 2.).floor().clamp(work.x, work.x + work.width - width);
+        let right = (notch.x + notch.width + width / 2.).ceil().min(work.x + work.width);
+        Rect {
+            x: left,
+            y: if edge == NotchEdge::Top { notch.y + notch.height + gap } else { notch.y - gap - height },
+            width: right - left, height,
+        }
+    };
+    notch.union(reserve)
 }
 
 const DRAG_THRESHOLD: f64 = 5.;
