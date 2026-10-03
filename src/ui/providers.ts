@@ -192,6 +192,7 @@ function cardHtml(s: ProviderSnapshot, tint: CardTint, isRunning: boolean): stri
   const activityAttr = isRunning ? ' data-activity="running"' : "";
   return `
     <div class="provider-card${idle ? " is-idle" : ""}${tintClass}" data-provider="${s.provider_id}"${activityAttr}>
+      ${s.windows.some(w => w.group) ? `<div class="quota-service-name">${escapeHtml(s.display_name)}</div>` : ""}
       ${rows}
     </div>
   `;

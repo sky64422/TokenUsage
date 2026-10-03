@@ -20,6 +20,7 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 - Drag any part of the notch (including rings) to move or dock on another edge/display. A 5 DIP two-dimensional threshold preserves ring clicks. New edges engage within 64 DIP with 16 DIP hysteresis; monitor seams use 24 DIP entry depth. There are no move/settings buttons; right-click the notch or press Shift+F10/Context Menu to open settings. Arrow keys do not move the widget. Escape cancels a held drag; release commits once.
 
 - Hover/focus opens inward; click keeps a provider open. Escape closes settings first, then pinned details, and restores focus without reopening them.
+- The provider whose detail is open stays highlighted while crossing into the panel; pinned state uses a stronger border. Grouped quotas show the service name above model groups so AGY's Gemini/Claude rows retain their source identity.
 - 180ms leave grace permits crossing into the detail. 160ms reveal; reduced-motion disables motion.
 - Detail cards use a near-black surface, 16px radius, thin quiet border, 16px padding. Native width 260 DIP, max native height 560 DIP, bounded to work area. Scroll only on actual overflow.
 - Settings request 400 DIP height so normal appearance controls fit without scrolling; smaller work areas retain body-only scrolling. Action buttons use 32 DIP targets and 8px corners. A pinned provider has a quiet rounded background and border distinct from hover.

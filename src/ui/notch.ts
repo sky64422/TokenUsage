@@ -123,8 +123,10 @@ export function mountNotch(
       shape(l);
     },
     select(id: ProviderId | null, pinned: boolean) {
-      for (const [key, b] of buttons)
+      for (const [key, b] of buttons) {
+        b.dataset.detailOpen = String(key === id);
         b.setAttribute("aria-pressed", String(pinned && key === id));
+      }
     },
     focus(id: ProviderId | null) {
       restoringFocus = true;

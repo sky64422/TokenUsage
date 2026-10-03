@@ -217,17 +217,29 @@
   font-size: 10px;
 }
 .notch-cell:hover .ring-track,
+.notch-cell[data-detail-open="true"] .ring-track,
 .notch-cell[aria-pressed="true"] .ring-track {
   stroke: rgba(255, 255, 255, 0.35);
 }
-.notch-cell[aria-pressed="true"]::before {
+.notch-cell[data-detail-open="true"]::before {
   content: "";
   position: absolute;
   inset: 5px 6px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.09);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   pointer-events: none;
+}
+.notch-cell[data-detail-open="true"][aria-pressed="true"]::before {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+.quota-service-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 .notch-cell:focus-visible {
   outline-offset: -5px;

@@ -211,7 +211,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       });
   }
   function render() {
-    notch.select(interaction.provider, interaction.pinned);
+    notch.select(interaction.settings || dragging ? null : interaction.provider, interaction.pinned);
     detail.hidden = dragging || (!interaction.settings && !interaction.provider);
     settingsArea.hidden = !interaction.settings;
     detail.classList.toggle("is-settings", interaction.settings);
