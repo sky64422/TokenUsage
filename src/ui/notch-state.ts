@@ -57,11 +57,16 @@ export function createCloseDelay(close: () => void) {
 }
 export function headline(s: ProviderSnapshot) {
   const missing = s.status === "auth_required" || s.status === "unavailable";
+  const primaryWindow = s.windows[0];
   const pct =
-    missing || !Number.isFinite(s.primary_used_percent)
+    missing
       ? null
-      : s.primary_used_percent;
-  const matching = s.windows.find((w) => w.used_percent === pct);
+      : primaryWindow && Number.isFinite(primaryWindow.used_percent)
+        ? primaryWindow.used_percent
+        : Number.isFinite(s.primary_used_percent)
+          ? s.primary_used_percent
+          : null;
+  const matching = primaryWindow ?? s.windows.find((w) => w.used_percent === pct);
   const label =
     pct == null
       ? s.status === "auth_required"

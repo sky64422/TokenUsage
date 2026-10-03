@@ -9,7 +9,7 @@ import {
   isOver,
   levelClass,
 } from "./format";
-import type { CardTint, ProviderId, ProviderSnapshot, UsageWindow } from "./types";
+import type { CardTint, ProviderActivity, ProviderId, ProviderSnapshot, UsageWindow } from "./types";
 import { CARD_TINTS, PROVIDER_IDS } from "./types";
 
 function normalizeTint(raw: string | null | undefined): CardTint {
@@ -19,8 +19,10 @@ function normalizeTint(raw: string | null | undefined): CardTint {
 export function mountProviders(root: HTMLElement): {
   setSnapshots: (snaps: ProviderSnapshot[]) => void;
   setTints: (tints: Partial<Record<ProviderId, CardTint>>) => void;
+  setActivities: (acts: ProviderActivity[]) => void;
 } {
   let snaps: ProviderSnapshot[] = [];
+  const activities = new Map<ProviderId, string>();
   const tints: Record<ProviderId, CardTint> = {
     claude: "none",
     codex: "none",
@@ -108,7 +110,7 @@ export function mountProviders(root: HTMLElement): {
       root.innerHTML = `<div class="empty-state">Waiting for usage…</div>`;
       return;
     }
-    root.innerHTML = `<div class="provider-list">${snaps.map((s) => cardHtml(s, tints[s.provider_id])).join("")}</div>`;
+    root.innerHTML = `<div class="provider-list">${snaps.map((s) => cardHtml(s, tints[s.provider_id], activities.get(s.provider_id) === "running")).join("")}</div>`;
     bindTintMenus();
   }
 
@@ -140,10 +142,15 @@ export function mountProviders(root: HTMLElement): {
       }
       render();
     },
+    setActivities(acts) {
+      activities.clear();
+      for (const a of acts) activities.set(a.provider_id, a.state);
+      render();
+    },
   };
 }
 
-function cardHtml(s: ProviderSnapshot, tint: CardTint): string {
+function cardHtml(s: ProviderSnapshot, tint: CardTint, isRunning: boolean): string {
   const hasUsage = s.windows.some(
     (w) => (w.used_percent ?? 0) > 0 || w.used > 0,
   );
@@ -171,14 +178,16 @@ function cardHtml(s: ProviderSnapshot, tint: CardTint): string {
             window: w,
             cardMessage: s.message,
             cardIdle: idle,
+            cardRunning: isRunning,
           });
         })
         .join("")
     : emptyUsageRow(s, idle, over);
 
   const tintClass = tint !== "none" ? ` tint-${tint}` : "";
+  const activityAttr = isRunning ? ' data-activity="running"' : "";
   return `
-    <div class="provider-card${idle ? " is-idle" : ""}${tintClass}" data-provider="${s.provider_id}">
+    <div class="provider-card${idle ? " is-idle" : ""}${tintClass}" data-provider="${s.provider_id}"${activityAttr}>
       ${rows}
     </div>
   `;
@@ -213,6 +222,7 @@ function usageRow(opts: {
   window: UsageWindow;
   cardMessage: string | null;
   cardIdle: boolean;
+  cardRunning?: boolean;
 }): string {
   const w = opts.window;
   const over = isOver(w.used_percent, opts.cardMessage, w.used, w.limit);
@@ -251,7 +261,7 @@ function usageRow(opts: {
       </div>
       <div class="usage-metrics">
         <div class="track" aria-hidden="true">
-          <div class="track-fill ${lvl}${width > 0 && !idle ? " is-active" : ""}" style="width:${width}%">
+          <div class="track-fill ${lvl}${width > 0 && !idle ? " is-active" : ""}${opts.cardRunning ? " is-running" : ""}" style="width:${width}%">
             ${showStop ? `<span class="track-stop"></span>` : ""}
           </div>
         </div>

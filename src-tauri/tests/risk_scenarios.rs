@@ -203,3 +203,34 @@ fn risk_always_show_notch_persists_and_updates_core() {
     let loaded_off = load_state(dir.path()).unwrap();
     assert!(!loaded_off.settings.always_show_notch);
 }
+
+#[test]
+fn risk_appearance_toggles_persist_and_update_core() {
+    let dir = tempdir().unwrap();
+    let core = AppCore::new(default_state(), dir.path().to_path_buf());
+
+    // Defaults should be true
+    assert!(core.get_state().settings.show_orbit);
+    assert!(core.get_state().settings.show_period);
+    assert!(core.get_state().settings.show_icon_glow);
+
+    // Toggle off
+    core.set_show_orbit(false).unwrap();
+    core.set_show_period(false).unwrap();
+    core.set_show_icon_glow(false).unwrap();
+
+    assert!(!core.get_state().settings.show_orbit);
+    assert!(!core.get_state().settings.show_period);
+    assert!(!core.get_state().settings.show_icon_glow);
+
+    let loaded = load_state(dir.path()).unwrap();
+    assert!(!loaded.settings.show_orbit);
+    assert!(!loaded.settings.show_period);
+    assert!(!loaded.settings.show_icon_glow);
+
+    // Toggle on
+    core.set_show_orbit(true).unwrap();
+    assert!(core.get_state().settings.show_orbit);
+    let loaded_on = load_state(dir.path()).unwrap();
+    assert!(loaded_on.settings.show_orbit);
+}

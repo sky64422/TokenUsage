@@ -143,6 +143,12 @@ pub struct AppSettings {
     pub hover_detail: bool,
     #[serde(default)]
     pub always_show_notch: bool,
+    #[serde(default = "default_true")]
+    pub show_orbit: bool,
+    #[serde(default = "default_true")]
+    pub show_period: bool,
+    #[serde(default = "default_true")]
+    pub show_icon_glow: bool,
     /// Legacy persist field; poll interval is always `RefreshPolicy::DEFAULT_REFRESH_SECS`.
     #[serde(default = "default_refresh_secs")]
     pub refresh_secs: u64,
@@ -154,6 +160,10 @@ pub struct AppSettings {
     pub grok: ProviderConfig,
     #[serde(default)]
     pub agy: ProviderConfig,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_refresh_secs() -> u64 {
@@ -169,6 +179,9 @@ impl Default for AppSettings {
             autostart: true,
             hover_detail: false,
             always_show_notch: false,
+            show_orbit: true,
+            show_period: true,
+            show_icon_glow: true,
             refresh_secs: RefreshPolicy::DEFAULT_REFRESH_SECS,
             claude: ProviderConfig::default(),
             codex: ProviderConfig::default(),

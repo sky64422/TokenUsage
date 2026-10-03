@@ -127,6 +127,21 @@ pub fn set_always_show_notch(
 }
 
 #[tauri::command]
+pub fn set_show_orbit(state: State<'_, AppHandleState>, enabled: bool) -> Result<(), String> {
+    state.core.set_show_orbit(enabled)
+}
+
+#[tauri::command]
+pub fn set_show_period(state: State<'_, AppHandleState>, enabled: bool) -> Result<(), String> {
+    state.core.set_show_period(enabled)
+}
+
+#[tauri::command]
+pub fn set_show_icon_glow(state: State<'_, AppHandleState>, enabled: bool) -> Result<(), String> {
+    state.core.set_show_icon_glow(enabled)
+}
+
+#[tauri::command]
 pub async fn set_provider_enabled(
     app: AppHandle,
     state: State<'_, AppHandleState>,

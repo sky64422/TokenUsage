@@ -326,6 +326,27 @@ body {
   opacity: 0.85;
 }
 
+/* Active running sheen — accelerated traveling highlight with track aura */
+.track-fill.is-running::before,
+.provider-card[data-activity="running"] .track-fill.is-active::before {
+  background-position: 120% 0;
+  animation: track-sheen-active 2.2s ease-in-out infinite;
+  opacity: 1;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 28%,
+    rgba(255, 255, 255, calc(0.48 * var(--accent-opacity))) 50%,
+    transparent 72%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+}
+
+.provider-card[data-activity="running"] .track {
+  box-shadow: inset 0 1px 2px var(--track-inset), 0 0 8px rgba(255, 255, 255, 0.14);
+}
+
 /* Soft luminous cap at active end (partial fill only) */
 .track-stop {
   position: absolute;
@@ -428,6 +449,16 @@ body {
   }
 }
 
+@keyframes track-sheen-active {
+  0% {
+    background-position: 130% 0;
+  }
+  65%,
+  100% {
+    background-position: -40% 0;
+  }
+}
+
 @keyframes track-critical-breathe {
   0%,
   100% {
@@ -443,7 +474,9 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .track-fill.is-active::before {
+  .track-fill.is-active::before,
+  .track-fill.is-running::before,
+  .provider-card[data-activity="running"] .track-fill.is-active::before {
     animation: none;
     opacity: 0.35;
     background-position: 50% 0;
@@ -573,6 +606,99 @@ body {
   transform: scale(0.88);
 }
 
+/* Desktop Tab Navigation (distinct shelf baseline + active tab indicator + icons) */
+.settings-tabs {
+  display: flex;
+  position: relative;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0;
+  gap: 4px;
+  box-sizing: border-box;
+  user-select: none;
+  background: transparent;
+  margin-bottom: 2px;
+}
+
+.settings-tab-btn {
+  position: relative;
+  flex: 1 1 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  margin-bottom: -1px; /* Align active bottom border directly over the container baseline */
+  transition:
+    color var(--duration-fast) ease,
+    background var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+}
+
+.settings-tab-btn .tab-icon {
+  opacity: 0.55;
+  flex-shrink: 0;
+  transition: opacity var(--duration-fast) ease;
+}
+
+.settings-tab-btn:hover:not(.is-active) {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.035);
+  border-top-color: rgba(255, 255, 255, 0.06);
+  border-left-color: rgba(255, 255, 255, 0.04);
+  border-right-color: rgba(255, 255, 255, 0.04);
+}
+
+.settings-tab-btn:hover:not(.is-active) .tab-icon {
+  opacity: 0.85;
+}
+
+.settings-tab-btn.is-active {
+  background: rgba(255, 255, 255, 0.065);
+  border-color: rgba(255, 255, 255, 0.12) rgba(255, 255, 255, 0.09) transparent rgba(255, 255, 255, 0.09);
+  border-bottom: 2px solid #ffffff;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 2px 8px rgba(255, 255, 255, 0.25);
+}
+
+.settings-tab-btn.is-active .tab-icon {
+  opacity: 1;
+  color: #ffffff;
+}
+
+.settings-tab-btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+/* Tab Panels */
+.settings-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 160px;
+  box-sizing: border-box;
+  padding-top: 2px;
+}
+
+.settings-tab-panel[hidden] {
+  display: none !important;
+}
+
 /* Pill card primitive (referenced from modern tool panels) */
 .settings-card {
   box-sizing: border-box;
@@ -593,11 +719,12 @@ body {
 /* Opacity slider inside unified pill container */
 .opacity-card {
   gap: 10px;
-  padding: 9px 12px;
+  padding: 10px 13px;
+  min-height: 40px;
 }
 
 .opacity-card .settings-card-label {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.75);
   flex-shrink: 0;
@@ -640,7 +767,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 12px;
+  padding: 10.5px 13px;
+  min-height: 40px;
+  box-sizing: border-box;
   cursor: pointer;
   user-select: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.045);
@@ -651,31 +780,42 @@ body {
   border-bottom: none;
 }
 
-.settings-group-row:hover {
+.settings-group-row:hover:not(.is-static) {
   background: rgba(255, 255, 255, 0.04);
 }
 
+.settings-group-row.is-static {
+  cursor: default;
+}
+
+.settings-update-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .settings-group-title {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 /* Section styling */
 .settings-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
 }
 
 .settings-label {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: rgba(255, 255, 255, 0.45);
-  padding: 1px 3px;
+  padding: 2px 2px 0;
 }
 
 /* Provider 2x2 grid (styled like tool selector in reference) */
@@ -1003,33 +1143,108 @@ body {
 }
 
 .settings-pill-action#btn-diag {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
+  min-width: 96px;
+  overflow: hidden;
+  transition:
+    background 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.2s ease,
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease;
+}
+
+.diag-icon-wrap {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.diag-copy-icon,
+.diag-check-icon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transition:
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.22s ease;
+}
+
+.diag-copy-icon {
+  opacity: 0.85;
+  transform: scale(1) rotate(0deg);
 }
 
 .diag-check-icon {
-  width: 11px;
-  height: 11px;
-  display: none;
-  color: #4ade80;
-  transform: scale(0.5);
   opacity: 0;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+  transform: scale(0.35) rotate(35deg);
+  color: #4ade80;
 }
 
+.diag-label-wrap {
+  position: relative;
+  display: grid;
+  grid-template-areas: "label";
+  align-items: center;
+  justify-items: center;
+}
+
+.diag-text {
+  grid-area: label;
+  transition:
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.22s ease;
+  white-space: nowrap;
+}
+
+.diag-text-idle {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.diag-text-copied {
+  opacity: 0;
+  transform: translateY(7px);
+  color: #4ade80;
+  font-weight: 600;
+}
+
+/* Morph to success state */
 .settings-pill-action#btn-diag.is-done {
-  border-color: rgba(74, 222, 128, 0.35);
+  border-color: rgba(74, 222, 128, 0.45);
   background: rgba(74, 222, 128, 0.14);
   color: #4ade80;
   transform: scale(1.02);
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.16);
+}
+
+.settings-pill-action#btn-diag.is-done .diag-copy-icon {
+  opacity: 0;
+  transform: scale(0.35) rotate(-35deg);
 }
 
 .settings-pill-action#btn-diag.is-done .diag-check-icon {
-  display: inline-block;
-  transform: scale(1);
   opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.settings-pill-action#btn-diag.is-done .diag-text-idle {
+  opacity: 0;
+  transform: translateY(-7px);
+}
+
+.settings-pill-action#btn-diag.is-done .diag-text-copied {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .settings-pill-action.is-quit:hover {

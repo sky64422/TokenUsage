@@ -20,6 +20,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 const DISCOVERY_SECONDS: i64 = 30;
 const CODEX_RUNNING_SECONDS: i64 = 120;
+const GROK_RUNNING_SECONDS: i64 = 120;
 const CLAUDE_RECENT_SECONDS: i64 = 15;
 const ANTIGRAVITY_RUNNING_SECONDS: i64 = 45;
 const ANTIGRAVITY_RECENT_SECONDS: i64 = 120;
@@ -86,7 +87,10 @@ struct Evidence {
 // Deliberately omit content, prompt, message text, paths, identities and usage.
 #[derive(Deserialize)]
 struct Record {
-    timestamp: DateTime<Utc>,
+    #[serde(default)]
+    timestamp: Option<DateTime<Utc>>,
+    #[serde(default)]
+    ts: Option<DateTime<Utc>>,
     #[serde(rename = "type")]
     kind: String,
     payload: Option<Payload>,
@@ -115,7 +119,11 @@ impl Evidence {
             let Ok(record) = serde_json::from_slice::<Record>(line) else {
                 continue;
             };
-            if self.last.is_some_and(|last| record.timestamp < last) {
+            let record_time = record.timestamp.or(record.ts);
+            let Some(record_time) = record_time else {
+                continue;
+            };
+            if self.last.is_some_and(|last| record_time < last) {
                 continue;
             }
             let next = match provider {
@@ -150,11 +158,21 @@ impl Evidence {
                     }
                     _ => None,
                 },
+                ProviderId::Grok => match record.kind.as_str() {
+                    "turn_started" | "loop_started" | "phase_changed" | "tool_started"
+                    | "first_token" => Some(ActivityState::Running),
+                    "turn_ended" => {
+                        crate::infrastructure::providers::quota::grok_fetch::clear_cache();
+                        Some(ActivityState::Idle)
+                    }
+                    "tool_completed" if self.state == Some(ActivityState::Running) => self.state,
+                    _ => None,
+                },
                 _ => None,
             };
             if let Some(state) = next {
                 self.state = Some(state);
-                self.last = Some(record.timestamp);
+                self.last = Some(record_time);
             }
         }
     }
@@ -165,7 +183,7 @@ impl Evidence {
         };
         let age = now.signed_duration_since(last).num_seconds();
         let ttl = match state {
-            ActivityState::Running => CODEX_RUNNING_SECONDS,
+            ActivityState::Running => GROK_RUNNING_SECONDS.max(CODEX_RUNNING_SECONDS),
             ActivityState::Recent => CLAUDE_RECENT_SECONDS,
             ActivityState::Idle => IDLE_EVIDENCE_SECONDS,
             ActivityState::Unknown => return ActivityState::Unknown,
@@ -177,6 +195,7 @@ impl Evidence {
         }
     }
 }
+
 
 #[derive(Default)]
 struct TrackedFile {
@@ -226,6 +245,7 @@ impl TrackedFile {
 pub struct ActivityMonitor {
     codex_root: Option<PathBuf>,
     claude_root: Option<PathBuf>,
+    grok_root: Option<PathBuf>,
     files: HashMap<(ProviderId, PathBuf), TrackedFile>,
     last_discovery: Option<DateTime<Utc>>,
     disabled: bool,
@@ -242,6 +262,7 @@ impl ActivityMonitor {
         Self {
             codex_root: paths::codex_home().map(|p| p.join("sessions")),
             claude_root: paths::claude_home().map(|p| p.join("projects")),
+            grok_root: paths::grok_home().map(|p| p.join("sessions")),
             files: HashMap::new(),
             last_discovery: None,
             disabled: std::env::var("TOKENUSAGE_SKIP_DIRECT_QUOTA").as_deref() == Ok("1"),
@@ -293,7 +314,7 @@ impl ActivityMonitor {
 
     fn discover(&mut self, now: DateTime<Utc>) {
         let mut selected = Vec::new();
-        for provider in [ProviderId::Codex, ProviderId::Claude] {
+        for provider in [ProviderId::Codex, ProviderId::Claude, ProviderId::Grok] {
             let mut candidates = Vec::new();
             let mut budget = MAX_DISCOVERY_ENTRIES;
             match provider {
@@ -314,6 +335,11 @@ impl ActivityMonitor {
                 ProviderId::Claude => {
                     if let Some(root) = &self.claude_root {
                         collect(root, 1, &mut budget, &mut candidates);
+                    }
+                }
+                ProviderId::Grok => {
+                    if let Some(root) = &self.grok_root {
+                        collect_grok(root, 2, &mut budget, &mut candidates);
                     }
                 }
                 _ => {}
@@ -358,6 +384,35 @@ fn collect(root: &Path, depth: usize, budget: &mut usize, files: &mut Vec<(Syste
             collect(&entry.path(), depth - 1, budget, files);
         }
         if kind.is_file() && entry.path().extension().is_some_and(|ext| ext == "jsonl") {
+            if let Ok(modified) = entry.metadata().and_then(|metadata| metadata.modified()) {
+                files.push((modified, entry.path()));
+            }
+        }
+    }
+}
+
+fn collect_grok(
+    root: &Path,
+    depth: usize,
+    budget: &mut usize,
+    files: &mut Vec<(SystemTime, PathBuf)>,
+) {
+    let Ok(entries) = fs::read_dir(root) else {
+        return;
+    };
+    for entry in entries {
+        if *budget == 0 {
+            break;
+        }
+        *budget -= 1;
+        let Ok(entry) = entry else { continue };
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        if kind.is_dir() && depth > 0 {
+            collect_grok(&entry.path(), depth - 1, budget, files);
+        }
+        if kind.is_file() && entry.file_name() == "events.jsonl" {
             if let Ok(modified) = entry.metadata().and_then(|metadata| metadata.modified()) {
                 files.push((modified, entry.path()));
             }
@@ -496,6 +551,7 @@ mod tests {
         let mut monitor = ActivityMonitor {
             codex_root: Some(dir.path().into()),
             claude_root: Some(dir.path().into()),
+            grok_root: Some(dir.path().into()),
             files: HashMap::new(),
             last_discovery: None,
             disabled: true,
@@ -591,5 +647,28 @@ mod tests {
         // Evaluated 300s in the future is idle
         let (state_idle, _) = antigravity_state_in(dir.path(), t_now + Duration::seconds(300));
         assert_eq!(state_idle, ActivityState::Idle);
+    }
+
+    #[test]
+    fn grok_turn_started_is_running_and_turn_ended_is_idle() {
+        let mut evidence = Evidence::default();
+        evidence.ingest(
+            ProviderId::Grok,
+            br#"{"ts":"2026-10-02T00:00:00Z","type":"turn_started","session_id":"s1"}
+"#,
+        );
+        assert_eq!(evidence.state(now()), ActivityState::Running);
+        evidence.ingest(
+            ProviderId::Grok,
+            br#"{"ts":"2026-10-02T00:00:05Z","type":"phase_changed","phase":"streaming_reasoning"}
+"#,
+        );
+        assert_eq!(evidence.state(now()), ActivityState::Running);
+        evidence.ingest(
+            ProviderId::Grok,
+            br#"{"ts":"2026-10-02T00:00:10Z","type":"turn_ended","outcome":"completed"}
+"#,
+        );
+        assert_eq!(evidence.state(now()), ActivityState::Idle);
     }
 }

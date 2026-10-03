@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 pub const DEPTH: f64 = 72.;
-pub const CELL: f64 = 104.;
+pub const CELL: f64 = 88.;
 pub const SHOULDER: f64 = DEPTH / 2.;
 pub const INNER_RADIUS: f64 = DEPTH - SHOULDER;
 // Content nestles into the curved ends instead of starting after the entire curve.
@@ -277,23 +277,19 @@ pub fn calculate_layout_target(
         }
     };
     let anchor_y = match edge {
-        NotchEdge::Top => AnchorY::Top,
+        NotchEdge::Top | NotchEdge::Left | NotchEdge::Right => AnchorY::Top,
         NotchEdge::Bottom => AnchorY::Bottom,
-        NotchEdge::Left | NotchEdge::Right => {
-            if p.offset <= 0.5 {
-                AnchorY::Top
-            } else {
-                AnchorY::Bottom
-            }
-        }
     };
     let detail = if expanded {
         let dw = (DETAIL_WIDTH * s)
             .ceil()
             .min(w.width - if edge.vertical() { depth + GAP * s } else { 0. });
-        let dh = (detail_height.clamp(MIN_DETAIL_HEIGHT, DETAIL_HEIGHT) * s)
+        let mut dh = (detail_height.clamp(MIN_DETAIL_HEIGHT, DETAIL_HEIGHT) * s)
             .ceil()
             .min(w.height - if edge.vertical() { 0. } else { depth + GAP * s });
+        if edge.vertical() && target.is_none() {
+            dh = dh.min((w.y + w.height - notch.y).max(MIN_DETAIL_HEIGHT * s));
+        }
         if dw <= 0. || dh <= 0. {
             return Err("Display is too small for usage details".into());
         }
@@ -312,12 +308,7 @@ pub fn calculate_layout_target(
                     ideal.clamp(w.y, (w.y + w.height - dh).max(w.y))
                 }
             } else {
-                match anchor_y {
-                    AnchorY::Top => notch.y.clamp(w.y, (w.y + w.height - dh).max(w.y)),
-                    AnchorY::Bottom => {
-                        (notch.y + notch.height - dh).clamp(w.y, (w.y + w.height - dh).max(w.y))
-                    }
-                }
+                notch.y.clamp(w.y, (w.y + w.height - dh).max(w.y))
             };
             (x, y)
         } else {

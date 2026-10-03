@@ -57,6 +57,50 @@ pub fn read_snapshot() -> Result<ProviderSnapshot, String> {
     Ok(finish_snapshot(ProviderId::Agy, parse_quota(&text)?, None, Utc::now()))
 }
 
+fn parse_reset_time(raw: &str) -> Result<chrono::DateTime<Utc>, String> {
+    use chrono::{DateTime, Local, LocalResult, NaiveDateTime, TimeZone};
+    let trimmed = raw.trim();
+    if let Ok(dt) = DateTime::parse_from_rfc3339(trimmed) {
+        if dt.timestamp() > 0 {
+            return Ok(dt.with_timezone(&Utc));
+        }
+    }
+    for fmt in [
+        "%Y-%m-%d %H:%M:%S %z",
+        "%Y-%m-%d %H:%M %z",
+        "%Y/%m/%d %H:%M:%S %z",
+        "%Y/%m/%d %H:%M %z",
+    ] {
+        if let Ok(dt) = DateTime::parse_from_str(trimmed, fmt) {
+            if dt.timestamp() > 0 {
+                return Ok(dt.with_timezone(&Utc));
+            }
+        }
+    }
+    let parts: Vec<&str> = trimmed.split_whitespace().collect();
+    if parts.len() >= 2 {
+        let dt_str = format!("{} {}", parts[0], parts[1]);
+        for fmt in [
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+            "%Y/%m/%d %H:%M:%S",
+            "%Y/%m/%d %H:%M",
+        ] {
+            if let Ok(naive) = NaiveDateTime::parse_from_str(&dt_str, fmt) {
+                let dt = match Local.from_local_datetime(&naive) {
+                    LocalResult::Single(dt) => dt.with_timezone(&Utc),
+                    LocalResult::Ambiguous(dt, _) => dt.with_timezone(&Utc),
+                    LocalResult::None => Utc.from_utc_datetime(&naive),
+                };
+                if dt.timestamp() > 0 {
+                    return Ok(dt);
+                }
+            }
+        }
+    }
+    Err("Invalid Antigravity reset time".into())
+}
+
 fn parse_quota(text: &str) -> Result<Vec<UsageWindow>, String> {
     let clean = agy_cli::sanitize_terminal_output(text);
     if !clean.lines().any(|line| line.trim() == "Quota:") {
@@ -70,8 +114,7 @@ fn parse_quota(text: &str) -> Result<Vec<UsageWindow>, String> {
         if !remaining.is_finite() || !(0. ..=100.).contains(&remaining) {
             return Err("Antigravity percentage out of range".into());
         }
-        let reset = chrono::DateTime::parse_from_rfc3339(reset.trim()).map_err(|_| "Invalid Antigravity reset time")?;
-        if reset.timestamp() <= 0 { return Err("Invalid Antigravity reset time".into()); }
+        let reset = parse_reset_time(reset)?;
         let label = label.split_whitespace().collect::<Vec<_>>().join(" ");
         let (family, kind, period) = if let Some(family) = label.strip_suffix(" Five Hour Limit Remaining") {
             (family, WindowKind::Rolling5h, "5h")
@@ -87,7 +130,7 @@ fn parse_quota(text: &str) -> Result<Vec<UsageWindow>, String> {
         let used = 100. - remaining;
         let window = UsageWindow {
             group: Some(group), kind, used, limit: Some(100.), unit: UsageUnit::Percent,
-            resets_at: Some(reset.with_timezone(&Utc).to_rfc3339()), used_percent: Some(used), label: Some(period.into()),
+            resets_at: Some(reset.to_rfc3339()), used_percent: Some(used), label: Some(period.into()),
         };
         // Terminal redraws may repeat a row; the last complete observation wins.
         if let Some(previous) = windows.iter_mut().find(|w: &&mut UsageWindow| w.group == window.group && w.kind == window.kind) {
@@ -142,5 +185,36 @@ mod tests {
         for text in ["", "Please sign in", "Quota:\n", "Quota:\nFive Hour Limit Remaining 110% 2026-10-03T01:00:00Z", "Quota:\nFive Hour Limit Remaining NaN% 2026-10-03T01:00:00Z", "Quota:\nFive Hour Limit Remaining 50% tomorrow"] {
             assert!(parse_quota(text).is_err());
         }
+    }
+
+    #[test]
+    fn parses_conpty_terminal_output_with_localized_timestamps() {
+        const CONPTY_REPORT: &str = "\
+Quota:\n\
+Gemini Models          Weekly Limit Remaining     33%   2026-10-04 00:55 KST\n\
+Gemini Models          Five Hour Limit Remaining  70%   2026-10-03 13:30 KST\n\
+Claude and GPT models  Weekly Limit Remaining     2%    2026-10-04 17:33 KST\n\
+Claude and GPT models  Five Hour Limit Remaining  100%  2026-10-03 14:00 KST\n";
+
+        let windows = parse_quota(CONPTY_REPORT).expect("parse conpty report");
+        assert_eq!(windows.len(), 4);
+        // Gemini 5h first, then Weekly
+        assert_eq!(windows[0].group.as_deref(), Some("Gemini"));
+        assert_eq!(windows[0].kind, WindowKind::Rolling5h);
+        assert_eq!(windows[0].used_percent, Some(30.));
+        assert!(windows[0].resets_at.is_some());
+
+        assert_eq!(windows[1].group.as_deref(), Some("Gemini"));
+        assert_eq!(windows[1].kind, WindowKind::Weekly);
+        assert_eq!(windows[1].used_percent, Some(67.));
+
+        // Claude 5h then Weekly
+        assert_eq!(windows[2].group.as_deref(), Some("Claude"));
+        assert_eq!(windows[2].kind, WindowKind::Rolling5h);
+        assert_eq!(windows[2].used_percent, Some(0.));
+
+        assert_eq!(windows[3].group.as_deref(), Some("Claude"));
+        assert_eq!(windows[3].kind, WindowKind::Weekly);
+        assert_eq!(windows[3].used_percent, Some(98.));
     }
 }

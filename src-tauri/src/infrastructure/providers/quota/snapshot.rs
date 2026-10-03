@@ -12,20 +12,14 @@ pub fn finish_snapshot(
     now: DateTime<Utc>,
 ) -> ProviderSnapshot {
     let primary_used_percent = windows
-        .iter()
-        .filter_map(|w| w.used_percent)
-        .fold(None, |acc: Option<f64>, p| {
-            Some(acc.map(|a| a.max(p)).unwrap_or(p))
-        });
+        .first()
+        .and_then(|w| w.used_percent)
+        .or_else(|| windows.iter().filter_map(|w| w.used_percent).next());
 
     let primary_resets_at = windows
-        .iter()
-        .filter_map(|w| w.resets_at.as_ref())
-        .filter_map(|s| DateTime::parse_from_rfc3339(s).ok())
-        .filter(|d| d.with_timezone(&Utc) > now)
-        .min()
-        .map(|d| d.with_timezone(&Utc).to_rfc3339())
-        .or_else(|| windows.iter().filter_map(|w| w.resets_at.clone()).min());
+        .first()
+        .and_then(|w| w.resets_at.clone())
+        .or_else(|| windows.iter().filter_map(|w| w.resets_at.clone()).next());
 
     let status = if windows.is_empty() {
         SnapshotStatus::Degraded
@@ -54,7 +48,8 @@ mod tests {
 
     fn win(pct: f64, reset: &str) -> UsageWindow {
         UsageWindow {
-            group: None,            kind: WindowKind::Weekly,
+            group: None,
+            kind: WindowKind::Weekly,
             used: pct,
             limit: Some(100.0),
             unit: UsageUnit::Percent,
@@ -74,7 +69,7 @@ mod tests {
     }
 
     #[test]
-    fn primary_is_max_percent_and_soonest_future_reset() {
+    fn primary_is_top_window_default_and_reset() {
         let now = Utc.with_ymd_and_hms(2026, 8, 1, 0, 0, 0).unwrap();
         let snap = finish_snapshot(
             ProviderId::Claude,
@@ -82,16 +77,16 @@ mod tests {
                 win(20.0, "2026-08-10T00:00:00Z"),
                 win(55.0, "2026-08-02T00:00:00Z"),
             ],
-            Some("max".into()),
+            Some("top".into()),
             now,
         );
         assert_eq!(snap.status, SnapshotStatus::Ok);
-        assert!((snap.primary_used_percent.unwrap() - 55.0).abs() < 0.01);
+        assert!((snap.primary_used_percent.unwrap() - 20.0).abs() < 0.01);
         assert!(snap
             .primary_resets_at
             .as_ref()
             .unwrap()
-            .starts_with("2026-08-02"));
-        assert_eq!(snap.message.as_deref(), Some("max"));
+            .starts_with("2026-08-10"));
+        assert_eq!(snap.message.as_deref(), Some("top"));
     }
 }

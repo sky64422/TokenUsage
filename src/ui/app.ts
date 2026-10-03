@@ -14,6 +14,7 @@ import {
 import type { NotchEvent } from "./notch-state";
 import { PROVIDER_IDS } from "./types";
 import type {
+  AppSettings,
   PersistedState,
   ProviderSnapshot,
   ProviderActivity,
@@ -34,6 +35,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   const errorEl = root.querySelector<HTMLElement>(".notch-error")!;
   let persisted = await invoke<PersistedState>("get_state");
   let snaps: ProviderSnapshot[] = [];
+  let latestActivities: ProviderActivity[] = [];
   let interaction = initialNotchState();
   let layout: NotchLayout | undefined;
   let revision = Date.now();
@@ -84,6 +86,13 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     grok: persisted.settings.grok.card_tint,
     agy: persisted.settings.agy.card_tint,
   });
+  function applyAppearanceClasses(st: AppSettings) {
+    rail.classList.toggle("hide-period", st.show_period === false);
+    rail.classList.toggle("hide-orbit", st.show_orbit === false);
+    rail.classList.toggle("hide-icon-glow", st.show_icon_glow === false);
+  }
+  applyAppearanceClasses(persisted.settings);
+
   applyPanelOpacity(shell, persisted.settings.opacity);
   const settings = mountSettingsPanel(
     root.querySelector<HTMLElement>(".settings-root")!,
@@ -99,6 +108,21 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       onAlwaysShowNotch: (v) => {
         persisted.settings.always_show_notch = v;
         void invoke("set_always_show_notch", { enabled: v }).catch(fail);
+      },
+      onShowOrbit: (v) => {
+        persisted.settings.show_orbit = v;
+        applyAppearanceClasses(persisted.settings);
+        void invoke("set_show_orbit", { enabled: v }).catch(fail);
+      },
+      onShowPeriod: (v) => {
+        persisted.settings.show_period = v;
+        applyAppearanceClasses(persisted.settings);
+        void invoke("set_show_period", { enabled: v }).catch(fail);
+      },
+      onShowIconGlow: (v) => {
+        persisted.settings.show_icon_glow = v;
+        applyAppearanceClasses(persisted.settings);
+        void invoke("set_show_icon_glow", { enabled: v }).catch(fail);
       },
       onOpacityChange: (opacity) => {
         applyPanelOpacity(shell, opacity);
@@ -148,15 +172,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   }
   function requestSurface() {
     const expanded = !dragging && (interaction.settings || interaction.provider !== null);
-    if (!expanded && layout) {
-      paintLayout({
-        ...layout,
-        window: layout.notch,
-        detail: null,
-      });
-    }
     const height = interaction.settings
-      ? 480
+      ? 356
       : Math.ceil(body.getBoundingClientRect().height + SURFACE_PADDING);
     let target: number | null = null;
     if (interaction.provider && !interaction.settings) {
@@ -204,17 +221,26 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     quota.hidden = interaction.settings;
     if (interaction.provider && !interaction.settings) {
       const snap = snaps.find((s) => s.provider_id === interaction.provider);
-      const key = JSON.stringify(snap);
+      const act = latestActivities.find((a) => a.provider_id === interaction.provider)?.state;
+      const key = `${JSON.stringify(snap)}:${act}`;
       if (key !== lastQuota) {
         providers.setSnapshots(snap ? [snap] : []);
         lastQuota = key;
       }
       const status = root.querySelector<HTMLElement>(".detail-state")!;
-      status.textContent =
-        snap && snap.status !== "ok"
-          ? `${snap.status.replaceAll("_", " ")}${snap.message ? ` · ${snap.message}` : ""}`
-          : "";
-      status.hidden = !status.textContent;
+      if (snap && snap.status !== "ok") {
+        status.textContent = `${snap.status.replaceAll("_", " ")}${snap.message ? ` · ${snap.message}` : ""}`;
+        status.hidden = false;
+        status.classList.remove("is-running");
+      } else if (act === "running") {
+        status.innerHTML = `<span class="activity-pulse-dot" aria-hidden="true"></span>Working`;
+        status.hidden = false;
+        status.classList.add("is-running");
+      } else {
+        status.textContent = "";
+        status.hidden = true;
+        status.classList.remove("is-running");
+      }
     }
     requestSurface();
   }
@@ -223,6 +249,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     render();
   }
   function refreshView() {
+    applyAppearanceClasses(persisted.settings);
     const ids = enabled();
     interaction = reduceNotchState(interaction, { type: "providers", ids });
     notch.update(snaps, ids);
@@ -346,7 +373,13 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   });
   await listen<NotchLayout>("notch-layout", (ev) => paintLayout(ev.payload));
   await listen<boolean>("notch-reveal", (ev) => notch.reveal(ev.payload));
-  await listen<ProviderActivity[]>("provider-activity", (ev) => notch.activity(ev.payload));
+  function updateActivities(acts: ProviderActivity[]) {
+    latestActivities = acts;
+    notch.activity(acts);
+    providers.setActivities(acts);
+    if (interaction.provider) render();
+  }
+  await listen<ProviderActivity[]>("provider-activity", (ev) => updateActivities(ev.payload));
   rail.addEventListener("focusin", () => {
     if (document.activeElement?.matches(":focus-visible"))
       void invoke<boolean>("set_notch_focus", { focused: true }).then(notch.reveal).catch(fail);
@@ -367,7 +400,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   });
   snaps = await invoke("get_snapshots");
   notch.reveal(await invoke<boolean>("get_notch_reveal"));
-  notch.activity(await invoke<ProviderActivity[]>("get_provider_activity"));
+  updateActivities(await invoke<ProviderActivity[]>("get_provider_activity"));
   refreshView();
   await surfaceChain;
   await win.show();

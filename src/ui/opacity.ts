@@ -1,39 +1,44 @@
-/** Opacity scrubber uses whole percent steps of 5 (35%…100%). */
-export const OPACITY_MIN_PCT = 35;
+/** Opacity scrubber uses whole percent steps of 5 (0%…100%). */
+export const OPACITY_MIN_PCT = 0;
 export const OPACITY_MAX_PCT = 100;
 export const OPACITY_STEP_PCT = 5;
-/** Mirrors Rust `OpacityPolicy::MIN`. */
-export const OPACITY_MIN = OPACITY_MIN_PCT / 100;
+/** Mirrors Rust `OpacityPolicy::MIN` (physical readability floor). */
+export const OPACITY_MIN = 0.35;
 /** Mirrors Rust `OpacityPolicy::DEFAULT`. */
 export const OPACITY_DEFAULT = 0.92;
-/** Intervals between min and max (35→40 … 95→100). */
+/** Intervals between min and max (0→5 … 95→100). */
 export const OPACITY_INTERVALS =
-  (OPACITY_MAX_PCT - OPACITY_MIN_PCT) / OPACITY_STEP_PCT; // 13
+  (OPACITY_MAX_PCT - OPACITY_MIN_PCT) / OPACITY_STEP_PCT; // 20
 
 export function snapOpacityPct(pct: number): number {
   const clamped = Math.min(OPACITY_MAX_PCT, Math.max(OPACITY_MIN_PCT, pct));
   return Math.round(clamped / OPACITY_STEP_PCT) * OPACITY_STEP_PCT;
 }
 
+/** Maps backend physical opacity [0.35, 1.0] to user-facing percentage [0%, 100%]. */
 export function opacityToPct(o: number): number {
-  return snapOpacityPct(Math.round(o * 100));
+  const clamped = Math.min(1.0, Math.max(OPACITY_MIN, o));
+  const normalized = (clamped - OPACITY_MIN) / (1.0 - OPACITY_MIN);
+  return snapOpacityPct(Math.round(normalized * 100));
 }
 
+/** Maps user-facing percentage [0%, 100%] to backend physical opacity [0.35, 1.0]. */
 export function pctToOpacity(pct: number): number {
-  return snapOpacityPct(pct) / 100;
+  const normalized = snapOpacityPct(pct) / 100;
+  return Number((OPACITY_MIN + normalized * (1.0 - OPACITY_MIN)).toFixed(3));
 }
 
-/** How many 5% steps above min (35% → 0, …, 100% → 13). */
+/** How many 5% steps above min (0% → 0, …, 100% → 20). */
 export function opacityStepIndex(pct: number): number {
   return (snapOpacityPct(pct) - OPACITY_MIN_PCT) / OPACITY_STEP_PCT;
 }
 
-/** Fill width aligned to 5% cells. */
+/** Fill width aligned to 5% cells (50% is 50%, 100% is 100%). */
 export function meterFillPct(pct: number): number {
   return (opacityStepIndex(pct) / OPACITY_INTERVALS) * 100;
 }
 
-/** One flex cell per 5% interval so borders line up with fill edges. */
+/** 20 flex cells per 5% interval with major ticks every 10%. */
 export function opacityTicksHtml(): string {
   const parts: string[] = [];
   for (let i = 0; i < OPACITY_INTERVALS; i++) {

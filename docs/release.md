@@ -1,7 +1,7 @@
 # Release & in-app updates
 
-**Updated:** 2026-10-02  
-**Current public tag:** v0.3.2  
+**Updated:** 2026-10-03  
+**Current public tag:** v0.3.3  
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,7 +12,8 @@
 
 | Tag | Highlights |
 |-----|------------|
-| **v0.3.2** | Drag smoothness: 125 FPS high-refresh mouse tracking with 1ms timer precision; Model detail: dynamic centering on active provider cell |
+| **v0.3.3** | Settings: 3-tab layout ('���', '��', '�Ϲ�'), appearance toggles (period, orbit, icon glow), refined readability & spacing; Notch: active-only orbit, default top-window metric |
+| v0.3.2 | Drag smoothness: 125 FPS high-refresh mouse tracking with 1ms timer precision; Model detail: dynamic centering on active provider cell |
 | v0.3.1 | Notch stability: immobile corner anchoring eliminates toggle jitter; Auto-reveal: edge fold & hover reveal; Providers: official Antigravity CLI quota integration and activity affordances |
 | v0.3.0 | Notch stability: eliminate resize/render jitter on settings toggle; Detail: auto-shrink single-row model height to fit content |
 | v0.2.1 | Settings: standalone opacity meter with ticks & live alpha, removed duplicate top header; Model detail: removed redundant header/close button and bottom hint, increased model title font to 15px |
@@ -31,9 +32,9 @@
 
 ---
 
-## What “publish” means
+## What ?�publish??means
 
-In-app **Check for updates** (header **↻**) does **not** read git `main`.  
+In-app **Check for updates** (header **??*) does **not** read git `main`.  
 It downloads:
 
 ```text
@@ -47,7 +48,7 @@ That file must list a **higher semver** than the installed app, a signed install
 | Bump version | `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` (+ `Cargo.lock` package version) |
 | Signed `tauri build` | Produces NSIS/MSI + `.sig` (`createUpdaterArtifacts`) |
 | GitHub Release | Hosts installer + **`latest.json`** as release assets |
-| Users on prior release builds | Header ↻ / startup check installs the new package |
+| Users on prior release builds | Header ??/ startup check installs the new package |
 
 `npm run tauri dev` **skips** startup auto-check (`debug_assertions`). Prefer a **release** install when testing updates.
 
@@ -58,8 +59,8 @@ That file must list a **higher semver** than the installed app, a signed install
 Already generated for this repo (local only):
 
 ```text
-tmp/updater.key      — private (gitignored under tmp/)
-tmp/updater.key.pub  — public (also embedded in tauri.conf.json)
+tmp/updater.key      ??private (gitignored under tmp/)
+tmp/updater.key.pub  ??public (also embedded in tauri.conf.json)
 ```
 
 Regenerate if needed:
@@ -68,7 +69,7 @@ Regenerate if needed:
 npx tauri signer generate -w tmp/updater.key --ci -f
 ```
 
-Put the new public key into `src-tauri/tauri.conf.json` → `plugins.updater.pubkey`.
+Put the new public key into `src-tauri/tauri.conf.json` ??`plugins.updater.pubkey`.
 
 | Variable | Meaning |
 |----------|---------|
@@ -112,9 +113,9 @@ npm run run:exe
 
 | Path | Behavior |
 |------|----------|
-| Startup (release) | After ~30s, check + **background download**; badge ↻; ready → “click to restart” |
-| Header **↻** (ready) | Install cached package + restart |
-| Header **↻** (idle) | Full check → download → install if newer |
+| Startup (release) | After ~30s, check + **background download**; badge ?? ready ???�click to restart??|
+| Header **??* (ready) | Install cached package + restart |
+| Header **??* (idle) | Full check ??download ??install if newer |
 | `tauri dev` | Startup check skipped; manual check may still fail without a published `latest.json` |
 
 ## Pre-release verification matrix
@@ -127,6 +128,6 @@ npm run run:exe
 | Clippy | `cd src-tauri && cargo clippy --all-targets -- -D warnings` |
 | Signed dry-run | `npm run release:publish -- --dry-run` |
 | Publish | `npm run release:publish` (GitHub token + key) |
-| Updater smoke | Install older signed NSIS → ↻ / wait for auto-check |
+| Updater smoke | Install older signed NSIS ????/ wait for auto-check |
 
 **Note:** Full NSIS/MSI CI is not on GitHub Actions (signing key must stay local). Windows workflow runs `cargo test` + `cargo build --release` only.

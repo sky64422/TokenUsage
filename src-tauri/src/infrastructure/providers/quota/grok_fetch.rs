@@ -3,7 +3,11 @@
 use super::http::{check_usage_http, TtlBodyCache};
 use std::time::Duration;
 
-static CACHE: TtlBodyCache = TtlBodyCache::new(45);
+static CACHE: TtlBodyCache = TtlBodyCache::new(15);
+
+pub fn clear_cache() {
+    CACHE.clear();
+}
 
 const BILLING_URL: &str = "https://cli-chat-proxy.grok.com/v1/billing?format=credits";
 const TOKEN_URL_DEFAULT: &str = "https://auth.x.ai/oauth2/token";

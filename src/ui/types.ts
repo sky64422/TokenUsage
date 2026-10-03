@@ -56,6 +56,9 @@ export interface AppSettings {
   autostart: boolean;
   hover_detail: boolean;
   always_show_notch?: boolean;
+  show_orbit?: boolean;
+  show_period?: boolean;
+  show_icon_glow?: boolean;
   refresh_secs: number;
   claude: ProviderConfig;
   codex: ProviderConfig;

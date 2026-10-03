@@ -88,8 +88,7 @@ export function mountNotch(
       for (const [id, button] of buttons) {
         const state = states.find((s) => s.provider_id === id)?.state ?? "unknown";
         button.dataset.activity = state;
-        const label = state === "running" ? `${id}: working` :
-          state === "recent" ? `${id}: recent activity` : "";
+        const label = state === "running" ? `${id}: working` : "";
         button.title = label;
         if (label) button.setAttribute("aria-description", label);
         else button.removeAttribute("aria-description");
@@ -109,9 +108,10 @@ export function mountNotch(
         b.querySelector(".ring-period")!.textContent = h.label;
         b.querySelector<SVGElement>(".ring-fill")!.style.strokeDasharray =
           `${h.fill} 100`;
-        b.querySelector<HTMLElement>(".ring-status")!.hidden =
-          !h.degraded && !h.secondaryRisk;
-        b.querySelector<HTMLElement>(".ring-status")!.title = h.secondaryRisk;
+        b.querySelector<HTMLElement>(".ring-status")!.hidden = !h.degraded;
+        b.querySelector<HTMLElement>(".ring-status")!.title = h.degraded
+          ? (s.message || s.status.replaceAll("_", " "))
+          : "";
         b.setAttribute(
           "aria-label",
           `${s.display_name}: ${h.label}, ${h.text} used${h.degraded ? `, ${s.status.replaceAll("_", " ")}` : ""}${h.secondaryRisk ? `, other limits: ${h.secondaryRisk}` : ""}. Click to keep open.`,
