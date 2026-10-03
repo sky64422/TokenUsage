@@ -4,7 +4,7 @@ from playwright.sync_api import sync_playwright, expect
 
 with sync_playwright() as p:
     browser = p.chromium.launch(channel="msedge", headless=True)
-    page = browser.new_page(viewport={"width": 340, "height": 420}, reduced_motion="reduce")
+    page = browser.new_page(viewport={"width": 340, "height": 460}, reduced_motion="reduce")
     page.route("**/settings-smoke", lambda r: r.fulfill(content_type="text/html", body='''
         <html><body style="background:#303030"><section class="notch-detail is-settings"
         style="--detail-radius:16px;left:24px;top:24px;width:260px;height:356px">
@@ -27,7 +27,9 @@ with sync_playwright() as p:
         };
         await import('/src/styles/fonts.css'); await import('/src/styles/tokens.css');
         await import('/src/styles/app.css'); await import('/src/styles/notch.css');
-        const {mountSettingsPanel} = await import('/src/ui/settings-panel.ts');
+        const {mountSettingsPanel, SETTINGS_PANEL_HEIGHT} = await import('/src/ui/settings-panel.ts');
+        window.settingsHeight = SETTINGS_PANEL_HEIGHT;
+        document.querySelector('.notch-detail').style.height = SETTINGS_PANEL_HEIGHT+'px';
         window.saves=0;
         const save=()=>{window.saves++;return new Promise((resolve,reject)=>{window.saveResolve=resolve;window.saveReject=reject;});};
         const st={opacity:0.675,autostart:false,hover_detail:false,always_show_notch:false,
@@ -55,11 +57,15 @@ with sync_playwright() as p:
     expect(page.locator('#always-show')).to_be_checked()
     expect(page.locator('#always-show')).to_be_enabled()
 
-    # Header stays still when the inner panel scrolls to the final toggle.
+    # Default height fits every appearance control; constrained screens still scroll.
+    assert page.locator('.settings-scroll').evaluate('(e)=>e.scrollHeight<=e.clientHeight')
+    page.locator('.notch-detail').evaluate('(e)=>e.style.height="320px"')
     header_y = page.locator('.settings-header').bounding_box()['y']
     page.locator('label[for="show-icon-glow"]').evaluate('(e)=>e.scrollIntoView({block:"nearest"})')
     assert page.locator('.settings-header').bounding_box()['y'] == header_y
     assert page.locator('.settings-scroll').evaluate('(e)=>e.scrollTop') > 0
+    page.locator('.notch-detail').evaluate('(e)=>e.style.height=window.settingsHeight+"px"')
+    page.locator('.settings-scroll').evaluate('(e)=>e.scrollTop=0')
     page.locator('#tab-btn-appearance').focus()
     page.keyboard.press('ArrowRight')
     expect(page.locator('#tab-panel-appearance')).to_be_visible()
@@ -78,18 +84,21 @@ with sync_playwright() as p:
         page.evaluate('window.saveResolve()')
         expect(page.locator(f'[data-provider="{provider}"]')).to_be_enabled()
     expect(page.locator('[data-provider="agy"]')).to_be_disabled()
-    expect(page.locator('.provider-selection-hint')).to_contain_text('최소 1개')
+    expect(page.locator('[data-provider="agy"]')).to_have_attribute('title', 'Antigravity: 최소 1개 서비스를 표시해야 합니다')
 
     page.locator('#tab-btn-general').click()
     expect(page.locator('#btn-check-update')).to_have_text('업데이트 확인')
+    assert page.locator('#btn-check-update').bounding_box()['width'] == 32
+    assert page.locator('#btn-check-update').bounding_box()['height'] == 32
+    page.screenshot(path='tmp/settings-update-idle.png')
     page.evaluate('window.deferUpdate=true')
     page.locator('#btn-check-update').click()
     expect(page.locator('#btn-check-update')).to_have_attribute('data-feedback','loading')
     expect(page.locator('#btn-check-update')).to_have_attribute('aria-busy','true')
     expect(page.locator('#btn-check-update')).to_be_disabled()
-    assert page.locator('.update-dots i').first.evaluate('(e)=>getComputedStyle(e).animationName') == 'none'
+    assert page.locator('.update-icon-reload').evaluate('(e)=>getComputedStyle(e).animationName') == 'none'
     page.emulate_media(reduced_motion='no-preference')
-    assert page.locator('.update-dots i').first.evaluate('(e)=>getComputedStyle(e).animationName') == 'update-dot-pulse'
+    assert page.locator('.update-icon-reload').evaluate('(e)=>getComputedStyle(e).animationName') == 'update-spin'
     page.evaluate('document.getAnimations().filter(a=>a.effect.getTiming().iterations!==Infinity).forEach(a=>a.finish())')
     page.screenshot(path='tmp/settings-update-loading.png')
     page.evaluate('window.updateResolve(false)')

@@ -38,14 +38,17 @@ export function meterFillPct(pct: number): number {
   return (opacityStepIndex(pct) / OPACITY_INTERVALS) * 100;
 }
 
-/** 20 flex cells per 5% interval with major ticks every 10%. */
+/**
+ * 20-column Liquid Capsule Bar ticks (macOS / Raycast inspired).
+ * Precision 5% micro-etched notches with 10% major gradations.
+ */
 export function opacityTicksHtml(): string {
   const parts: string[] = [];
   for (let i = 0; i < OPACITY_INTERVALS; i++) {
     const leftPct = OPACITY_MIN_PCT + i * OPACITY_STEP_PCT;
     const rightPct = leftPct + OPACITY_STEP_PCT;
     const major = rightPct % 10 === 0;
-    parts.push(`<span class="opacity-tick${major ? " major" : ""}"></span>`);
+    parts.push(`<span class="opacity-tick${major ? " major" : ""}" data-index="${i}"></span>`);
   }
   return parts.join("");
 }

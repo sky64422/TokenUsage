@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import {
   meterFillPct,
+  opacityStepIndex,
   opacityTicksHtml,
   opacityToPct,
   OPACITY_MAX_PCT,
@@ -25,6 +26,7 @@ const MARKS: Record<ProviderId, string> = {
   agy: agyMark,
 };
 
+export const SETTINGS_PANEL_HEIGHT = 400;
 export type UpdatePhase = "idle" | "downloading" | "ready";
 
 export interface UpdateInfo {
@@ -174,14 +176,15 @@ export function mountSettingsPanel(
       </div>
 
       <div class="settings-tab-panel" id="tab-panel-models" role="tabpanel" aria-labelledby="tab-btn-models" hidden>
-        <p class="settings-description">노치에 표시할 서비스를 선택하세요.</p>
-        <div class="provider-grid" role="group" aria-label="표시할 서비스">
-          ${providerCard("claude", "Claude", MARKS.claude, settings.claude.enabled !== false)}
-          ${providerCard("codex", "Codex", MARKS.codex, settings.codex.enabled !== false)}
-          ${providerCard("grok", "Grok", MARKS.grok, settings.grok.enabled !== false)}
-          ${providerCard("agy", "Antigravity", MARKS.agy, settings.agy.enabled !== false)}
+        <div class="settings-section">
+          <span class="settings-label">표시할 모델</span>
+          <div class="provider-grid" role="group" aria-label="표시할 모델">
+            ${providerCard("claude", "Claude", MARKS.claude, settings.claude.enabled !== false)}
+            ${providerCard("codex", "Codex", MARKS.codex, settings.codex.enabled !== false)}
+            ${providerCard("grok", "Grok", MARKS.grok, settings.grok.enabled !== false)}
+            ${providerCard("agy", "Antigravity", MARKS.agy, settings.agy.enabled !== false)}
+          </div>
         </div>
-        <p class="provider-selection-hint settings-description">${PROVIDER_MINIMUM}</p>
         <p class="settings-save-status" id="provider-save-status" role="status" hidden></p>
       </div>
 
@@ -203,14 +206,25 @@ export function mountSettingsPanel(
             <div class="settings-group-row is-static">
               <span class="settings-group-title">버전</span>
               <div class="settings-version-inline">
+                <span class="settings-update-status" id="update-status" role="status"></span>
                 <span class="settings-version-badge" title="${versionStr || "v0.0.0"}">${versionStr || "v0.0.0"}</span>
-                <button type="button" class="settings-update-btn" id="btn-check-update">
-                  <span class="update-feedback" aria-hidden="true"><span class="update-dots"><i></i><i></i><i></i></span><svg class="update-check" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" pathLength="1"/></svg></span>
-                  <span class="update-label">${UPDATE_CHECK}</span>
+                <button type="button" class="settings-update-btn" id="btn-check-update" title="${UPDATE_CHECK}" aria-label="${UPDATE_CHECK}">
+                  <span class="update-icon-wrap" aria-hidden="true">
+                    <svg class="update-icon update-icon-reload" width="13" height="13" viewBox="0 0 16 16" fill="none">
+                      <path d="M14 8a6 6 0 1 1-1.76-4.24L14 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M14 2v3.5h-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <svg class="update-icon update-icon-check" width="13" height="13" viewBox="0 0 16 16" fill="none">
+                      <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <svg class="update-icon update-icon-restart" width="13" height="13" viewBox="0 0 16 16" fill="none">
+                      <path d="M8 2.5v7m0 0l-3-3m3 3l3-3M3.5 13.5h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                  <span class="sr-only update-label">${UPDATE_CHECK}</span>
                 </button>
               </div>
             </div>
-            <span class="settings-update-status" id="update-status" role="status"></span>
           </div>
         </div>
 
@@ -230,7 +244,13 @@ export function mountSettingsPanel(
               <span class="diag-text diag-text-copied">복사됨</span>
             </span>
           </button>
-          <button type="button" class="settings-pill-action is-quit" id="btn-quit" title="TokenUsage 종료">종료</button>
+          <button type="button" class="settings-pill-action is-quit" id="btn-quit" title="TokenUsage 종료" aria-label="TokenUsage 종료">
+            <span class="quit-progress" aria-hidden="true"></span>
+            <span class="quit-label-wrap" aria-hidden="true">
+              <span class="quit-text quit-text-idle">종료</span>
+              <span class="quit-text quit-text-confirm">정말 종료할까요?</span>
+            </span>
+          </button>
         </div>
       </div>
       </div>
@@ -273,15 +293,23 @@ export function mountSettingsPanel(
   const paintOpacity = (pct: number) => {
     const snapped = snapOpacityPct(pct);
     const o = pctToOpacity(snapped);
+    const step = opacityStepIndex(snapped);
     opacityRange.value = String(snapped);
     opacityVal.textContent = `${snapped}%`;
     opacityMeter.style.setProperty("--opacity-fill", `${meterFillPct(snapped)}%`);
+    opacityMeter.dataset.step = String(step);
+
+    const ticks = opacityMeter.querySelectorAll<HTMLElement>(".opacity-tick");
+    ticks.forEach((tick, idx) => {
+      const on = idx < step;
+      tick.classList.toggle("is-on", on);
+      tick.classList.toggle("is-current", idx === step - 1 && step > 0);
+    });
+
     handlers.onOpacityChange(o);
   };
 
-  if (Math.abs(settings.opacity - pctToOpacity(initialPct)) > 0.001) {
-    paintOpacity(initialPct);
-  }
+  paintOpacity(initialPct);
 
   opacityRange.addEventListener("input", () => {
     paintOpacity(Number(opacityRange.value));
@@ -347,22 +375,38 @@ export function mountSettingsPanel(
     btn.setAttribute("aria-busy", String(feedback === "loading"));
 
     let title = UPDATE_CHECK;
+    let statusText = "";
+    status.classList.remove("is-error", "is-ready");
+
     if (updatePhase === "ready" && updateVersion) {
       title = `${updateVersion} 설치를 위해 재시작`;
-      status.textContent = updateHint || `${updateVersion} 준비 완료`;
+      statusText = "준비 완료";
+      status.classList.add("is-ready");
     } else if (updatePhase === "downloading" && updateVersion) {
-      title = updateHint || `${updateVersion} 다운로드 중…`;
-      status.textContent = title;
+      title = `${updateVersion} 다운로드 중…`;
+      statusText = updateHint || "다운로드 중…";
     } else if (updateBusy) {
       title = "업데이트 확인 중…";
-      status.textContent = updateHint || title;
-    } else {
-      status.textContent = updateHint;
+      statusText = updateHint || "확인 중…";
+    } else if (updateHint) {
+      statusText = updateHint;
     }
-    if (updateError) status.textContent = "업데이트 실패 · 다시 시도해 주세요";
-    status.title = updateError;
-    btn.querySelector(".update-label")!.textContent = updateBusy ? (updatePhase === "ready" ? "재시작 중…" : "확인 중…") : updatePhase === "ready" ? UPDATE_RESTART
-      : updatePhase === "downloading" ? "다운로드 중…" : UPDATE_CHECK;
+
+    if (updateError) {
+      statusText = "업데이트 실패";
+      status.classList.remove("is-ready");
+      status.classList.add("is-error");
+      status.title = updateError;
+    } else {
+      status.title = title;
+    }
+    status.textContent = statusText;
+
+    const labelEl = btn.querySelector(".update-label");
+    if (labelEl) {
+      labelEl.textContent = updateBusy ? (updatePhase === "ready" ? "재시작 중…" : "확인 중…") : updatePhase === "ready" ? UPDATE_RESTART
+        : updatePhase === "downloading" ? "다운로드 중…" : UPDATE_CHECK;
+    }
     btn.setAttribute("title", title);
     btn.setAttribute("aria-label", title);
   }
@@ -392,16 +436,21 @@ export function mountSettingsPanel(
       if (hasUpdate) {
         updateBusy = false;
         if (updatePhase === "idle") updatePhase = "downloading";
-        if (updatePhase !== "ready") updateHint = "새 업데이트 다운로드 중…";
+        if (updatePhase !== "ready") updateHint = "다운로드 중…";
         paintUpdateUi();
         return;
       }
       updatePhase = "idle";
       updateVersion = null;
       updateBusy = false;
-      updateHint = "최신 버전입니다";
+      updateHint = "최신 버전";
       updateChecked = true;
       paintUpdateUi();
+      window.setTimeout(() => {
+        if (!updateBtn.isConnected || updatePhase !== "idle") return;
+        updateChecked = false;
+        paintUpdateUi();
+      }, 2500);
     } catch (err) {
       console.error("check_for_updates failed", err);
       updateBusy = false;
@@ -434,7 +483,7 @@ export function mountSettingsPanel(
     updateError = "";
     updateVersion = ev.payload.version;
     updateBusy = false;
-    updateHint = `${ev.payload.version} 다운로드 중…`;
+    updateHint = "다운로드 중…";
     paintUpdateUi();
   }).then((u) => unlisteners.push(u));
 
@@ -446,9 +495,9 @@ export function mountSettingsPanel(
     updateBusy = false;
     if (p.content_length && p.content_length > 0) {
       const pct = Math.min(99, Math.round((p.received / p.content_length) * 100));
-      updateHint = `${p.version}… ${pct}%`;
+      updateHint = `${pct}% 다운로드`;
     } else {
-      updateHint = `${p.version} 다운로드 중…`;
+      updateHint = "다운로드 중…";
     }
     paintUpdateUi();
   }).then((u) => unlisteners.push(u));
@@ -459,7 +508,7 @@ export function mountSettingsPanel(
     updateError = "";
     updateVersion = ev.payload.version;
     updateBusy = false;
-    updateHint = `${ev.payload.version} 준비 완료`;
+    updateHint = "준비 완료";
     paintUpdateUi();
   }).then((u) => unlisteners.push(u));
 
@@ -469,7 +518,7 @@ export function mountSettingsPanel(
     updateBusy = false;
     updateChecked = true;
     updateError = "";
-    updateHint = "최신 버전입니다";
+    updateHint = "최신 버전";
     paintUpdateUi();
   }).then((u) => unlisteners.push(u));
 
@@ -575,7 +624,31 @@ export function mountSettingsPanel(
       }, 1500);
     });
   });
-  root.querySelector("#btn-quit")?.addEventListener("click", handlers.onQuit);
+  const btnQuit = root.querySelector("#btn-quit") as HTMLButtonElement | null;
+  let quitTimer: ReturnType<typeof setTimeout> | null = null;
+  function resetQuit() {
+    if (quitTimer) {
+      clearTimeout(quitTimer);
+      quitTimer = null;
+    }
+    if (btnQuit) {
+      btnQuit.classList.remove("is-confirming");
+      btnQuit.setAttribute("title", "TokenUsage 종료");
+      btnQuit.setAttribute("aria-label", "TokenUsage 종료");
+    }
+  }
+  btnQuit?.addEventListener("click", () => {
+    if (!btnQuit) return;
+    if (btnQuit.classList.contains("is-confirming")) {
+      resetQuit();
+      handlers.onQuit();
+    } else {
+      btnQuit.classList.add("is-confirming");
+      btnQuit.setAttribute("title", "다시 누르면 종료됩니다 (3초 후 취소)");
+      btnQuit.setAttribute("aria-label", "다시 누르면 종료됩니다 (3초 후 취소)");
+      quitTimer = setTimeout(resetQuit, 3000);
+    }
+  });
 
   return {
     show() {
@@ -584,6 +657,7 @@ export function mountSettingsPanel(
     },
     hide() {
       visible = false;
+      resetQuit();
       sheet.classList.remove("visible");
     },
     isVisible: () => visible,
@@ -601,6 +675,7 @@ export function mountSettingsPanel(
       syncProviderLocks();
     },
     destroy() {
+      resetQuit();
       for (const u of unlisteners) u();
     },
   };

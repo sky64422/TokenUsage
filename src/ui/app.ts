@@ -5,7 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyPanelOpacity } from "./opacity";
 import { formatProviderStatus } from "./format";
 import { mountProviders } from "./providers";
-import { mountSettingsPanel } from "./settings-panel";
+import { mountSettingsPanel, SETTINGS_PANEL_HEIGHT } from "./settings-panel";
 import { mountNotch, position } from "./notch";
 import {
   createCloseDelay,
@@ -169,7 +169,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   function requestSurface() {
     const expanded = !dragging && (interaction.settings || interaction.provider !== null);
     const height = interaction.settings
-      ? 356
+      ? SETTINGS_PANEL_HEIGHT
       : Math.ceil(body.getBoundingClientRect().height + SURFACE_PADDING);
     let target: number | null = null;
     if (interaction.provider && !interaction.settings) {
@@ -294,6 +294,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     dragging = event.active && !event.finished;
     rail.classList.toggle("is-dragging", dragging);
     if (event.finished) {
+      rail.classList.remove("is-drag-armed");
       dragId = null;
       pressedPointer = null;
       releaseDragCapture();
@@ -316,27 +317,41 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     capturedPointer = { element: e.target as Element, id: e.pointerId };
     capturedPointer.element.setPointerCapture(e.pointerId);
     dragChain = dragChain.then(() => invoke<void>("begin_notch_drag", { id })).catch((error) => {
-      if (dragId === id) { dragId = null; pressedPointer = null; releaseDragCapture(); }
+      if (dragId === id) {
+        dragId = null;
+        pressedPointer = null;
+        releaseDragCapture();
+        rail.classList.remove("is-drag-armed");
+      }
       fail(error);
     });
   });
   rail.addEventListener("pointermove", (e) => {
     if (e.pointerId !== pressedPointer || !layout) return;
     // Only suppress the browser's click here; native physical coordinates own placement.
-    if (Math.hypot(e.screenX - localStart.x, e.screenY - localStart.y) >= layout.metrics.drag_threshold) {
+    const travel = Math.hypot(e.screenX - localStart.x, e.screenY - localStart.y);
+    if (travel >= layout.metrics.drag_threshold) {
       suppressClick = true;
+      rail.classList.add("is-drag-armed");
     }
   });
   rail.addEventListener("pointerup", (e) => {
     if (e.pointerId !== pressedPointer) return;
     pressedPointer = null;
+    rail.classList.remove("is-drag-armed");
     finishDrag(false);
   });
   rail.addEventListener("pointercancel", (e) => {
-    if (e.pointerId === pressedPointer) finishDrag(true);
+    if (e.pointerId === pressedPointer) {
+      rail.classList.remove("is-drag-armed");
+      finishDrag(true);
+    }
   });
   rail.addEventListener("lostpointercapture", (e) => {
-    if (e.pointerId === pressedPointer) finishDrag(e.buttons !== 0);
+    if (e.pointerId === pressedPointer) {
+      rail.classList.remove("is-drag-armed");
+      finishDrag(e.buttons !== 0);
+    }
   });
   rail.addEventListener("click", (e) => {
     if (suppressClick && e.detail !== 0) {

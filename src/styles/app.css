@@ -98,6 +98,11 @@ body {
   border-color: var(--border);
 }
 
+.provider-card:active {
+  /* Bencho philosophy: Sinks, it does not lift */
+  transform: scale(0.99) translateY(0.5px);
+}
+
 .provider-card[class*="tint-"]:hover {
   filter: brightness(1.06);
 }
@@ -293,8 +298,9 @@ body {
   box-shadow:
     0 0 0 0.5px rgba(255, 255, 255, calc(0.14 * var(--accent-opacity))) inset,
     0 0 10px rgba(var(--ok-rgb), calc(0.22 * var(--accent-opacity)));
+  /* Bencho physics: mass & delicate spring damping on quota updates */
   transition:
-    width 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+    width 0.72s cubic-bezier(0.34, 1.25, 0.64, 1),
     background 0.25s ease,
     box-shadow 0.25s ease;
 }
@@ -558,7 +564,7 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--muted-foreground) transparent;
   scrollbar-gutter: stable;
-  padding: 2px 4px 6px 0;
+  padding: 2px 4px 2px 0;
 }
 
 .settings-description,
@@ -678,7 +684,13 @@ body {
     color var(--duration-fast) ease,
     background var(--duration-fast) ease,
     border-color var(--duration-fast) ease,
-    box-shadow var(--duration-fast) ease;
+    box-shadow var(--duration-fast) ease,
+    transform var(--duration-fast) ease;
+}
+
+.settings-tab-btn:active {
+  /* Bencho tactile press: Sinks, does not lift */
+  transform: scale(0.97) translateY(1px);
 }
 
 .settings-tab-btn .tab-icon {
@@ -723,7 +735,7 @@ body {
 .settings-tab-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   min-height: 160px;
   box-sizing: border-box;
   padding-top: 2px;
@@ -766,9 +778,20 @@ body {
 
 .opacity-card .opacity-meter {
   flex: 1 1 auto;
-  height: 10px;
+  height: 12px;
   margin: 0;
   border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.24);
+  transition:
+    background var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
+.opacity-card .opacity-meter:hover {
+  background: rgba(255, 255, 255, 0.075);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .opacity-card .opacity-value {
@@ -811,8 +834,7 @@ body {
   transition: background var(--duration-fast) ease;
 }
 
-.settings-group-row:last-child,
-.settings-group-row:has(+ .settings-update-status) {
+.settings-group-row:last-child {
   border-bottom: none;
 }
 
@@ -1067,22 +1089,22 @@ body {
 }
 
 .settings-update-status {
-  display: block;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.2;
   color: var(--muted-foreground);
-  padding: 5px 13px 6px;
-  background: rgba(255, 255, 255, 0.015);
-  border-top: 1px solid rgba(255, 255, 255, 0.045);
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  box-sizing: border-box;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  user-select: none;
+  transition: opacity 160ms ease, color 160ms ease;
 }
 
 .settings-update-status:empty {
   display: none;
+}
+
+.settings-update-status.is-ready {
+  color: #38bdf8;
 }
 
 .settings-update-status.is-error {
@@ -1091,92 +1113,149 @@ body {
 
 .settings-update-btn {
   position: relative;
-  flex: 0 0 auto;
-  width: auto;
-  min-height: 24px;
-  height: 24px;
-  padding: 0 8px;
+  flex: 0 0 var(--settings-control-height);
+  width: var(--settings-control-height);
+  height: var(--settings-control-height);
+  min-height: var(--settings-control-height);
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
   font: inherit;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
   border: 1px solid var(--border-soft);
   border-radius: var(--settings-control-radius);
   background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.72);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  white-space: nowrap;
   user-select: none;
   transition:
-    transform 0.15s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
     color 150ms ease,
     border-color 150ms ease,
-    background 150ms ease;
+    background 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .settings-update-btn:hover:not(:disabled) {
-  color: var(--foreground);
+  color: #ffffff;
   border-color: var(--border);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.09);
 }
 
 .settings-update-btn:active:not(:disabled) {
-  transform: scale(0.96);
+  transform: scale(0.92);
 }
 
 .settings-update-btn.update-available,
 .settings-update-btn.update-ready {
   color: #38bdf8;
-  border-color: rgba(56, 189, 248, 0.4);
-  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.10);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.20);
 }
 
 .settings-update-btn.update-available:hover:not(:disabled),
 .settings-update-btn.update-ready:hover:not(:disabled) {
-  border-color: rgba(56, 189, 248, 0.6);
-  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.70);
+  background: rgba(56, 189, 248, 0.18);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.32);
 }
-
-.update-feedback {
-  position: relative;
-  width: 14px;
-  height: 14px;
-  margin-right: 5px;
-  flex-shrink: 0;
-}
-.settings-update-btn[data-feedback="idle"] .update-feedback,
-.settings-update-btn[data-feedback="error"] .update-feedback { display: none; }
-.update-dots, .update-check { position: absolute; inset: 0; opacity: 0; transition: opacity 160ms ease; }
-.update-dots { display: flex; align-items: center; gap: 2.5px; }
-.update-dots i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
-.settings-update-btn[data-feedback="loading"] .update-dots { opacity: 1; }
-.settings-update-btn[data-feedback="loading"] .update-dots i { animation: update-dot-pulse 900ms ease-in-out infinite; }
-.settings-update-btn[data-feedback="loading"] .update-dots i:nth-child(2) { animation-delay: 120ms; }
-.settings-update-btn[data-feedback="loading"] .update-dots i:nth-child(3) { animation-delay: 240ms; }
-.update-check { width: 14px; height: 14px; color: var(--ok); }
-.update-check path { stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 280ms ease-out; }
-.settings-update-btn[data-feedback="done"] .update-check { opacity: 1; }
-.settings-update-btn[data-feedback="done"] .update-check path { stroke-dashoffset: 0; }
 
 .settings-update-btn:disabled,
 .settings-update-btn.busy {
-  opacity: 0.55;
+  opacity: 0.6;
   cursor: default;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .settings-update-btn[data-feedback="loading"] .update-dots i {
-    animation: none;
-  }
-  .update-dots, .update-check, .update-check path { transition: none; }
+.update-icon-wrap {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-@keyframes update-dot-pulse {
-  0%, 100% { opacity: 0.45; transform: translateY(0); }
-  50% { opacity: 1; transform: translateY(-2px); }
+.update-icon {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 13px;
+  height: 13px;
+  opacity: 0;
+  transform: scale(0.82);
+  transform-origin: center;
+  transition: opacity 160ms ease, transform 160ms ease;
+  pointer-events: none;
+}
+
+/* 1. Reload icon: default idle and error states when NOT ready */
+.settings-update-btn:not(.update-ready) .update-icon-reload {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* While loading/spinning, always show spinning reload icon exclusively */
+.settings-update-btn[data-feedback="loading"] .update-icon-reload {
+  opacity: 1;
+  transform: scale(1);
+  animation: update-spin 0.85s linear infinite;
+}
+.settings-update-btn[data-feedback="loading"] .update-icon-check,
+.settings-update-btn[data-feedback="loading"] .update-icon-restart {
+  opacity: 0;
+  transform: scale(0.82);
+}
+
+/* 2. Checkmark icon: check complete & already up to date */
+.settings-update-btn[data-feedback="done"]:not(.update-ready) .update-icon-reload {
+  opacity: 0;
+  transform: scale(0.82);
+}
+.settings-update-btn[data-feedback="done"]:not(.update-ready) .update-icon-check {
+  opacity: 1;
+  transform: scale(1);
+  color: var(--ok, #4ade80);
+}
+
+/* 3. Restart / Install icon: update is ready to restart, except during loading */
+.settings-update-btn.update-ready:not([data-feedback="loading"]) .update-icon-reload {
+  opacity: 0;
+  transform: scale(0.82);
+}
+.settings-update-btn.update-ready:not([data-feedback="loading"]) .update-icon-restart {
+  opacity: 1;
+  transform: scale(1);
+  color: #38bdf8;
+}
+
+@keyframes update-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-update-btn[data-feedback="loading"] .update-icon-reload {
+    animation: none;
+  }
+  .update-icon {
+    transition: none;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 .settings-action-row {
@@ -1326,10 +1405,88 @@ body {
   transform: translateY(0);
 }
 
+/* Bencho inline confirmation: The button becomes its own dialog without modal or toast */
+.settings-pill-action.is-quit {
+  position: relative;
+  overflow: hidden;
+  min-width: 68px;
+  transition:
+    min-width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+
 .settings-pill-action.is-quit:hover {
   background: color-mix(in srgb, var(--destructive) 16%, transparent);
   border-color: color-mix(in srgb, var(--destructive) 42%, transparent);
   color: var(--destructive);
+}
+
+.settings-pill-action.is-quit.is-confirming {
+  min-width: 116px;
+  background: color-mix(in srgb, var(--destructive) 22%, transparent);
+  border-color: color-mix(in srgb, var(--destructive) 60%, transparent);
+  color: #ff8585;
+}
+
+.quit-progress {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: color-mix(in srgb, var(--destructive) 26%, transparent);
+  transform-origin: left;
+  transform: scaleX(0);
+  pointer-events: none;
+}
+
+.settings-pill-action.is-quit.is-confirming .quit-progress {
+  animation: quit-countdown 3s linear forwards;
+}
+
+@keyframes quit-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+.quit-label-wrap {
+  position: relative;
+  display: grid;
+  grid-template-areas: "label";
+  align-items: center;
+  justify-items: center;
+  z-index: 1;
+}
+
+.quit-text {
+  grid-area: label;
+  white-space: nowrap;
+  transition:
+    transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.2s ease;
+}
+
+.quit-text-idle {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.quit-text-confirm {
+  opacity: 0;
+  transform: translateY(6px);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.settings-pill-action.is-quit.is-confirming .quit-text-idle {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.settings-pill-action.is-quit.is-confirming .quit-text-confirm {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Rectangular opacity meter — 5% steps with tick marks (35–100). */
@@ -1354,11 +1511,15 @@ body {
   position: relative;
   box-sizing: border-box;
   height: 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--input);
-  background: var(--muted);
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.24);
   overflow: hidden;
   user-select: none;
+  transition:
+    background var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .opacity-meter:focus-within {
@@ -1366,44 +1527,92 @@ body {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ring) 35%, transparent);
 }
 
+/* Liquid Capsule Fill — Clean milky frosted white pill with spring dynamics */
 .opacity-meter-fill {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  /* Exact 5% cell steps (N/13), not continuous lerp */
   width: var(--opacity-fill);
-  background: rgba(var(--text-rgb), calc(0.32 * var(--chrome-opacity)));
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.58);
   pointer-events: none;
-  transition: width 0.06s linear;
+  transition:
+    width 0.32s cubic-bezier(0.34, 1.25, 0.64, 1),
+    background var(--duration-fast) ease;
 }
 
+.opacity-meter:hover .opacity-meter-fill {
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.opacity-meter:active .opacity-meter-fill {
+  background: rgba(255, 255, 255, 0.78);
+  transition: width 0.08s cubic-bezier(0.25, 1.15, 0.45, 1);
+}
+
+/* 20-column Precision Etched Hairline Notches (macOS / Raycast inspired) */
 .opacity-meter-ticks {
   position: absolute;
   inset: 0;
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
   pointer-events: none;
   z-index: 1;
 }
 
-/* 13 equal cells: borders land on 40, 45, … 100 step edges */
 .opacity-tick {
   flex: 1 1 0;
   min-width: 0;
-  border-right: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  height: 100%;
+  position: relative;
   box-sizing: border-box;
 }
 
-.opacity-tick:last-child {
-  border-right: none;
+/* Hairline etched notch incision */
+.opacity-tick::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 4px;
+  border-radius: 0.5px;
+  background: rgba(255, 255, 255, 0.12);
+  transition:
+    background 0.2s ease,
+    height 0.2s ease;
 }
 
-.opacity-tick.major {
-  border-right-color: color-mix(in srgb, var(--text) 22%, transparent);
+.opacity-tick:last-child::after {
+  display: none;
 }
 
-.opacity-tick.major:last-child {
-  border-right: none;
+/* Major ticks (10% step marks) have slightly taller incision */
+.opacity-tick.major::after {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Inverted laser-etched dark notch when submerged under the muted fill */
+.opacity-tick.is-on::after {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.opacity-tick.major.is-on::after {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* Subtle hover disclosure */
+.opacity-meter:hover .opacity-tick:not(.is-on)::after {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.opacity-meter:hover .opacity-tick.major:not(.is-on)::after {
+  background: rgba(255, 255, 255, 0.32);
 }
 
 .opacity-meter-input {

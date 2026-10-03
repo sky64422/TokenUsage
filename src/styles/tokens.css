@@ -68,6 +68,7 @@
   --text: var(--foreground);
   --text-secondary: var(--muted-foreground);
   --text-tertiary: var(--subtle-foreground);
+  /* Srgb baseline fallback */
   --ok: var(--success);
   --warn: var(--warning);
   --critical: var(--destructive);
@@ -75,6 +76,16 @@
     var(--reset-rgb),
     max(0.36, calc(0.88 * var(--accent-opacity)))
   );
+
+  /* Bencho philosophy: OKLCH perceptual uniformity.
+     Lightness parity (L ≈ 0.74–0.78) across safe/warn/critical so warnings do not
+     flare while critical reds sink into dark background. */
+  @supports (color: color-mix(in oklch, white, black)) {
+    --ok: color-mix(in oklch, oklch(0.78 0.165 142.5) calc(100% * var(--accent-opacity)), transparent);
+    --warn: color-mix(in oklch, oklch(0.77 0.175 67.5) calc(100% * var(--accent-opacity)), transparent);
+    --critical: color-mix(in oklch, oklch(0.74 0.20 25.4) calc(100% * var(--accent-opacity)), transparent);
+    --reset: color-mix(in oklch, oklch(0.75 0.185 24.8) calc(100% * max(0.36, calc(0.88 * var(--accent-opacity)))), transparent);
+  }
   --accent: var(--primary);
   --bg-hover: var(--secondary);
   --bg-section: var(--muted);
