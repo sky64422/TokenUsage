@@ -1112,6 +1112,9 @@ body {
 }
 
 .settings-update-btn {
+  --update-button-surface: rgba(255, 255, 255, 0.04);
+  --update-button-border: var(--border-soft);
+  --update-button-shadow: none;
   position: relative;
   flex: 0 0 var(--settings-control-height);
   width: var(--settings-control-height);
@@ -1121,9 +1124,9 @@ body {
   margin: 0;
   box-sizing: border-box;
   font: inherit;
-  border: 1px solid var(--border-soft);
+  border: 0;
   border-radius: var(--settings-control-radius);
-  background: rgba(255, 255, 255, 0.04);
+  background: transparent;
   color: rgba(255, 255, 255, 0.72);
   display: inline-flex;
   align-items: center;
@@ -1140,8 +1143,21 @@ body {
 
 .settings-update-btn:hover:not(:disabled) {
   color: #ffffff;
-  border-color: var(--border);
-  background: rgba(255, 255, 255, 0.09);
+  --update-button-border: var(--border);
+  --update-button-surface: rgba(255, 255, 255, 0.09);
+}
+
+/* Keep the 32px hit target while balancing the chrome with the adjacent switch. */
+.settings-update-btn::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid var(--update-button-border);
+  border-radius: var(--radius-sm);
+  background: var(--update-button-surface);
+  box-shadow: var(--update-button-shadow);
+  pointer-events: none;
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
 }
 
 .settings-update-btn:active:not(:disabled) {
@@ -1151,16 +1167,16 @@ body {
 .settings-update-btn.update-available,
 .settings-update-btn.update-ready {
   color: #38bdf8;
-  border-color: rgba(56, 189, 248, 0.45);
-  background: rgba(56, 189, 248, 0.10);
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.20);
+  --update-button-border: rgba(56, 189, 248, 0.45);
+  --update-button-surface: rgba(56, 189, 248, 0.10);
+  --update-button-shadow: 0 0 8px rgba(56, 189, 248, 0.20);
 }
 
 .settings-update-btn.update-available:hover:not(:disabled),
 .settings-update-btn.update-ready:hover:not(:disabled) {
-  border-color: rgba(56, 189, 248, 0.70);
-  background: rgba(56, 189, 248, 0.18);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.32);
+  --update-button-border: rgba(56, 189, 248, 0.70);
+  --update-button-surface: rgba(56, 189, 248, 0.18);
+  --update-button-shadow: 0 0 12px rgba(56, 189, 248, 0.32);
 }
 
 .settings-update-btn:disabled,
