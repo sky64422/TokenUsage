@@ -135,11 +135,11 @@ impl AppCore {
         &self,
         f: impl FnOnce(&mut AppSettings) -> T,
     ) -> Result<T, String> {
-        let out = {
-            let mut guard = self.lock();
-            f(&mut guard.state.settings)
-        };
-        self.persist()?;
+        let mut guard = self.lock();
+        let mut next = guard.state.clone();
+        let out = f(&mut next.settings);
+        save_state(&guard.app_data_dir, &next)?;
+        guard.state = next;
         Ok(out)
     }
 
@@ -210,9 +210,11 @@ impl AppCore {
                     return Err("Keep at least one provider visible".into());
                 }
             }
-            provider_config_mut(&mut guard.state.settings, id).enabled = enabled;
+            let mut next = guard.state.clone();
+            provider_config_mut(&mut next.settings, id).enabled = enabled;
+            save_state(&guard.app_data_dir, &next)?;
+            guard.state = next;
         }
-        self.persist()?;
         Ok(self.refresh_all())
     }
 

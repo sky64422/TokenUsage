@@ -239,3 +239,41 @@ fn legacy_period_setting_is_ignored_and_not_saved() {
     let saved = serde_json::to_value(state).unwrap();
     assert!(saved["settings"].get("show_period").is_none());
 }
+
+#[test]
+fn risk_failed_settings_write_preserves_memory() {
+    use token_usage_lib::domain::types::CardTint;
+    let dir = tempdir().unwrap();
+    let blocked = dir.path().join("blocked");
+    fs::write(&blocked, "not a directory").unwrap();
+    let initial = default_state();
+    type SettingMutation = fn(&AppCore) -> Result<(), String>;
+    let mutations: [SettingMutation; 7] = [
+        |core| core.set_opacity(0.5).map(|_| ()),
+        |core| core.set_autostart(!default_state().settings.autostart),
+        |core| core.set_hover_detail(!default_state().settings.hover_detail),
+        |core| core.set_always_show_notch(true),
+        |core| core.set_show_orbit(false),
+        |core| core.set_show_icon_glow(false),
+        |core| core.set_provider_tint(ProviderId::Grok, CardTint::Mint),
+    ];
+    for (index, mutate) in mutations.into_iter().enumerate() {
+        let core = AppCore::new(initial.clone(), blocked.clone());
+        assert!(mutate(&core).is_err());
+        assert_eq!(core.get_state(), initial, "mutation {index}");
+    }
+}
+
+#[test]
+fn risk_failed_provider_write_preserves_memory_and_snapshots() {
+    ensure_skip_network();
+    let dir = tempdir().unwrap();
+    let blocked = dir.path().join("blocked");
+    fs::write(&blocked, "not a directory").unwrap();
+    let initial = default_state();
+    let core = AppCore::new(initial.clone(), blocked);
+    let snapshots = core.refresh_all();
+    assert!(core.set_provider_enabled(ProviderId::Grok, false).is_err());
+    assert_eq!(core.get_state(), initial);
+    assert_eq!(core.get_snapshots(), snapshots);
+}
