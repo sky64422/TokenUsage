@@ -2,11 +2,11 @@
 
 Screen-edge concave notch widget for Windows that tracks **Claude / Codex / Grok / Antigravity** coding-agent **quota usage vs reset times** and live working activity — personal CLI OAuth and official vendor CLI, with **reset-time–first** display.
 
-**Current release:** [v0.3.5](https://github.com/sky64422/TokenUsage/releases/tag/v0.3.5)
+**Current release:** [v0.3.6](https://github.com/sky64422/TokenUsage/releases/tag/v0.3.6)
 
 ---
 
-## Features (v0.3.5)
+## Features (v0.3.6)
 
 - **Concave Edge Notch:** 64 DIP depth with two tangent 32 DIP circular arcs, 44 DIP content inset, and 40 DIP provider rings (12 DIP lateral margins). Transparent HWND passes clicks to desktop apps; bottom docking overlays the Windows taskbar.
 - **Inward Quota Detail:** Click a provider ring to inspect inward details. Shows name, period (`5h` / `Week` / `30d`), and reset time on row 1; Quiet Luxury 6px pill bar and percentage on row 2. Dual and grouped rows use compact 8px spacing.
