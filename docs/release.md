@@ -1,7 +1,7 @@
 # Release & in-app updates
 
-**Updated:** 2026-10-03  
-**Current public tag:** v0.3.4  
+**Updated:** 2026-10-04
+**Current public tag:** v0.3.5
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,7 +12,8 @@
 
 | Tag | Highlights |
 |-----|------------|
-| **v0.3.4** | Settings: standardized Korean terminology, inline version badge with sky tint next to update button, uniform 40px row height cadence; Clippy & activity detection refinements |
+| **v0.3.5** | Stable hover detail geometry, clearer hovered provider identity, and settings layout polish; includes AGY background auto-update suppression introduced in v0.3.4 |
+| v0.3.4 | Settings: standardized Korean terminology, inline version badge with sky tint next to update button, uniform 40px row height cadence; Clippy & activity detection refinements |
 | v0.3.3 | Settings: 3-tab layout ('���', '��', '�Ϲ�'), appearance toggles (period, orbit, icon glow), refined readability & spacing; Notch: active-only orbit, default top-window metric |
 | v0.3.2 | Drag smoothness: 125 FPS high-refresh mouse tracking with 1ms timer precision; Model detail: dynamic centering on active provider cell |
 | v0.3.1 | Notch stability: immobile corner anchoring eliminates toggle jitter; Auto-reveal: edge fold & hover reveal; Providers: official Antigravity CLI quota integration and activity affordances |
