@@ -176,15 +176,7 @@ pub fn apply(
         .find(|m| Some(&m.name) == placement.monitor_hint.as_ref())
         .or(areas.first())
         .ok_or("No monitor available")?;
-    let count = [
-        settings.claude.enabled,
-        settings.codex.enabled,
-        settings.grok.enabled,
-        settings.agy.enabled,
-    ]
-    .into_iter()
-    .filter(|v| *v)
-    .count();
+    let count = settings.enabled_provider_ids().len();
     let layout = calculate_layout_target(
         monitor,
         placement,
@@ -381,15 +373,7 @@ pub fn begin_drag(app: &AppHandle, id: u64) -> Result<(), String> {
     let pos = win.cursor_position().map_err(|e| e.to_string())?;
     let areas = monitors(app)?;
     let settings = app.state::<AppHandleState>().core.get_state().settings;
-    let count = [
-        settings.claude.enabled,
-        settings.codex.enabled,
-        settings.grok.enabled,
-        settings.agy.enabled,
-    ]
-    .into_iter()
-    .filter(|v| *v)
-    .count();
+    let count = settings.enabled_provider_ids().len();
     let controller = app.state::<NotchController>();
     let mut rt = controller.0.lock().map_err(|_| "Notch lock poisoned")?;
     if id <= rt.last_drag_id || rt.drag.is_some() {

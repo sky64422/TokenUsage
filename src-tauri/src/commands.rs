@@ -192,10 +192,6 @@ pub fn toggle_visibility_from_handle(app: &AppHandle) {
     let app = app.clone();
     let core = Arc::clone(&state.core);
     tauri::async_runtime::spawn(async move {
-        let snaps = match tokio::task::spawn_blocking(move || core.refresh_all()).await {
-            Ok(s) => s,
-            Err(_) => return,
-        };
-        let _ = app.emit("snapshots-updated", &snaps);
+        crate::infrastructure::poll::refresh_and_emit(&app, core).await;
     });
 }

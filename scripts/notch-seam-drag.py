@@ -1,4 +1,5 @@
 """Repeated native seam crossings, including samples that skip the entry band."""
+from notch_test_support import prepare_preview, reset_notch
 import json
 from pathlib import Path
 import pyautogui
@@ -7,6 +8,7 @@ from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     browser=p.chromium.connect_over_cdp('http://127.0.0.1:9223');page=browser.contexts[0].pages[0]
     assert page.evaluate('async()=>window.__TAURI__.app.getIdentifier()')=='com.tokenusage.notch-preview'
+    prepare_preview(page)
     def invoke(c,a={}):return page.evaluate('async([c,a])=>window.__TAURI__.core.invoke(c,a)',[c,a])
     areas=invoke('get_notch_monitors')
     left=next(m for m in areas if m['bounds']['x']<0);right=areas[0]
@@ -14,7 +16,7 @@ with sync_playwright() as p:
     y=max(left['work']['y'],right['work']['y'])+600
     page.evaluate('async()=>{window.seamEvents=[];await window.__TAURI__.event.listen("notch-layout",e=>window.seamLayout=e.payload);await window.__TAURI__.event.listen("notch-drag",e=>window.seamEvents.push(e.payload));}')
     def start(m,edge):
-        page.locator('.detail-close').evaluate('(e)=>e.click()');page.evaluate('()=>document.activeElement?.blur()')
+        reset_notch(page);page.evaluate('()=>document.activeElement?.blur()')
         pyautogui.moveTo(seam+600,y,duration=.1)
         l=invoke('set_notch_placement',{'placement':{'edge':edge,'offset':.5,'monitor_hint':m['name']}})
         pyautogui.moveTo(l['notch']['x']+36*l['scale'],l['notch']['y']+102*l['scale'],duration=.2)

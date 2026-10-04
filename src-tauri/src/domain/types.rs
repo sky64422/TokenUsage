@@ -208,3 +208,30 @@ impl Default for PersistedState {
 pub struct DiagnosticsSnapshot {
     pub lines: Vec<String>,
 }
+
+impl AppSettings {
+    pub fn provider_config(&self, id: ProviderId) -> &ProviderConfig {
+        match id {
+            ProviderId::Claude => &self.claude,
+            ProviderId::Codex => &self.codex,
+            ProviderId::Grok => &self.grok,
+            ProviderId::Agy => &self.agy,
+        }
+    }
+
+    pub fn provider_config_mut(&mut self, id: ProviderId) -> &mut ProviderConfig {
+        match id {
+            ProviderId::Claude => &mut self.claude,
+            ProviderId::Codex => &mut self.codex,
+            ProviderId::Grok => &mut self.grok,
+            ProviderId::Agy => &mut self.agy,
+        }
+    }
+
+    pub fn enabled_provider_ids(&self) -> Vec<ProviderId> {
+        ProviderId::all()
+            .into_iter()
+            .filter(|id| self.provider_config(*id).enabled)
+            .collect()
+    }
+}

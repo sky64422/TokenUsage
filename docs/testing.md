@@ -1,5 +1,25 @@
 # Testing & coverage
 
+## Refactor verification (2026-10-04)
+
+- `npm test`: 148 passed (54 frontend, 57 Rust unit, 16 risk, 21 notch), one live AGY opt-in test ignored.
+- `npm run build` and `cargo clippy --all-targets -- -D warnings`: passed.
+- Browser scripts: `settings-smoke.py`, `grok-usage-smoke.py`, `detail-layout-smoke.py` passed.
+- Isolated Windows/WebView2: `notch-smoke.py`, `notch-regression.py`,
+  `notch-edge-drag.py`, `notch-seam-drag.py`, `notch-polish.py` passed.
+  Covered four edges, focus/click-through, 20 open/close cycles, pointer threshold,
+  failed-write rollback, 10 continuous seam crossings plus six separate drags,
+  12 auto-hide/reveal cycles, keyboard access and reduced motion.
+- `notch-hover-stability.py --port 9223 --fixture`: 260 stable frames with
+  74/112 DIP detail heights on the bottom edge; screenshots visually inspected.
+- Native hardware: 100% DPI, primary 2560x1440 and negative-x 1024x1280 secondary.
+  Mixed-DPI hardware, unplug/replug and live vendor/updater installation remain untested.
+- Legacy native scripts initially failed on removed `.detail-close` / provider-chip
+  selectors and old right-click/activity expectations; updated to current UI contracts
+  and rerun successfully. No product behavior was changed to accommodate these tests.
+- A final test run initially encountered Windows' running-executable lock; the isolated
+  preview was closed and the complete test command then passed. Close preview before rebuilding.
+
 **Updated:** 2026-10-01 (v0.2.0)
 
 ## Snapshot
@@ -14,6 +34,21 @@
 | GUI | Manual `npm run tauri dev` / `run:exe` | Glass chrome, Quiet Luxury tracks, hotkey, updater, opacity floors |
 
 ## Commands
+
+Controller regressions in `src/ui/notch-surface.test.ts`, `notch-drag.test.ts` and
+`update-controller.test.ts` exercise deferred native replies, failed begin/retry,
+stale drag notices, capture disposal, updater ordering and asynchronous subscription
+cleanup without real timers or vendor requests. Rust `infrastructure::poll::tests`
+checks snapshot delivery and worker/event failures. Risk tests exercise real failed
+filesystem writes for all preference setters and provider visibility.
+
+Native smoke scripts share `scripts/notch_test_support.py`: they assert the preview
+identifier before setting fixture preferences, enable all four providers and hover,
+and reset details using Escape. They cover the current provider cards and right-click
+toggle behavior. The auto-hide smoke deliberately turns always-show off.
+`python scripts/notch-hover-stability.py --port 9223 --fixture` prepares two synthetic
+quota cards of different heights in that same isolated preview. Without `--fixture`,
+the script retains its read-only preference behavior against the selected CDP port.
 
 With Vite running (`npm run dev`), optional Edge/Playwright browser checks:
 `python scripts/settings-smoke.py` verifies fixed settings navigation with body scrolling,

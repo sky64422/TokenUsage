@@ -14,32 +14,19 @@ import {
 import type { AppSettings, ProviderId } from "./types";
 import { PROVIDER_IDS } from "./types";
 
-import claudeMark from "../assets/marks/claude.svg";
-import codexMark from "../assets/marks/codex.svg";
-import grokMark from "../assets/marks/grok.svg";
-import agyMark from "../assets/marks/agy.svg";
-
-const MARKS: Record<ProviderId, string> = {
-  claude: claudeMark,
-  codex: codexMark,
-  grok: grokMark,
-  agy: agyMark,
-};
+import { PROVIDER_CATALOG } from "./provider-catalog";
+import {
+  createUpdateController,
+  UPDATE_CHECKING,
+  UPDATE_DOWNLOADING,
+  UPDATE_FAILED,
+  UPDATE_READY,
+  UPDATE_RESTARTING,
+  type UpdateState,
+} from "./update-controller";
+export type { UpdatePhase, UpdateInfo, DownloadProgress } from "./update-controller";
 
 export const SETTINGS_PANEL_HEIGHT = 400;
-export type UpdatePhase = "idle" | "downloading" | "ready";
-
-export interface UpdateInfo {
-  current_version: string;
-  version: string;
-}
-
-export interface DownloadProgress {
-  version: string;
-  chunk_len: number;
-  content_length: number | null;
-  received: number;
-}
 
 const PROVIDER_VISIBLE = "표시";
 const PROVIDER_HIDDEN = "숨김";
@@ -76,13 +63,6 @@ export function mountSettingsPanel(
   let visible = false;
   const versionStr = appVersion ? `v${appVersion.replace(/^v/i, "")}` : "";
   const initialPct = opacityToPct(settings.opacity);
-
-  let updatePhase: UpdatePhase = "idle";
-  let updateVersion: string | null = null;
-  let updateHint = "";
-  let updateBusy = false;
-  let updateError = "";
-  let updateChecked = false;
 
   root.innerHTML = `
     <div class="settings" id="settings-sheet">
@@ -179,10 +159,10 @@ export function mountSettingsPanel(
         <div class="settings-section">
           <span class="settings-label">표시할 모델</span>
           <div class="provider-grid" role="group" aria-label="표시할 모델">
-            ${providerCard("claude", "Claude", MARKS.claude, settings.claude.enabled !== false)}
-            ${providerCard("codex", "Codex", MARKS.codex, settings.codex.enabled !== false)}
-            ${providerCard("grok", "Grok", MARKS.grok, settings.grok.enabled !== false)}
-            ${providerCard("agy", "Antigravity", MARKS.agy, settings.agy.enabled !== false)}
+            ${providerCard("claude", settings.claude.enabled !== false)}
+            ${providerCard("codex", settings.codex.enabled !== false)}
+            ${providerCard("grok", settings.grok.enabled !== false)}
+            ${providerCard("agy", settings.agy.enabled !== false)}
           </div>
         </div>
         <p class="settings-save-status" id="provider-save-status" role="status" hidden></p>
@@ -359,7 +339,9 @@ export function mountSettingsPanel(
   bindToggle("show-orbit", settings.show_orbit !== false, handlers.onShowOrbit);
   bindToggle("show-icon-glow", settings.show_icon_glow !== false, handlers.onShowIconGlow);
 
-  function paintUpdateUi(): void {
+  function paintUpdateUi(state: UpdateState): void {
+    const { phase: updatePhase, version: updateVersion, hint: updateHint,
+      busy: updateBusy, error: updateError, checked: updateChecked } = state;
     const btn = root.querySelector<HTMLButtonElement>("#btn-check-update");
     const status = root.querySelector<HTMLElement>("#update-status");
     if (!btn || !status) return;
@@ -380,20 +362,20 @@ export function mountSettingsPanel(
 
     if (updatePhase === "ready" && updateVersion) {
       title = `${updateVersion} 설치를 위해 재시작`;
-      statusText = "준비 완료";
+      statusText = UPDATE_READY;
       status.classList.add("is-ready");
     } else if (updatePhase === "downloading" && updateVersion) {
       title = `${updateVersion} 다운로드 중…`;
-      statusText = updateHint || "다운로드 중…";
+      statusText = updateHint || UPDATE_DOWNLOADING;
     } else if (updateBusy) {
       title = "업데이트 확인 중…";
-      statusText = updateHint || "확인 중…";
+      statusText = updateHint || UPDATE_CHECKING;
     } else if (updateHint) {
       statusText = updateHint;
     }
 
     if (updateError) {
-      statusText = "업데이트 실패";
+      statusText = UPDATE_FAILED;
       status.classList.remove("is-ready");
       status.classList.add("is-error");
       status.title = updateError;
@@ -404,131 +386,25 @@ export function mountSettingsPanel(
 
     const labelEl = btn.querySelector(".update-label");
     if (labelEl) {
-      labelEl.textContent = updateBusy ? (updatePhase === "ready" ? "재시작 중…" : "확인 중…") : updatePhase === "ready" ? UPDATE_RESTART
-        : updatePhase === "downloading" ? "다운로드 중…" : UPDATE_CHECK;
+      labelEl.textContent = updateBusy ? (updatePhase === "ready" ? UPDATE_RESTARTING : UPDATE_CHECKING) : updatePhase === "ready" ? UPDATE_RESTART
+        : updatePhase === "downloading" ? UPDATE_DOWNLOADING : UPDATE_CHECK;
     }
     btn.setAttribute("title", title);
     btn.setAttribute("aria-label", title);
   }
 
-  async function runUpdateAction(): Promise<void> {
-    const phaseAtClick = updatePhase;
-    const version = updateVersion;
-
-    if (phaseAtClick === "downloading") {
-      updateHint = "다운로드 중…";
-      paintUpdateUi();
-      return;
-    }
-
-    updateBusy = true;
-    updateChecked = false;
-    updateError = "";
-    if (phaseAtClick === "ready") {
-      updateHint = version ? `${version} 설치를 위해 재시작…` : "재시작 중…";
-    } else {
-      updateHint = "확인 중…";
-    }
-    paintUpdateUi();
-
-    try {
-      const hasUpdate = await invoke<boolean>("check_for_updates");
-      if (hasUpdate) {
-        updateBusy = false;
-        if (updatePhase === "idle") updatePhase = "downloading";
-        if (updatePhase !== "ready") updateHint = "다운로드 중…";
-        paintUpdateUi();
-        return;
-      }
-      updatePhase = "idle";
-      updateVersion = null;
-      updateBusy = false;
-      updateHint = "최신 버전";
-      updateChecked = true;
-      paintUpdateUi();
-      window.setTimeout(() => {
-        if (!updateBtn.isConnected || updatePhase !== "idle") return;
-        updateChecked = false;
-        paintUpdateUi();
-      }, 2500);
-    } catch (err) {
-      console.error("check_for_updates failed", err);
-      updateBusy = false;
-      updateError = formatUpdateError(err);
-      if (phaseAtClick === "ready" && version) {
-        updatePhase = "ready";
-        updateVersion = version;
-      }
-      paintUpdateUi();
-    }
-  }
-
-  function formatUpdateError(err: unknown): string {
-    if (typeof err === "string") return err;
-    if (err && typeof err === "object" && "message" in err) {
-      return String((err as { message: unknown }).message);
-    }
-    return "업데이트 확인 실패";
-  }
-
-  updateBtn.addEventListener("click", () => {
-    void runUpdateAction();
+  const updater = createUpdateController({
+    check: () => invoke<boolean>("check_for_updates"),
+    listen,
+    schedule: (callback, delay) => {
+      const timer = window.setTimeout(callback, delay);
+      return () => window.clearTimeout(timer);
+    },
+    reportError: (message, error) => console.error(message, error),
   });
-  paintUpdateUi();
-
-  const unlisteners: Array<() => void> = [];
-  void listen<UpdateInfo>("update-available", (ev) => {
-    if (!ev.payload?.version) return;
-    updatePhase = "downloading";
-    updateError = "";
-    updateVersion = ev.payload.version;
-    updateBusy = false;
-    updateHint = "다운로드 중…";
-    paintUpdateUi();
-  }).then((u) => unlisteners.push(u));
-
-  void listen<DownloadProgress>("update-download-progress", (ev) => {
-    const p = ev.payload;
-    if (!p?.version || updatePhase === "ready") return;
-    updatePhase = "downloading";
-    updateVersion = p.version;
-    updateBusy = false;
-    if (p.content_length && p.content_length > 0) {
-      const pct = Math.min(99, Math.round((p.received / p.content_length) * 100));
-      updateHint = `${pct}% 다운로드`;
-    } else {
-      updateHint = "다운로드 중…";
-    }
-    paintUpdateUi();
-  }).then((u) => unlisteners.push(u));
-
-  void listen<UpdateInfo>("update-ready", (ev) => {
-    if (!ev.payload?.version) return;
-    updatePhase = "ready";
-    updateError = "";
-    updateVersion = ev.payload.version;
-    updateBusy = false;
-    updateHint = "준비 완료";
-    paintUpdateUi();
-  }).then((u) => unlisteners.push(u));
-
-  void listen("update-not-available", () => {
-    updatePhase = "idle";
-    updateVersion = null;
-    updateBusy = false;
-    updateChecked = true;
-    updateError = "";
-    updateHint = "최신 버전";
-    paintUpdateUi();
-  }).then((u) => unlisteners.push(u));
-
-  void listen<string>("update-failed", (ev) => {
-    const msg = typeof ev.payload === "string" ? ev.payload : "업데이트 실패";
-    updateBusy = false;
-    if (updatePhase !== "ready") updatePhase = "idle";
-    updateError = msg;
-    paintUpdateUi();
-  }).then((u) => unlisteners.push(u));
+  updater.subscribe(paintUpdateUi);
+  const runUpdateAction = () => { void updater.action(); };
+  updateBtn.addEventListener("click", runUpdateAction);
 
   let providerSaving = false;
 
@@ -676,12 +552,14 @@ export function mountSettingsPanel(
     },
     destroy() {
       resetQuit();
-      for (const u of unlisteners) u();
+      updateBtn.removeEventListener("click", runUpdateAction);
+      updater.destroy();
     },
   };
 }
 
-function providerCard(id: ProviderId, label: string, markUrl: string, enabled: boolean): string {
+function providerCard(id: ProviderId, enabled: boolean): string {
+  const { label, mark: markUrl } = PROVIDER_CATALOG[id];
   const state = enabled ? "on" : "off";
   const badgeText = enabled ? PROVIDER_VISIBLE : PROVIDER_HIDDEN;
   return `

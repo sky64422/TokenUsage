@@ -22,9 +22,12 @@ Rust AppCore
 ## UI layout contracts
 
 - `src/ui/app.ts` coordinates settings, snapshots, activities, and the detail/rail state machine.
+- `src/ui/notch-surface.ts` serializes native surface requests, deduplicates identical requests, and only paints the latest requested response. `notch-drag.ts` owns gesture sessions, pointer capture, click suppression and input registration cleanup; native placement remains in Rust.
+- `src/ui/update-controller.ts` owns updater IPC, phases, feedback timers and event subscriptions. `settings-panel.ts` renders that state; `provider-catalog.ts` shares provider marks/labels between settings and the rail.
 - `src/ui/notch.ts` renders keyed provider rings (40 DIP) and the concave SVG silhouette (64 DIP depth, 32 DIP arcs, 44 DIP end insets). Ring DOM survives snapshot refreshes.
 - `src/ui/notch-state.ts` owns hover/pin/settings/escape transitions, delayed close, and headline presentation.
 - `domain/notch.rs` computes physical monitor/working-area bounds and shape hit regions (64 DIP depth, 72 DIP provider cells, 12 DIP lateral margins). Negative coordinates and per-monitor scale are valid.
+- `domain/notch/drag.rs` owns pure edge/monitor drag selection, reexported through `domain::notch::NotchDrag` to preserve the existing API.
 - `infrastructure/notch_window.rs` serializes native layout requests, samples the native cursor every 32ms for transparent input, and rechecks display geometry about once per second.
 - The main transparent HWND expands inward for details. The frontend renders at local DIP coordinates from the returned physical layout; it never moves or resizes the HWND itself.
 - No DWM rounded clipping, resize handles, legacy 240px width floor, or MutationObserver content-hug loop. Custom SVG owns the shape.
@@ -59,7 +62,7 @@ Reads local CLI auth or official CLI only (no in-app login). Always on:
 
 - **Antigravity (AGY):** official installed CLI run via Windows ConPTY with `AGY_CLI_DISABLE_AUTO_UPDATE=true`. Quota is cached to disk (`quota-cache/agy_snapshot.json`) for instant 0ms cold-start; completion notifies via `poll::notify_refresh()`. Gemini and Claude/GPT 5h/week quotas remain separate.
 - **Grok:** map primary period credit only; `productUsage` array (GrokBuild, GrokChat) is ignored. Period present with omitted % stays unknown/degraded (does not claim 0%).
-- Shared 45s HTTP body cache + HTTP status mapping (`quota/http.rs`); snapshot primaries in `quota/snapshot.rs`. Window labels are short at the adapter (`5h` / `Week` / `Month` / `30d`).
+- Shared HTTP body cache implementation + HTTP status mapping (`quota/http.rs`), with 45s Claude/Codex and 15s Grok TTLs; snapshot primaries in `quota/snapshot.rs`. Window labels are short at the adapter (`5h` / `Week` / `Month` / `30d`).
 - Env `TOKENUSAGE_SKIP_DIRECT_QUOTA=1` for tests.
 
 ### No local JSONL / tokscale
@@ -80,6 +83,13 @@ There is no `PlanLimits` / local-event estimate path. Poll interval is `RefreshP
 - Token ledger (input / output / cache read / write) from a different vendor usage API  
 
 ## Registered Tauri Commands
+
+`AppSettings` owns provider config access and enabled-provider ordering used by both
+quota refresh and native geometry. Setting writes commit the cloned in-memory state
+only after persistence succeeds, including provider visibility and notch placement.
+`infrastructure/poll.rs::refresh_and_emit` is shared by boot, periodic/AGY wakeups and
+show-window refresh; worker and event-delivery failures are recorded in diagnostics.
+The original command names and JSON payloads are unchanged.
 
 - State & Snapshots: `get_state`, `get_snapshots`
 - Preferences & Controls: `set_opacity`, `set_autostart`, `set_hover_detail`, `set_always_show_notch`, `set_show_orbit`, `set_show_icon_glow`, `set_show_period` (legacy compat), `set_provider_enabled`, `set_provider_tint`

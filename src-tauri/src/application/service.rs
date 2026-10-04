@@ -1,6 +1,6 @@
 use crate::domain::constants::clamp_opacity;
 use crate::domain::types::{
-    AppSettings, CardTint, DataSource, DiagnosticsSnapshot, PersistedState, ProviderConfig,
+    AppSettings, CardTint, DataSource, DiagnosticsSnapshot, PersistedState,
     ProviderId, ProviderSnapshot, SnapshotStatus,
 };
 use crate::infrastructure::store::save_state;
@@ -59,10 +59,7 @@ impl AppCore {
     pub fn refresh_all(&self) -> Vec<ProviderSnapshot> {
         let (enabled, app_data_dir) = {
             let guard = self.lock();
-            let enabled: Vec<ProviderId> = ProviderId::all()
-                .into_iter()
-                .filter(|id| provider_config(&guard.state.settings, *id).enabled)
-                .collect();
+            let enabled = guard.state.settings.enabled_provider_ids();
             (enabled, guard.app_data_dir.clone())
         };
 
@@ -204,14 +201,14 @@ impl AppCore {
             let mut guard = self.lock();
             if !enabled {
                 let others_on = ProviderId::all().into_iter().any(|other| {
-                    other != id && provider_config(&guard.state.settings, other).enabled
+                    other != id && guard.state.settings.provider_config(other).enabled
                 });
                 if !others_on {
                     return Err("Keep at least one provider visible".into());
                 }
             }
             let mut next = guard.state.clone();
-            provider_config_mut(&mut next.settings, id).enabled = enabled;
+            next.settings.provider_config_mut(id).enabled = enabled;
             save_state(&guard.app_data_dir, &next)?;
             guard.state = next;
         }
@@ -220,7 +217,7 @@ impl AppCore {
 
     pub fn set_provider_tint(&self, id: ProviderId, tint: CardTint) -> Result<(), String> {
         self.mutate_settings(|s| {
-            provider_config_mut(s, id).card_tint = tint;
+            s.provider_config_mut(id).card_tint = tint;
         })
     }
 
@@ -263,24 +260,6 @@ fn ordered_snapshots(map: &HashMap<ProviderId, ProviderSnapshot>) -> Vec<Provide
         .into_iter()
         .filter_map(|id| map.get(&id).cloned())
         .collect()
-}
-
-fn provider_config(settings: &AppSettings, id: ProviderId) -> &ProviderConfig {
-    match id {
-        ProviderId::Claude => &settings.claude,
-        ProviderId::Codex => &settings.codex,
-        ProviderId::Grok => &settings.grok,
-        ProviderId::Agy => &settings.agy,
-    }
-}
-
-fn provider_config_mut(settings: &mut AppSettings, id: ProviderId) -> &mut ProviderConfig {
-    match id {
-        ProviderId::Claude => &mut settings.claude,
-        ProviderId::Codex => &mut settings.codex,
-        ProviderId::Grok => &mut settings.grok,
-        ProviderId::Agy => &mut settings.agy,
-    }
 }
 
 /// When vendor quota misses: show a card, not a local token estimate.

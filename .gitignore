@@ -7,3 +7,4 @@ src-tauri/target
 tmp/
 .superpowers/
 .tmp-ui*.png
+__pycache__/

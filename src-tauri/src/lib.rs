@@ -11,7 +11,7 @@ use infrastructure::updater;
 use infrastructure::window_ctl;
 use state::AppHandleState;
 use std::sync::Arc;
-use tauri::{Emitter, Manager};
+use tauri::Manager;
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
@@ -81,12 +81,7 @@ pub fn run() {
             let boot_core = Arc::clone(&core);
             let boot_app = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                let snaps = match tokio::task::spawn_blocking(move || boot_core.refresh_all()).await
-                {
-                    Ok(s) => s,
-                    Err(_) => return,
-                };
-                let _ = boot_app.emit("snapshots-updated", &snaps);
+                infrastructure::poll::refresh_and_emit(&boot_app, boot_core).await;
             });
 
             Ok(())

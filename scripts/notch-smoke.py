@@ -1,4 +1,5 @@
 """Optional Windows/WebView2 smoke; see docs/windows-dev.md. Synthetic data only."""
+from notch_test_support import prepare_preview, reset_notch
 import ctypes,json
 from ctypes import wintypes
 from pathlib import Path
@@ -18,11 +19,12 @@ for id,name,pct,week in [('claude','Claude',73,7),('codex','Codex',21,12),('grok
 with sync_playwright() as p:
  browser=p.chromium.connect_over_cdp('http://127.0.0.1:9223');page=browser.contexts[0].pages[0]
  assert page.evaluate('async()=>window.__TAURI__.app.getIdentifier()')=='com.tokenusage.notch-preview', 'Use the isolated preview identifier'
+ prepare_preview(page)
  errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def invoke(cmd,args={}):return page.evaluate('async([c,a])=>window.__TAURI__.core.invoke(c,a)',[cmd,args])
  def fixture():page.evaluate('async s=>window.__TAURI__.event.emit("snapshots-updated",s)',fixtures)
  def reset():
-  page.locator('.detail-close').evaluate('(e)=>e.click()')
+  reset_notch(page)
   page.evaluate('()=>document.activeElement?.blur()')
  pyautogui.moveTo(1000,500)
  fixture()

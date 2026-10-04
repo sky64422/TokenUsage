@@ -7,6 +7,9 @@ import { formatProviderStatus } from "./format";
 import { mountProviders } from "./providers";
 import { mountSettingsPanel, SETTINGS_PANEL_HEIGHT } from "./settings-panel";
 import { mountNotch, position } from "./notch";
+import { createNotchSurface } from "./notch-surface";
+import { mountNotchDrag } from "./notch-drag";
+import type { DragNotice } from "./notch-drag";
 import {
   createCloseDelay,
   initialNotchState,
@@ -20,7 +23,6 @@ import type {
   ProviderSnapshot,
   ProviderActivity,
   NotchLayout,
-  NotchPlacement,
   DiagnosticsSnapshot,
 } from "./types";
 
@@ -39,19 +41,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let latestActivities: ProviderActivity[] = [];
   let interaction = initialNotchState();
   let layout: NotchLayout | undefined;
-  let revision = Date.now();
-  let lastSurface = "";
-  let surfaceChain: Promise<void> = Promise.resolve();
   let lastQuota = "";
-  let dragging = false;
-  let pressedPointer: number | null = null;
-  let capturedPointer: { element: Element; id: number } | null = null;
-  let suppressClick = false;
-  let dragId: number | null = null;
-  let nextDragId = Date.now();
-  let dragChain: Promise<void> = Promise.resolve();
   let beforeDrag = initialNotchState();
-  let localStart = { x: 0, y: 0 };
   const win = getCurrentWindow();
   const enabled = () =>
     PROVIDER_IDS.filter((id) => persisted.settings[id].enabled);
@@ -60,13 +51,37 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     errorEl.textContent = String(e);
     errorEl.hidden = false;
   };
+  const events = new AbortController();
+  const eventOptions = { signal: events.signal };
+  const unlisteners: Array<() => void> = [];
+  const surface = createNotchSurface({
+    send: request => invoke<NotchLayout>("set_notch_surface", { ...request }),
+    paint: paintLayout,
+    fail,
+  });
+  const drag = mountNotchDrag(rail, () => layout, {
+    begin: id => invoke<void>("begin_notch_drag", { id }),
+    finish: (id, cancel) => invoke<void>("finish_notch_drag", { id, cancel }),
+    onStart: () => { beforeDrag = { ...interaction }; closeDelay.cancel(); },
+    onNotice: event => {
+      if (event.active) closeDelay.cancel();
+      if (event.finished) {
+        if (event.active) {
+          interaction = beforeDrag.settings || beforeDrag.pinned ? beforeDrag : initialNotchState();
+        }
+        if (event.error) { fail(event.error); interaction = { ...interaction, settings: true }; }
+      }
+      render();
+    },
+    fail,
+  });
   const closeDelay = createCloseDelay(() => {
-    if (dragId === null && !document.activeElement?.matches(":focus-visible"))
+    if (drag.sessionId === null && !document.activeElement?.matches(":focus-visible"))
       dispatch({ type: "leave" });
   });
   const notch = mountNotch(rail, {
     hover: (id) => {
-      if (dragging || !persisted.settings.hover_detail) return;
+      if (drag.dragging || !persisted.settings.hover_detail) return;
       closeDelay.cancel();
       dispatch({ type: "hover", id });
     },
@@ -167,7 +182,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     if (next.detail) position(detail, next.detail, next);
   }
   function requestSurface() {
-    const expanded = !dragging && (interaction.settings || interaction.provider !== null);
+    const expanded = !drag.dragging && (interaction.settings || interaction.provider !== null);
     const height = interaction.settings
       ? SETTINGS_PANEL_HEIGHT
       : Math.ceil(body.getBoundingClientRect().height + SURFACE_PADDING);
@@ -191,28 +206,12 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         }
       }
     }
-    const key = JSON.stringify([expanded, height, target, enabled()]);
-    if (lastSurface === key) return;
-    lastSurface = key;
-    const requestRevision = ++revision;
-    surfaceChain = surfaceChain
-      .then(async () => {
-        const next = await invoke<NotchLayout>("set_notch_surface", {
-          revision: requestRevision,
-          expanded,
-          height,
-          target,
-        });
-        if (requestRevision === revision) paintLayout(next);
-      })
-      .catch((e) => {
-        lastSurface = "";
-        fail(e);
-      });
+    surface.request({ expanded, height, target, providers: enabled() });
   }
+
   function render() {
-    notch.select(interaction.settings || dragging ? null : interaction.provider, interaction.pinned);
-    detail.hidden = dragging || (!interaction.settings && !interaction.provider);
+    notch.select(interaction.settings || drag.dragging ? null : interaction.provider, interaction.pinned);
+    detail.hidden = drag.dragging || (!interaction.settings && !interaction.provider);
     settingsArea.hidden = !interaction.settings;
     detail.classList.toggle("is-settings", interaction.settings);
     quota.hidden = interaction.settings;
@@ -256,112 +255,25 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     render();
   }
   for (const el of [rail, detail]) {
-    el.addEventListener("pointerenter", closeDelay.cancel);
+    el.addEventListener("pointerenter", closeDelay.cancel, eventOptions);
     el.addEventListener("pointerleave", () => {
-      if (!dragging) closeDelay.schedule();
-    });
-    el.addEventListener("focusin", closeDelay.cancel);
-    el.addEventListener("focusout", closeDelay.schedule);
+      if (!drag.dragging) closeDelay.schedule();
+    }, eventOptions);
+    el.addEventListener("focusin", closeDelay.cancel, eventOptions);
+    el.addEventListener("focusout", closeDelay.schedule, eventOptions);
   }
-  root.querySelector(".detail-close")?.addEventListener("click", () => {
-    dispatch({ type: "reset" });
-  });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     e.preventDefault();
-    if (dragId !== null) { finishDrag(true); return; }
+    if (drag.sessionId !== null) { drag.finish(true); return; }
     const id = interaction.provider;
     dispatch({ type: "escape" });
     // Focus recovery must not reopen a detail via the focus handler.
     notch.focus(id);
-  });
-  function releaseDragCapture() {
-    const captured = capturedPointer;
-    capturedPointer = null;
-    if (captured?.element.hasPointerCapture(captured.id)) captured.element.releasePointerCapture(captured.id);
-  }
-  function finishDrag(cancel: boolean) {
-    const id = dragId;
-    if (id === null) return;
-    dragChain = dragChain.then(() => invoke<void>("finish_notch_drag", { id, cancel })).catch(fail);
-  }
-  await listen<{id: number; active: boolean; finished: boolean; placement: NotchPlacement; error: string | null}>("notch-drag", ({payload: event}) => {
-    if (event.id !== dragId) return;
-    if (event.active) {
-      suppressClick = true;
-      closeDelay.cancel();
-    }
-    dragging = event.active && !event.finished;
-    rail.classList.toggle("is-dragging", dragging);
-    if (event.finished) {
-      rail.classList.remove("is-drag-armed");
-      dragId = null;
-      pressedPointer = null;
-      releaseDragCapture();
-      if (event.active) {
-        interaction = beforeDrag.settings || beforeDrag.pinned ? beforeDrag : initialNotchState();
-      }
-      if (event.error) { fail(event.error); interaction = { ...interaction, settings: true }; }
-    }
-    render();
-  });
-  rail.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0 || !layout || dragId !== null) return;
-    const id = ++nextDragId;
-    dragId = id;
-    pressedPointer = e.pointerId;
-    suppressClick = false;
-    beforeDrag = { ...interaction };
-    localStart = { x: e.screenX, y: e.screenY };
-    closeDelay.cancel();
-    capturedPointer = { element: e.target as Element, id: e.pointerId };
-    capturedPointer.element.setPointerCapture(e.pointerId);
-    dragChain = dragChain.then(() => invoke<void>("begin_notch_drag", { id })).catch((error) => {
-      if (dragId === id) {
-        dragId = null;
-        pressedPointer = null;
-        releaseDragCapture();
-        rail.classList.remove("is-drag-armed");
-      }
-      fail(error);
-    });
-  });
-  rail.addEventListener("pointermove", (e) => {
-    if (e.pointerId !== pressedPointer || !layout) return;
-    // Only suppress the browser's click here; native physical coordinates own placement.
-    const travel = Math.hypot(e.screenX - localStart.x, e.screenY - localStart.y);
-    if (travel >= layout.metrics.drag_threshold) {
-      suppressClick = true;
-      rail.classList.add("is-drag-armed");
-    }
-  });
-  rail.addEventListener("pointerup", (e) => {
-    if (e.pointerId !== pressedPointer) return;
-    pressedPointer = null;
-    rail.classList.remove("is-drag-armed");
-    finishDrag(false);
-  });
-  rail.addEventListener("pointercancel", (e) => {
-    if (e.pointerId === pressedPointer) {
-      rail.classList.remove("is-drag-armed");
-      finishDrag(true);
-    }
-  });
-  rail.addEventListener("lostpointercapture", (e) => {
-    if (e.pointerId === pressedPointer) {
-      rail.classList.remove("is-drag-armed");
-      finishDrag(e.buttons !== 0);
-    }
-  });
-  rail.addEventListener("click", (e) => {
-    if (suppressClick && e.detail !== 0) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    }
-    suppressClick = false;
-  }, true);
+  }, eventOptions);
+  unlisteners.push(await listen<DragNotice>("notch-drag", ({ payload }) => drag.notice(payload)));
   function openSettings() {
-    if (dragId !== null) return;
+    if (drag.sessionId !== null) return;
     closeDelay.cancel();
     if (interaction.settings) {
       dispatch({ type: "reset" });
@@ -372,7 +284,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   rail.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     openSettings();
-  });
+  }, eventOptions);
   rail.addEventListener("keydown", (e) => {
     if (e.key === "Tab" && rail.classList.contains("is-folded")) {
       e.preventDefault();
@@ -384,44 +296,51 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       openSettings();
       return;
     }
-  });
-  await listen<NotchLayout>("notch-layout", (ev) => paintLayout(ev.payload));
-  await listen<boolean>("notch-reveal", (ev) => notch.reveal(ev.payload));
+  }, eventOptions);
+  unlisteners.push(await listen<NotchLayout>("notch-layout", (ev) => paintLayout(ev.payload)));
+  unlisteners.push(await listen<boolean>("notch-reveal", (ev) => notch.reveal(ev.payload)));
   function updateActivities(acts: ProviderActivity[]) {
     latestActivities = acts;
     notch.activity(acts);
     providers.setActivities(acts);
     if (interaction.provider) render();
   }
-  await listen<ProviderActivity[]>("provider-activity", (ev) => updateActivities(ev.payload));
+  unlisteners.push(await listen<ProviderActivity[]>("provider-activity", (ev) => updateActivities(ev.payload)));
   rail.addEventListener("focusin", () => {
     if (document.activeElement?.matches(":focus-visible"))
       void invoke<boolean>("set_notch_focus", { focused: true }).then(notch.reveal).catch(fail);
-  });
+  }, eventOptions);
   rail.addEventListener("focusout", () => {
     if (!rail.contains(document.activeElement))
       void invoke<boolean>("set_notch_focus", { focused: false }).then(notch.reveal).catch(fail);
-  });
-  await listen<ProviderSnapshot[]>("snapshots-updated", (ev) => {
+  }, eventOptions);
+  unlisteners.push(await listen<ProviderSnapshot[]>("snapshots-updated", (ev) => {
     snaps = ev.payload;
     refreshView();
-  });
-  await win.onFocusChanged(({ payload }) => {
-    if (!payload && dragId === null) {
+  }));
+  unlisteners.push(await win.onFocusChanged(({ payload }) => {
+    if (!payload && drag.sessionId === null) {
       (document.activeElement as HTMLElement | null)?.blur();
       closeDelay.schedule();
     }
-  });
+  }));
   snaps = await invoke("get_snapshots");
   notch.reveal(await invoke<boolean>("get_notch_reveal"));
   updateActivities(await invoke<ProviderActivity[]>("get_provider_activity"));
   refreshView();
-  await surfaceChain;
+  await surface.settled();
   await win.show();
   const observer = new ResizeObserver(() => {
     if (!detail.hidden && !interaction.settings) requestSurface();
   });
   observer.observe(body);
-  window.addEventListener("beforeunload", () => observer.disconnect());
-  window.addEventListener("beforeunload", closeDelay.cancel);
+  window.addEventListener("beforeunload", () => {
+    observer.disconnect();
+    closeDelay.cancel();
+    events.abort();
+    surface.destroy();
+    drag.destroy();
+    settings.destroy();
+    for (const unlisten of unlisteners) unlisten();
+  }, { once: true });
 }

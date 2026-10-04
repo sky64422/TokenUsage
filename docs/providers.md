@@ -65,14 +65,20 @@ All quota adapters live in `src-tauri/src/infrastructure/providers/quota/` and a
 
 ## 3. Provider Activity Monitoring
 
-Implemented in `src-tauri/src/infrastructure/activity.rs`:
+`src-tauri/src/infrastructure/activity.rs` owns the background loop and Tauri events.
+`activity/monitor.rs` owns bounded file discovery, tail reads and AGY file timestamps;
+`activity/evidence.rs` parses structural lifecycle evidence and applies TTL/aggregation
+without filesystem, quota-cache or Tauri calls. `ActivityMonitor` remains reexported
+at its original path. Accepted Grok completion records report cache invalidations
+to the file adapter, preserving the existing quota-refresh behavior.
+
 - Runs an independent background sampling loop every 2 seconds.
 - Detects whether each provider is currently `Running`, `Recent`, `Idle`, or `Unknown`.
 - **Sampling Methods**:
   - **Claude**: Samples recent transcript turns in `~/.claude/projects/`.
   - **Codex**: Samples active CLI session execution timestamps in `~/.codex/sessions/`.
-  - **Grok**: Detects `turn_started` / `turn_ended` log records in `~/.grok/logs/`.
-  - **Antigravity**: Detects active session execution records and transcript lock timestamps in CLI app data.
+  - **Grok**: Detects `turn_started` / `turn_ended` in `events.jsonl` below `~/.grok/sessions/`.
+  - **Antigravity**: Uses transcript modification times below `~/.gemini/antigravity*/brain/*/.system_generated/logs/`; it does not parse transcript content or infer quota.
 - Emits `provider-activity` events to the frontend whenever activity state changes.
 
 ---

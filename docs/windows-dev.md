@@ -66,6 +66,7 @@ python -X utf8 scripts/notch-regression.py
 python -X utf8 scripts/notch-edge-drag.py
 python -X utf8 scripts/notch-seam-drag.py
 python -X utf8 scripts/notch-polish.py
+python -X utf8 scripts/notch-hover-stability.py --port 9223 --fixture
 ```
 
 These smoke scripts refuse the production identifier. They use synthetic quota data,

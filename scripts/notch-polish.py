@@ -1,4 +1,5 @@
 """Native auto-hide/activity smoke. Isolated preview only; synthetic activity."""
+from notch_test_support import prepare_preview, reset_notch
 import ctypes
 import json
 from ctypes import wintypes
@@ -18,6 +19,7 @@ with sync_playwright() as p:
     browser = p.chromium.connect_over_cdp('http://127.0.0.1:9223')
     page = browser.contexts[0].pages[0]
     assert page.evaluate('async()=>window.__TAURI__.app.getIdentifier()') == 'com.tokenusage.notch-preview'
+    prepare_preview(page, always_show=False)
     page.set_default_timeout(8000)
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
@@ -49,7 +51,7 @@ with sync_playwright() as p:
 
     assert all(s['state'] == 'unknown' for s in invoke('get_provider_activity'))
     for edge in ['right', 'left', 'top', 'bottom']:
-        page.locator('.detail-close').evaluate('(e)=>e.click()')
+        reset_notch(page)
         page.evaluate('()=>document.activeElement?.blur()')
         invoke('set_notch_focus', {'focused': False})
         away()
@@ -69,7 +71,7 @@ with sync_playwright() as p:
         away()
         assert invoke('get_notch_reveal') is True
         expect(page.locator('.notch')).not_to_have_class('notch is-folded')
-        page.locator('.detail-close').evaluate('(e)=>e.click()')
+        reset_notch(page)
         folded(True)
 
     page.locator('.notch').focus()
@@ -85,7 +87,8 @@ with sync_playwright() as p:
     orbit = page.locator('[data-id=codex] .activity-orbit')
     expect(orbit).to_be_visible()
     assert orbit.evaluate('(e)=>getComputedStyle(e).animationName') == 'activity-turn'
-    assert 'inferred' in page.locator('[data-id=claude]').get_attribute('aria-description')
+    expect(page.locator('[data-id=claude]')).to_have_attribute('data-activity', 'recent')
+    expect(page.locator('[data-id=claude] .activity-orbit')).not_to_be_visible()
     page.emulate_media(reduced_motion='reduce')
     assert orbit.evaluate('(e)=>getComputedStyle(e).animationName') == 'none'
     page.emulate_media(reduced_motion='no-preference')

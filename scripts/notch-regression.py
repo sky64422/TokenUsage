@@ -1,4 +1,5 @@
 """Native regression against the isolated preview, never the installed app."""
+from notch_test_support import prepare_preview, reset_notch
 from pathlib import Path
 import ctypes, json, os, time
 from ctypes import wintypes
@@ -12,9 +13,10 @@ u.WindowFromPoint.argtypes=[wintypes.POINT];u.WindowFromPoint.restype=wintypes.H
 with sync_playwright() as p:
  browser=p.chromium.connect_over_cdp('http://127.0.0.1:9223');page=browser.contexts[0].pages[0]
  assert page.evaluate('async()=>window.__TAURI__.app.getIdentifier()')=='com.tokenusage.notch-preview'
+ prepare_preview(page)
  def invoke(c,a={}):return page.evaluate('async([c,a])=>window.__TAURI__.core.invoke(c,a)',[c,a])
  def layout():return invoke('set_notch_placement',{'placement':{'edge':'right','offset':.5,'monitor_hint':None}})
- def reset():page.locator('.detail-close').evaluate('(e)=>e.click()');page.evaluate('()=>document.activeElement?.blur()')
+ def reset():reset_notch(page);page.evaluate('()=>document.activeElement?.blur()')
  reset();l=layout()
  # Every pointer path opens, stays open while crossing, and closes when leaving.
  for i in range(20):
@@ -32,14 +34,16 @@ with sync_playwright() as p:
  # Disabling the selected provider must leave Settings open.
  page.locator('[data-id=claude]').evaluate('(e)=>e.click()')
  page.locator('.notch').dispatch_event('contextmenu')
- page.locator('.provider-chip[data-provider=claude]').evaluate('(e)=>e.click()')
+ page.locator('.provider-card-btn[data-provider=claude]').evaluate('(e)=>e.click()')
  expect(page.locator('[data-id=claude]')).to_be_hidden()
  expect(page.locator('.detail-settings')).to_be_visible()
  # One-provider geometry and last-enabled lock.
- page.locator('.provider-chip[data-provider=codex]').evaluate('(e)=>e.click()')
+ page.locator('.provider-card-btn[data-provider=codex]').evaluate('(e)=>e.click()')
  expect(page.locator('[data-id=codex]')).to_be_hidden()
- expect(page.locator('.provider-chip[data-provider=grok]')).to_be_disabled()
- for id in ['claude','codex']:page.locator(f'.provider-chip[data-provider={id}]').evaluate('(e)=>e.click()');expect(page.locator(f'[data-id={id}]')).to_be_visible()
+ page.locator('.provider-card-btn[data-provider=agy]').evaluate('(e)=>e.click()')
+ expect(page.locator('[data-id=agy]')).to_be_hidden()
+ expect(page.locator('.provider-card-btn[data-provider=grok]')).to_be_disabled()
+ for id in ['claude','codex','agy']:page.locator(f'.provider-card-btn[data-provider={id}]').evaluate('(e)=>e.click()');expect(page.locator(f'[data-id={id}]')).to_be_visible()
  reset()
  # Native gestures: the whole notch moves, but a short ring click still pins.
  assert page.locator('.notch-grip, .notch-settings, .notch-tools').count()==0
@@ -69,7 +73,7 @@ with sync_playwright() as p:
  pyautogui.click(button='right')
  expect(page.locator('.detail-settings')).to_be_visible()
  pyautogui.click(button='right')
- expect(page.locator('.detail-settings')).to_be_visible()
+ expect(page.locator('.detail-settings')).to_be_hidden()
  page.keyboard.press('Escape')
  page.locator('.notch').focus();page.keyboard.press('Shift+F10')
  expect(page.locator('.detail-settings')).to_be_visible()

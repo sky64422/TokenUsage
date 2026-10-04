@@ -1,13 +1,8 @@
-import claude from "../assets/marks/claude.svg";
-import codex from "../assets/marks/codex.svg";
-import grok from "../assets/marks/grok.svg";
 import { headline } from "./notch-state";
 import { PROVIDER_IDS } from "./types";
 import type { ProviderId, ProviderSnapshot, ProviderActivity, NotchLayout, Rect } from "./types";
+import { PROVIDER_CATALOG } from "./provider-catalog";
 
-import agy from "../assets/marks/agy.svg";
-
-const MARKS = { claude, codex, grok, agy };
 export function mountNotch(
   root: HTMLElement,
   callbacks: {
@@ -25,7 +20,7 @@ export function mountNotch(
     const b = document.createElement("button");
     b.className = "notch-cell";
     b.dataset.id = id;
-    b.innerHTML = `<span class="ring-wrap"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="ring-track" cx="22" cy="22" r="19"/><circle class="ring-fill" cx="22" cy="22" r="19" pathLength="100"/></svg><img src="${MARKS[id]}" alt="" draggable="false"/><span class="ring-status" hidden>!</span></span><span class="ring-meta"><span class="ring-pct">—</span></span>`;
+    b.innerHTML = `<span class="ring-wrap"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="ring-track" cx="22" cy="22" r="19"/><circle class="ring-fill" cx="22" cy="22" r="19" pathLength="100"/></svg><img src="${PROVIDER_CATALOG[id].mark}" alt="" draggable="false"/><span class="ring-status" hidden>!</span></span><span class="ring-meta"><span class="ring-pct">—</span></span>`;
     b.addEventListener("pointerenter", () => callbacks.hover(id));
     const orbit = document.createElement("span");
     orbit.className = "activity-orbit";

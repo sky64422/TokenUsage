@@ -1,4 +1,5 @@
 """Native edge-transition regression; requires isolated WebView2 preview (windows-dev.md)."""
+from notch_test_support import prepare_preview, reset_notch
 import json
 from pathlib import Path
 import pyautogui
@@ -9,10 +10,11 @@ with sync_playwright() as p:
     browser=p.chromium.connect_over_cdp('http://127.0.0.1:9223')
     page=browser.contexts[0].pages[0]
     assert page.evaluate('async()=>window.__TAURI__.app.getIdentifier()')=='com.tokenusage.notch-preview'
+    prepare_preview(page)
     def invoke(c,a={}):return page.evaluate('async([c,a])=>window.__TAURI__.core.invoke(c,a)',[c,a])
     page.evaluate('async()=>{window.dragEvents=[]; document.addEventListener("gotpointercapture",e=>window.lastCapture={element:e.target,id:e.pointerId}); await window.__TAURI__.event.listen("notch-drag", e=>window.dragEvents.push(e.payload));}')
     def reset():
-        page.locator('.detail-close').evaluate('(e)=>e.click()')
+        reset_notch(page)
         page.evaluate('()=>document.activeElement?.blur()')
         pyautogui.moveTo(1000,600,duration=.1)
         return invoke('set_notch_placement',{'placement':{'edge':'right','offset':.5,'monitor_hint':None}})
