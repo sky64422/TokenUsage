@@ -178,6 +178,13 @@ impl AppCore {
         })
     }
 
+    pub fn set_show_animation(&self, enabled: bool) -> Result<(), String> {
+        self.mutate_settings(|s| {
+            s.show_orbit = enabled;
+            s.show_icon_glow = enabled;
+        })
+    }
+
     pub fn set_notch_placement(
         &self,
         placement: crate::domain::notch::NotchPlacement,

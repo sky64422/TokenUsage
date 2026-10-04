@@ -21,7 +21,7 @@ Screen-edge concave notch widget for Windows that tracks **Claude / Codex / Grok
   - Active-only gentle mark glow during model execution.
 - **Physical Drag & Edge Placement:** Drag anywhere on the notch (including rings) to move along the screen edge or dock at any of the 4 screen edges or across multiple monitors.
 - **3-Tab Settings Sheet:**
-  - **모양 (Appearance):** 불투명도 (opacity meter with ticks), 노치 항상 표시, 마우스 올릴 때 상세 열기, 작업 중 궤도 회전, 작업 중 아이콘 발광
+  - **모양 (Appearance):** 불투명도 (opacity meter with ticks), 노치 항상 표시, 마우스 올릴 때 상세 열기, 작업 중 강조 효과
   - **서비스 (Services):** Individual service toggle grid (`표시` / `숨김`, minimum 1 provider locked)
   - **일반 (General):** Windows 시작 시 실행 (autostart), 앱 정보 (버전 및 인라인 업데이트 확인), 로그 복사 (diagnostics), 종료
 - **Pure Vendor Data:** Direct vendor OAuth and official CLI only. No web scraping, no tokscale, no local JSONL token estimates.

@@ -103,8 +103,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     agy: persisted.settings.agy.card_tint,
   });
   function applyAppearanceClasses(st: AppSettings) {
-    rail.classList.toggle("hide-orbit", st.show_orbit === false);
-    rail.classList.toggle("hide-icon-glow", st.show_icon_glow === false);
+    const showAnim = st.show_orbit !== false || st.show_icon_glow !== false;
+    rail.classList.toggle("hide-orbit", !showAnim);
+    rail.classList.toggle("hide-icon-glow", !showAnim);
   }
   applyAppearanceClasses(persisted.settings);
 
@@ -125,13 +126,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         await invoke("set_always_show_notch", { enabled: v });
         persisted.settings.always_show_notch = v;
       },
-      onShowOrbit: async (v) => {
-        await invoke("set_show_orbit", { enabled: v });
+      onShowAnimation: async (v) => {
+        await invoke("set_show_animation", { enabled: v });
         persisted.settings.show_orbit = v;
-        applyAppearanceClasses(persisted.settings);
-      },
-      onShowIconGlow: async (v) => {
-        await invoke("set_show_icon_glow", { enabled: v });
         persisted.settings.show_icon_glow = v;
         applyAppearanceClasses(persisted.settings);
       },

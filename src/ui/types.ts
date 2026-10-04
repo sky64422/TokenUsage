@@ -58,6 +58,7 @@ export interface AppSettings {
   always_show_notch?: boolean;
   show_orbit?: boolean;
   show_icon_glow?: boolean;
+  show_animation?: boolean;
   refresh_secs: number;
   claude: ProviderConfig;
   codex: ProviderConfig;

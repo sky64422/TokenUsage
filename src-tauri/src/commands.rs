@@ -137,6 +137,11 @@ pub fn set_show_icon_glow(state: State<'_, AppHandleState>, enabled: bool) -> Re
 }
 
 #[tauri::command]
+pub fn set_show_animation(state: State<'_, AppHandleState>, enabled: bool) -> Result<(), String> {
+    state.core.set_show_animation(enabled)
+}
+
+#[tauri::command]
 pub async fn set_provider_enabled(
     app: AppHandle,
     state: State<'_, AppHandleState>,

@@ -25,7 +25,7 @@
 - **Progress:** rings for the summary. Details retain Quiet Luxury 6px bars. Missing/auth-required values must not look like 0%. Preserve the backend primary percentage (currently max of windows) and its matching period.
 - **Refresh:** interval is **fixed at 5s**. Do not add a settings control; `refresh_secs()` ignores persisted values.
 - **Grok:** map primary period credit only; do **not** surface `productUsage` product rows (GrokBuild / GrokChat). Omitted % with period present stays unknown/degraded (does not claim 0%).
-- **Settings UI:** 3-tab layout (`모양`, `서비스`, `일반`) with fixed header and tab navigation while the body scrolls. Standardized Korean terms: `불투명도` (opacity), `노치 항상 표시`, `마우스 올릴 때 상세 열기`, `작업 중 궤도 회전`, `작업 중 아이콘 발광`, `로그 복사`, `종료`. Keep item titles concise and strictly single-line.
+- **Settings UI:** 3-tab layout (`모양`, `서비스`, `일반`) with fixed header and tab navigation while the body scrolls. Standardized Korean terms: `불투명도` (opacity), `노치 항상 표시`, `마우스 올릴 때 상세 열기`, `작업 중 강조 효과`, `로그 복사`, `종료`. Keep item titles concise and strictly single-line.
 - **Opacity slider:** neutral chrome + small off-white thumb — not accent/cyan. Preserve readability floors in `applyPanelOpacity` + token `max(...)` alphas; do not let glass wipe out meta/reset text.
 - **Autostart:** never call OS `enable` from debug/`tauri dev` (see `sync_os_autostart`).
 - Prefer thin `commands.rs`; put logic in `application` / `domain` / provider adapters.

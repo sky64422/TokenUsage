@@ -1,4 +1,5 @@
 """Settings browser regression. Run with Vite on port 1420; no real OS writes."""
+import re
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
@@ -37,11 +38,11 @@ with sync_playwright() as p:
             claude:{enabled:true},codex:{enabled:true},grok:{enabled:true},agy:{enabled:true}};
         const noop=()=>{};
         mountSettingsPanel(document.querySelector('#root'),st,{
-            onAutostart:save,onHoverDetail:save,onAlwaysShowNotch:save,onShowOrbit:save,
-            onShowIconGlow:save,onOpacityChange:noop,
+            onAutostart:save,onHoverDetail:save,onAlwaysShowNotch:save,onShowAnimation:save,
+            onOpacityChange:noop,
             onProviderEnabled:save,onDiagnostics:()=>new Promise((resolve,reject)=>{
                 window.diagResolve=resolve;window.diagReject=reject;
-            }),onQuit:noop},'0.3.3').show();
+            }),onQuit:()=>{window.quitCalled=true;}},'0.3.3').show();
         await document.fonts.ready;
     }""")
 
@@ -61,9 +62,9 @@ with sync_playwright() as p:
 
     # Default height fits every appearance control; constrained screens still scroll.
     assert page.locator('.settings-scroll').evaluate('(e)=>e.scrollHeight<=e.clientHeight')
-    page.locator('.notch-detail').evaluate('(e)=>e.style.height="320px"')
+    page.locator('.notch-detail').evaluate('(e)=>e.style.height="200px"')
     header_y = page.locator('.settings-header').bounding_box()['y']
-    page.locator('label[for="show-icon-glow"]').evaluate('(e)=>e.scrollIntoView({block:"nearest"})')
+    page.locator('label[for="show-animation"]').evaluate('(e)=>e.scrollIntoView({block:"nearest"})')
     assert page.locator('.settings-header').bounding_box()['y'] == header_y
     assert page.locator('.settings-scroll').evaluate('(e)=>e.scrollTop') > 0
     page.locator('.notch-detail').evaluate('(e)=>e.style.height=window.settingsHeight+"px"')
@@ -111,6 +112,15 @@ with sync_playwright() as p:
     page.evaluate('window.diagResolve()')
     expect(diag).to_have_attribute('data-feedback','done')
     assert diag.bounding_box()['width'] == diag_width
+    expect(page.locator('.settings-action-row')).to_be_visible()
+    expect(page.locator('#btn-quit .quit-icon-wrap')).to_be_visible()
+    btn_quit = page.locator('#btn-quit')
+    expect(btn_quit).to_contain_text('종료')
+    btn_quit.click()
+    expect(btn_quit).to_have_class(re.compile(r'is-confirming'))
+    expect(btn_quit).to_contain_text('정말 종료할까요?')
+    btn_quit.click()
+    assert page.evaluate('window.quitCalled === true')
     expect(page.locator('#btn-check-update')).to_have_text('업데이트 확인')
     assert page.locator('#btn-check-update').bounding_box()['width'] == 32
     assert page.locator('#btn-check-update').bounding_box()['height'] == 32
@@ -150,5 +160,6 @@ with sync_playwright() as p:
         page.mouse.move(330,410)
         page.screenshot(path=f'tmp/settings-improved-{tab}.png',animations='disabled')
         assert page.locator('.notch-detail').evaluate('(e)=>e.scrollWidth<=e.clientWidth')
+        assert page.locator('.settings-scroll').evaluate('(e)=>e.scrollHeight<=e.clientHeight')
     browser.close()
     print('PASS: settings scroll, mouse tabs, save rollback/retry, provider lock, update states')

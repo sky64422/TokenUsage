@@ -46,7 +46,7 @@ A screen-edge **usage monitor notch** that shows personal vendor quota (Claude /
 
 - **Voice:** calm, short labels, no marketing buzzwords (“supercharge”, “unlock potential”).
 - **Dark-only** UI (no light theme switch).
-- Standardized, concise Korean UI chrome (`설정`, `모양`, `서비스`, `일반`, `불투명도`, `노치 항상 표시`, `마우스 올릴 때 상세 열기`, `작업 중 궤도 회전`, `작업 중 아이콘 발광`, `로그 복사`, `종료`); local time for reset stamps.
+- Standardized, concise Korean UI chrome (`설정`, `모양`, `서비스`, `일반`, `불투명도`, `노치 항상 표시`, `마우스 올릴 때 상세 열기`, `작업 중 강조 효과`, `로그 복사`, `종료`); local time for reset stamps.
 
 ## Non-goals (until explicitly requested)
 

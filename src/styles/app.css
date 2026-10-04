@@ -558,12 +558,21 @@ body {
 }
 
 .settings-scroll {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--muted-foreground) transparent;
-  padding: 2px 2px 2px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 2px 0;
+}
+
+.settings-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .settings-description,
@@ -725,8 +734,9 @@ body {
 .settings-tab-panel {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 100%;
   gap: 8px;
-  min-height: 160px;
   box-sizing: border-box;
   padding-top: 2px;
 }
@@ -856,10 +866,6 @@ body {
 
 #tab-panel-general {
   gap: 10px;
-}
-
-#tab-panel-general .settings-action-row {
-  margin-top: 6px;
 }
 
 .settings-group-title {
@@ -1265,28 +1271,40 @@ body {
 .settings-action-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
   min-width: 0;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  box-sizing: border-box;
 }
 
-/* Action button base (pill actions) */
-.settings-pill-action {
+/* Action button base (pill actions: diagnostics, quit) */
+.settings-pill-action,
+.settings-row-btn {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  height: var(--settings-control-height);
+  height: 36px;
   margin: 0;
-  padding: 0 8px;
-  border-radius: var(--settings-control-radius);
+  padding: 0 12px;
+  border-radius: var(--radius-lg, 9px);
   border: 1px solid var(--border-soft);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.88);
   font: inherit;
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1;
   cursor: pointer;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   transition:
     transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
     background var(--duration-fast) ease,
@@ -1294,40 +1312,51 @@ body {
     color var(--duration-fast) ease;
 }
 
-.settings-pill-action:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--foreground);
-  border-color: var(--border);
+.settings-pill-action:active:not(:disabled),
+.settings-row-btn:active:not(:disabled) {
+  transform: scale(0.96) translateY(1px);
 }
 
-.settings-pill-action:active:not(:disabled) {
-  transform: scale(0.95) translateY(1px);
+/* Diag: Rich neutral dark glass */
+.settings-pill-action#btn-diag,
+.settings-row-btn#btn-diag {
+  background: rgba(255, 255, 255, 0.065);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.92);
 }
 
-.settings-pill-action#btn-diag {
+.settings-pill-action#btn-diag:hover,
+.settings-row-btn#btn-diag:hover {
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.20);
+  color: #ffffff;
+}
+
+.diag-icon-wrap,
+.quit-icon-wrap {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-width: 96px;
-  overflow: hidden;
-  transition:
-    background 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-    color 0.2s ease,
-    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.25s ease;
-}
-
-.diag-icon-wrap {
-  position: relative;
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.quit-icon-wrap {
+  width: 13.5px;
+  height: 13.5px;
+}
+
+.diag-icon-wrap svg {
+  width: 13px;
+  height: 13px;
+}
+
+.quit-icon-wrap svg {
+  width: 13.5px;
+  height: 13.5px;
 }
 
 .diag-copy-icon,
@@ -1353,7 +1382,6 @@ body {
 }
 
 .diag-label-wrap {
-  min-width: 5em;
   position: relative;
   display: grid;
   grid-template-areas: "label";
@@ -1382,7 +1410,8 @@ body {
 }
 
 /* Morph to success state */
-.settings-pill-action#btn-diag.is-done {
+.settings-pill-action#btn-diag.is-done,
+.settings-row-btn#btn-diag.is-done {
   border-color: rgba(74, 222, 128, 0.45);
   background: rgba(74, 222, 128, 0.14);
   color: #4ade80;
@@ -1390,49 +1419,72 @@ body {
   box-shadow: 0 0 10px rgba(74, 222, 128, 0.16);
 }
 
-.settings-pill-action#btn-diag.is-done .diag-copy-icon {
+.settings-pill-action#btn-diag.is-done .diag-copy-icon,
+.settings-row-btn#btn-diag.is-done .diag-copy-icon {
   opacity: 0;
   transform: scale(0.35) rotate(-35deg);
 }
 
-.settings-pill-action#btn-diag.is-done .diag-check-icon {
+.settings-pill-action#btn-diag.is-done .diag-check-icon,
+.settings-row-btn#btn-diag.is-done .diag-check-icon {
   opacity: 1;
   transform: scale(1) rotate(0deg);
 }
 
-.settings-pill-action#btn-diag.is-done .diag-text-idle {
+.settings-pill-action#btn-diag.is-done .diag-text-idle,
+.settings-row-btn#btn-diag.is-done .diag-text-idle {
   opacity: 0;
   transform: translateY(-7px);
 }
 
-.settings-pill-action#btn-diag.is-done .diag-text-copied {
+.settings-pill-action#btn-diag.is-done .diag-text-copied,
+.settings-row-btn#btn-diag.is-done .diag-text-copied {
   opacity: 1;
   transform: translateY(0);
 }
 
-/* Bencho inline confirmation: The button becomes its own dialog without modal or toast */
-.settings-pill-action.is-quit {
+/* Quit: Distinct subtle destructive tint (quiet luxury tone) */
+.settings-pill-action.is-quit,
+.settings-row-btn.is-quit {
   position: relative;
   overflow: hidden;
-  min-width: 68px;
+  background: color-mix(in srgb, var(--destructive) 9%, rgba(255, 255, 255, 0.02));
+  border-color: color-mix(in srgb, var(--destructive) 26%, transparent);
+  color: #ff9e9e;
   transition:
-    min-width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
     background 0.25s ease,
     border-color 0.25s ease,
     color 0.25s ease;
 }
 
-.settings-pill-action.is-quit:hover {
-  background: color-mix(in srgb, var(--destructive) 16%, transparent);
-  border-color: color-mix(in srgb, var(--destructive) 42%, transparent);
-  color: var(--destructive);
+.settings-pill-action.is-quit .quit-icon-wrap,
+.settings-row-btn.is-quit .quit-icon-wrap {
+  color: inherit;
+  transform: translateY(-0.5px);
 }
 
-.settings-pill-action.is-quit.is-confirming {
-  min-width: 116px;
-  background: color-mix(in srgb, var(--destructive) 22%, transparent);
-  border-color: color-mix(in srgb, var(--destructive) 60%, transparent);
-  color: #ff8585;
+.settings-pill-action.is-quit:hover,
+.settings-row-btn.is-quit:hover {
+  background: color-mix(in srgb, var(--destructive) 20%, transparent);
+  border-color: color-mix(in srgb, var(--destructive) 48%, transparent);
+  color: #ffffff;
+}
+
+.settings-pill-action.is-quit:hover .quit-icon-wrap,
+.settings-row-btn.is-quit:hover .quit-icon-wrap {
+  color: #ffffff;
+}
+
+.settings-pill-action.is-quit.is-confirming,
+.settings-row-btn.is-quit.is-confirming {
+  background: color-mix(in srgb, var(--destructive) 24%, transparent);
+  border-color: color-mix(in srgb, var(--destructive) 65%, transparent);
+  color: #ffffff;
+}
+
+.settings-pill-action.is-quit.is-confirming .quit-icon-wrap,
+.settings-row-btn.is-quit.is-confirming .quit-icon-wrap {
+  display: none;
 }
 
 .quit-progress {
@@ -1446,7 +1498,8 @@ body {
   pointer-events: none;
 }
 
-.settings-pill-action.is-quit.is-confirming .quit-progress {
+.settings-pill-action.is-quit.is-confirming .quit-progress,
+.settings-row-btn.is-quit.is-confirming .quit-progress {
   animation: quit-countdown 3s linear forwards;
 }
 
@@ -1457,41 +1510,49 @@ body {
 
 .quit-label-wrap {
   position: relative;
-  display: grid;
-  grid-template-areas: "label";
+  display: inline-flex;
   align-items: center;
-  justify-items: center;
+  justify-content: center;
   z-index: 1;
 }
 
 .quit-text {
-  grid-area: label;
   white-space: nowrap;
-  transition:
-    transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.2s ease;
 }
 
 .quit-text-idle {
-  opacity: 1;
-  transform: translateY(0);
+  display: inline;
+  letter-spacing: 0.35px;
+  font-weight: 560;
 }
 
 .quit-text-confirm {
-  opacity: 0;
-  transform: translateY(6px);
+  display: none;
   font-weight: 600;
-  font-size: 11px;
+  font-size: 11.5px;
+  letter-spacing: -0.2px;
 }
 
-.settings-pill-action.is-quit.is-confirming .quit-text-idle {
-  opacity: 0;
-  transform: translateY(-6px);
+.settings-pill-action.is-quit.is-confirming .quit-text-idle,
+.settings-row-btn.is-quit.is-confirming .quit-text-idle {
+  display: none;
 }
 
-.settings-pill-action.is-quit.is-confirming .quit-text-confirm {
-  opacity: 1;
-  transform: translateY(0);
+.settings-pill-action.is-quit.is-confirming .quit-text-confirm,
+.settings-row-btn.is-quit.is-confirming .quit-text-confirm {
+  display: inline;
+  animation: quit-text-fade-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes quit-text-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Rectangular opacity meter — 5% steps with tick marks (35–100). */
@@ -1816,13 +1877,17 @@ body {
 }
 .settings-tab-panel { animation: settings-panel-reveal var(--duration-fast) ease-out; }
 @keyframes settings-panel-reveal {
-  from { opacity: 0; transform: translateY(3px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
-.settings-pill-action[data-feedback="loading"] .diag-copy-icon { animation: update-spin 1s linear infinite; }
-.settings-pill-action[data-feedback="error"] { color: var(--warn); border-color: var(--warn); }
+.settings-pill-action[data-feedback="loading"] .diag-copy-icon,
+.settings-row-btn[data-feedback="loading"] .diag-copy-icon { animation: update-spin 1s linear infinite; }
+.settings-pill-action[data-feedback="error"],
+.settings-row-btn[data-feedback="error"] { color: var(--warn); border-color: var(--warn); }
 @media (prefers-reduced-motion: reduce) {
-  .settings-tabs::before, .settings-tab-btn, .settings-pill-action,
-  .diag-copy-icon, .diag-check-icon, .diag-text { transition: none; }
-  .settings-tab-panel, .settings-pill-action[data-feedback="loading"] .diag-copy-icon { animation: none; }
+  .settings-tabs::before, .settings-tab-btn, .settings-pill-action, .settings-row-btn,
+  .diag-copy-icon, .diag-check-icon, .diag-text, .quit-text, .quit-icon-wrap { transition: none; }
+  .settings-tab-panel,
+  .settings-pill-action[data-feedback="loading"] .diag-copy-icon,
+  .settings-row-btn[data-feedback="loading"] .diag-copy-icon { animation: none; }
 }

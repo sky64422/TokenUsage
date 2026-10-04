@@ -229,6 +229,14 @@ fn risk_appearance_toggles_persist_and_update_core() {
     assert!(core.get_state().settings.show_orbit);
     let loaded_on = load_state(dir.path()).unwrap();
     assert!(loaded_on.settings.show_orbit);
+
+    core.set_show_animation(false).unwrap();
+    assert!(!core.get_state().settings.show_orbit);
+    assert!(!core.get_state().settings.show_icon_glow);
+
+    core.set_show_animation(true).unwrap();
+    assert!(core.get_state().settings.show_orbit);
+    assert!(core.get_state().settings.show_icon_glow);
 }
 
 #[test]

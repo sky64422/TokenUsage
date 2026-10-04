@@ -26,7 +26,7 @@ import {
 } from "./update-controller";
 export type { UpdatePhase, UpdateInfo, DownloadProgress } from "./update-controller";
 
-export const SETTINGS_PANEL_HEIGHT = 402;
+export const SETTINGS_PANEL_HEIGHT = 362;
 
 const PROVIDER_VISIBLE = "표시";
 const PROVIDER_HIDDEN = "숨김";
@@ -51,6 +51,7 @@ export function mountSettingsPanel(
     onAlwaysShowNotch?: (v: boolean) => void | Promise<void>;
     onShowOrbit?: (v: boolean) => void | Promise<void>;
     onShowIconGlow?: (v: boolean) => void | Promise<void>;
+    onShowAnimation?: (v: boolean) => void | Promise<void>;
     onOpacityChange: (o: number) => void;
     onProviderEnabled: (id: ProviderId, enabled: boolean) => void | Promise<void>;
     onClose?: () => void;
@@ -149,15 +150,9 @@ export function mountSettingsPanel(
         <div class="settings-section">
           <span class="settings-label">애니메이션</span>
           <div class="settings-group">
-            <label class="settings-group-row" for="show-orbit" title="작업 진행 중 링 주변을 회전하는 궤도를 표시합니다">
-              <span class="settings-group-title">작업 중 궤도 회전</span>
-              <input type="checkbox" id="show-orbit" class="settings-switch-input" />
-              <span class="settings-switch" aria-hidden="true"></span>
-            </label>
-
-            <label class="settings-group-row" for="show-icon-glow" title="작업 진행 중 모델 아이콘에 은은한 발광 효과를 부여합니다">
-              <span class="settings-group-title">작업 중 아이콘 발광</span>
-              <input type="checkbox" id="show-icon-glow" class="settings-switch-input" />
+            <label class="settings-group-row" for="show-animation" title="작업 진행 중 궤도 회전 및 아이콘 발광 효과를 표시합니다">
+              <span class="settings-group-title">작업 중 강조 효과</span>
+              <input type="checkbox" id="show-animation" class="settings-switch-input" />
               <span class="settings-switch" aria-hidden="true"></span>
             </label>
           </div>
@@ -217,14 +212,14 @@ export function mountSettingsPanel(
           </div>
         </div>
 
-        <div class="settings-action-row">
+        <div class="settings-action-row is-footer">
           <button type="button" class="settings-pill-action" id="btn-diag" title="문제 해결을 위한 진단 로그 복사" aria-label="진단 로그 복사">
             <span class="diag-icon-wrap" aria-hidden="true">
-              <svg class="diag-copy-icon" width="12" height="12" viewBox="0 0 16 16" fill="none">
+              <svg class="diag-copy-icon" width="13" height="13" viewBox="0 0 16 16" fill="none">
                 <rect x="5" y="5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
                 <path d="M3.5 10.5H3a1.5 1.5 0 0 1-1.5-1.5V3a1.5 1.5 0 0 1 1.5-1.5h6a1.5 1.5 0 0 1 1.5 1.5v0.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
               </svg>
-              <svg class="diag-check-icon" width="12" height="12" viewBox="0 0 16 16" fill="none">
+              <svg class="diag-check-icon" width="13" height="13" viewBox="0 0 16 16" fill="none">
                 <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </span>
@@ -235,6 +230,12 @@ export function mountSettingsPanel(
           </button>
           <button type="button" class="settings-pill-action is-quit" id="btn-quit" title="TokenUsage 종료" aria-label="TokenUsage 종료">
             <span class="quit-progress" aria-hidden="true"></span>
+            <span class="quit-icon-wrap" aria-hidden="true">
+              <svg class="quit-icon" width="13.5" height="13.5" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2v5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M11.8 4.3a5.2 5.2 0 1 1-7.6 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </span>
             <span class="quit-label-wrap" aria-hidden="true">
               <span class="quit-text quit-text-idle">종료</span>
               <span class="quit-text quit-text-confirm">정말 종료할까요?</span>
@@ -362,8 +363,17 @@ export function mountSettingsPanel(
   bindToggle("always-show", Boolean(settings.always_show_notch), handlers.onAlwaysShowNotch);
   bindToggle("autostart", settings.autostart, handlers.onAutostart);
   bindToggle("hover-detail", Boolean(settings.hover_detail), handlers.onHoverDetail);
-  bindToggle("show-orbit", settings.show_orbit !== false, handlers.onShowOrbit);
-  bindToggle("show-icon-glow", settings.show_icon_glow !== false, handlers.onShowIconGlow);
+  const initialAnim = settings.show_orbit !== false || settings.show_icon_glow !== false;
+  bindToggle("show-animation", initialAnim, async (enabled) => {
+    if (handlers.onShowAnimation) {
+      await handlers.onShowAnimation(enabled);
+      return;
+    }
+    await Promise.all([
+      handlers.onShowOrbit?.(enabled),
+      handlers.onShowIconGlow?.(enabled),
+    ]);
+  });
 
   function paintUpdateUi(state: UpdateState): void {
     const { phase: updatePhase, version: updateVersion, hint: updateHint,
