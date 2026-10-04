@@ -26,7 +26,7 @@ import {
 } from "./update-controller";
 export type { UpdatePhase, UpdateInfo, DownloadProgress } from "./update-controller";
 
-export const SETTINGS_PANEL_HEIGHT = 400;
+export const SETTINGS_PANEL_HEIGHT = 402;
 
 const PROVIDER_VISIBLE = "표시";
 const PROVIDER_HIDDEN = "숨김";
@@ -36,6 +36,11 @@ const SAVING = "저장 중…";
 const SAVE_RESTORED = "저장 실패 · 이전 설정으로 복원됨";
 const UPDATE_CHECK = "업데이트 확인";
 const UPDATE_RESTART = "재시작하여 적용";
+const DIAG_IDLE = "로그 복사";
+const DIAG_LOADING = "복사 중…";
+const DIAG_DONE = "복사됨";
+const DIAG_ERROR = "복사 실패";
+const DIAG_FEEDBACK_MS = 1500;
 
 export function mountSettingsPanel(
   root: HTMLElement,
@@ -51,6 +56,7 @@ export function mountSettingsPanel(
     onClose?: () => void;
     onDiagnostics: () => void | Promise<void>;
     onQuit: () => void;
+    onTabChange?: () => void;
   },
   appVersion = "",
 ): {
@@ -59,6 +65,7 @@ export function mountSettingsPanel(
   isVisible: () => boolean;
   syncProviderEnabled: (st: AppSettings) => void;
   destroy: () => void;
+  getContentHeight: () => number;
 } {
   let visible = false;
   const versionStr = appVersion ? `v${appVersion.replace(/^v/i, "")}` : "";
@@ -107,16 +114,18 @@ export function mountSettingsPanel(
 
       <div class="settings-scroll">
       <div class="settings-tab-panel" id="tab-panel-appearance" role="tabpanel" aria-labelledby="tab-btn-appearance">
-        <div class="settings-card opacity-card">
-          <span class="settings-card-label">불투명도</span>
-          <div class="opacity-meter" style="--opacity-fill: ${meterFillPct(initialPct)}%">
-            <div class="opacity-meter-fill" aria-hidden="true"></div>
-            <div class="opacity-meter-ticks" aria-hidden="true">${opacityTicksHtml()}</div>
-            <input type="range" id="opacity-range" class="opacity-meter-input"
-              min="${OPACITY_MIN_PCT}" max="${OPACITY_MAX_PCT}" step="${OPACITY_STEP_PCT}"
-              value="${initialPct}" aria-label="불투명도" />
+        <div class="settings-section">
+          <span class="settings-label">불투명도</span>
+          <div class="settings-card opacity-card">
+            <div class="opacity-meter" style="--opacity-fill: ${meterFillPct(initialPct)}%">
+              <div class="opacity-meter-fill" aria-hidden="true"></div>
+              <div class="opacity-meter-ticks" aria-hidden="true">${opacityTicksHtml()}</div>
+              <input type="range" id="opacity-range" class="opacity-meter-input"
+                min="${OPACITY_MIN_PCT}" max="${OPACITY_MAX_PCT}" step="${OPACITY_STEP_PCT}"
+                value="${initialPct}" aria-label="불투명도" />
+            </div>
+            <span class="opacity-value" id="opacity-val">${initialPct}%</span>
           </div>
-          <span class="opacity-value" id="opacity-val">${initialPct}%</span>
         </div>
 
         <div class="settings-section">
@@ -187,7 +196,6 @@ export function mountSettingsPanel(
               <span class="settings-group-title">버전</span>
               <div class="settings-version-inline">
                 <span class="settings-update-status" id="update-status" role="status"></span>
-                <span class="settings-version-badge" title="${versionStr || "v0.0.0"}">${versionStr || "v0.0.0"}</span>
                 <button type="button" class="settings-update-btn" id="btn-check-update" title="${UPDATE_CHECK}" aria-label="${UPDATE_CHECK}">
                   <span class="update-icon-wrap" aria-hidden="true">
                     <svg class="update-icon update-icon-reload" width="13" height="13" viewBox="0 0 16 16" fill="none">
@@ -203,6 +211,7 @@ export function mountSettingsPanel(
                   </span>
                   <span class="sr-only update-label">${UPDATE_CHECK}</span>
                 </button>
+                <span class="settings-version-badge" title="${versionStr || "v0.0.0"}">${versionStr || "v0.0.0"}</span>
               </div>
             </div>
           </div>
@@ -256,14 +265,31 @@ export function mountSettingsPanel(
       const active = key === target;
       btn.classList.toggle("is-active", active);
       btn.setAttribute("aria-selected", active ? "true" : "false");
+      btn.tabIndex = active ? 0 : -1;
       panel.hidden = !active;
     }
+    root.querySelector<HTMLElement>(".settings-tabs")!.style.setProperty("--active-tab", String(list.findIndex(([key]) => key === target)));
     root.querySelector<HTMLElement>(".settings-scroll")!.scrollTop = 0;
+    handlers.onTabChange?.();
   }
 
   tabAppearance.addEventListener("click", () => switchTab("appearance"));
   tabModels.addEventListener("click", () => switchTab("models"));
   tabGeneral.addEventListener("click", () => switchTab("general"));
+  const tabs = [tabAppearance, tabModels, tabGeneral];
+  const tabKeys: TabKey[] = ["appearance", "models", "general"];
+  tabs.forEach((tab, index) => tab.addEventListener("keydown", (event) => {
+    let next: number;
+    if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+    else if (event.key === "ArrowLeft") next = (index + tabs.length - 1) % tabs.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = tabs.length - 1;
+    else return;
+    event.preventDefault();
+    switchTab(tabKeys[next]);
+    tabs[next].focus();
+  }));
+  switchTab("appearance");
 
   const opacityRange = root.querySelector("#opacity-range") as HTMLInputElement;
   const opacityVal = root.querySelector("#opacity-val") as HTMLElement;
@@ -488,17 +514,30 @@ export function mountSettingsPanel(
   }
 
   const diagBtn = root.querySelector("#btn-diag") as HTMLButtonElement | null;
-  diagBtn?.addEventListener("click", () => {
-    void Promise.resolve(handlers.onDiagnostics()).then(() => {
-      if (!diagBtn) return;
-      diagBtn.classList.add("is-done");
-      diagBtn.setAttribute("aria-label", "진단 로그 복사됨");
-      window.setTimeout(() => {
-        if (!diagBtn.isConnected) return;
-        diagBtn.classList.remove("is-done");
-        diagBtn.setAttribute("aria-label", "진단 로그 복사");
-      }, 1500);
-    });
+  let diagTimer: ReturnType<typeof setTimeout> | undefined;
+  let destroyed = false;
+  function paintDiagnostics(state: "idle" | "loading" | "done" | "error") {
+    if (!diagBtn || destroyed) return;
+    const label = { idle: DIAG_IDLE, loading: DIAG_LOADING, done: DIAG_DONE, error: DIAG_ERROR }[state];
+    diagBtn.dataset.feedback = state;
+    diagBtn.disabled = state === "loading";
+    diagBtn.classList.toggle("is-done", state === "done");
+    diagBtn.setAttribute("aria-busy", String(state === "loading"));
+    diagBtn.setAttribute("aria-label", label);
+    diagBtn.querySelector<HTMLElement>(".diag-text-idle")!.textContent = label;
+  }
+  diagBtn?.addEventListener("click", async () => {
+    if (diagBtn.disabled) return;
+    clearTimeout(diagTimer);
+    paintDiagnostics("loading");
+    try {
+      await handlers.onDiagnostics();
+      paintDiagnostics("done");
+      if (!destroyed) diagTimer = setTimeout(() => paintDiagnostics("idle"), DIAG_FEEDBACK_MS);
+    } catch (error) {
+      console.error("Failed to copy diagnostics", error);
+      paintDiagnostics("error");
+    }
   });
   const btnQuit = root.querySelector("#btn-quit") as HTMLButtonElement | null;
   let quitTimer: ReturnType<typeof setTimeout> | null = null;
@@ -551,9 +590,14 @@ export function mountSettingsPanel(
       syncProviderLocks();
     },
     destroy() {
+      destroyed = true;
+      clearTimeout(diagTimer);
       resetQuit();
       updateBtn.removeEventListener("click", runUpdateAction);
       updater.destroy();
+    },
+    getContentHeight(): number {
+      return SETTINGS_PANEL_HEIGHT;
     },
   };
 }

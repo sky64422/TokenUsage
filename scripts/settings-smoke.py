@@ -39,7 +39,9 @@ with sync_playwright() as p:
         mountSettingsPanel(document.querySelector('#root'),st,{
             onAutostart:save,onHoverDetail:save,onAlwaysShowNotch:save,onShowOrbit:save,
             onShowIconGlow:save,onOpacityChange:noop,
-            onProviderEnabled:save,onDiagnostics:noop,onQuit:noop},'0.3.3').show();
+            onProviderEnabled:save,onDiagnostics:()=>new Promise((resolve,reject)=>{
+                window.diagResolve=resolve;window.diagReject=reject;
+            }),onQuit:noop},'0.3.3').show();
         await document.fonts.ready;
     }""")
 
@@ -68,6 +70,15 @@ with sync_playwright() as p:
     page.locator('.settings-scroll').evaluate('(e)=>e.scrollTop=0')
     page.locator('#tab-btn-appearance').focus()
     page.keyboard.press('ArrowRight')
+    expect(page.locator('#tab-btn-models')).to_be_focused()
+    expect(page.locator('#tab-panel-models')).to_be_visible()
+    page.keyboard.press('End')
+    expect(page.locator('#tab-btn-general')).to_be_focused()
+    page.keyboard.press('ArrowRight')
+    expect(page.locator('#tab-btn-appearance')).to_be_focused()
+    page.keyboard.press('ArrowLeft')
+    expect(page.locator('#tab-btn-general')).to_be_focused()
+    page.keyboard.press('Home')
     expect(page.locator('#tab-panel-appearance')).to_be_visible()
     expect(page.locator('#opacity-val')).to_have_text('50%')
     expect(page.locator('#show-period')).to_have_count(0)
@@ -87,6 +98,19 @@ with sync_playwright() as p:
     expect(page.locator('[data-provider="agy"]')).to_have_attribute('title', 'Antigravity: 최소 1개 서비스를 표시해야 합니다')
 
     page.locator('#tab-btn-general').click()
+    diag = page.locator('#btn-diag')
+    diag_width = diag.bounding_box()['width']
+    diag.click()
+    expect(diag).to_be_disabled()
+    expect(diag).to_have_attribute('data-feedback','loading')
+    page.evaluate('window.diagReject(new Error("clipboard denied"))')
+    expect(diag).to_be_enabled()
+    expect(diag).to_have_attribute('data-feedback','error')
+    assert diag.bounding_box()['width'] == diag_width
+    diag.click()
+    page.evaluate('window.diagResolve()')
+    expect(diag).to_have_attribute('data-feedback','done')
+    assert diag.bounding_box()['width'] == diag_width
     expect(page.locator('#btn-check-update')).to_have_text('업데이트 확인')
     assert page.locator('#btn-check-update').bounding_box()['width'] == 32
     assert page.locator('#btn-check-update').bounding_box()['height'] == 32

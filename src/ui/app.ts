@@ -5,7 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyPanelOpacity } from "./opacity";
 import { formatProviderStatus } from "./format";
 import { mountProviders } from "./providers";
-import { mountSettingsPanel, SETTINGS_PANEL_HEIGHT } from "./settings-panel";
+import { mountSettingsPanel } from "./settings-panel";
 import { mountNotch, position } from "./notch";
 import { createNotchSurface } from "./notch-surface";
 import { mountNotchDrag } from "./notch-drag";
@@ -162,6 +162,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       onQuit: () => {
         void invoke("quit_app").catch(fail);
       },
+      onTabChange: () => {
+        if (interaction.settings) requestSurface();
+      },
     },
     await getVersion(),
   );
@@ -184,7 +187,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   function requestSurface() {
     const expanded = !drag.dragging && (interaction.settings || interaction.provider !== null);
     const height = interaction.settings
-      ? SETTINGS_PANEL_HEIGHT
+      ? settings.getContentHeight()
       : Math.ceil(body.getBoundingClientRect().height + SURFACE_PADDING);
     let target: number | null = null;
     if (interaction.provider && !interaction.settings) {

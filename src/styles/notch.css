@@ -293,7 +293,7 @@
   padding: 16px;
   overflow-x: hidden;
   overflow-y: auto;
-  animation: notch-reveal var(--notch-motion) ease-out;
+  animation: notch-reveal var(--notch-motion) cubic-bezier(0.16, 1, 0.3, 1);
 }
 .detail-body {
   /* Include trailing status/error margins in the height sent to native layout. */
@@ -403,11 +403,11 @@
 @keyframes notch-reveal {
   from {
     opacity: 0;
-    transform: translateY(3px);
+    clip-path: var(--peek-clip, inset(4% 0 4% 12% round 16px));
   }
   to {
     opacity: 1;
-    transform: none;
+    clip-path: inset(0 round 16px);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -424,3 +424,7 @@
     transition: none;
   }
 }
+
+body:has(.notch[data-edge="left"]) { --peek-clip: inset(4% 12% 4% 0 round 16px); }
+body:has(.notch[data-edge="top"]) { --peek-clip: inset(0 4% 12% 4% round 16px); }
+body:has(.notch[data-edge="bottom"]) { --peek-clip: inset(12% 4% 0 4% round 16px); }

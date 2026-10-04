@@ -284,12 +284,9 @@ pub fn calculate_layout_target(
         let dw = (DETAIL_WIDTH * s)
             .ceil()
             .min(w.width - if edge.vertical() { depth + GAP * s } else { 0. });
-        let mut dh = (detail_height.clamp(MIN_DETAIL_HEIGHT, DETAIL_HEIGHT) * s)
+        let dh = (detail_height.clamp(MIN_DETAIL_HEIGHT, DETAIL_HEIGHT) * s)
             .ceil()
             .min(w.height - if edge.vertical() { 0. } else { depth + GAP * s });
-        if edge.vertical() && target.is_none() {
-            dh = dh.min((w.y + w.height - notch.y).max(MIN_DETAIL_HEIGHT * s));
-        }
         if dw <= 0. || dh <= 0. {
             return Err("Display is too small for usage details".into());
         }
