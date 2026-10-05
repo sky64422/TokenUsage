@@ -167,7 +167,7 @@ export function mountSettingsPanel(
             ${providerCard("agy", settings.agy.enabled !== false)}
           </div>
         </div>
-        <p class="settings-save-status" id="provider-save-status" role="status" hidden></p>
+        <p class="settings-save-status" id="provider-save-status" role="status" aria-live="polite"></p>
       </div>
 
       <div class="settings-tab-panel" id="tab-panel-general" role="tabpanel" aria-labelledby="tab-btn-general" hidden>
@@ -490,16 +490,17 @@ export function mountSettingsPanel(
       }
       providerSaving = true;
       const status = root.querySelector<HTMLElement>("#provider-save-status")!;
-      status.hidden = false;
       status.textContent = SAVING;
+      status.classList.add("is-visible");
       setProviderOn(id, next);
       try {
         await handlers.onProviderEnabled(id, next);
-        status.hidden = true;
         status.textContent = "";
+        status.classList.remove("is-visible");
       } catch {
         setProviderOn(id, !next);
         status.textContent = SAVE_FAILED;
+        status.classList.add("is-visible");
       } finally {
         providerSaving = false;
         syncProviderLocks();
