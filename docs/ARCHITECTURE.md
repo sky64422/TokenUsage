@@ -92,7 +92,7 @@ show-window refresh; worker and event-delivery failures are recorded in diagnost
 The original command names and JSON payloads are unchanged.
 
 - State & Snapshots: `get_state`, `get_snapshots`
-- Preferences & Controls: `set_opacity`, `set_autostart`, `set_hover_detail`, `set_always_show_notch`, `set_show_animation`, `set_show_orbit`, `set_show_icon_glow`, `set_show_period` (legacy compat), `set_provider_enabled`, `set_provider_tint`
+- Preferences & Controls: `set_opacity`, `set_autostart`, `set_hover_detail`, `set_always_show_notch`, `set_show_animation`, `set_provider_enabled`
 - Notch & Window Geometry: `get_notch_monitors`, `get_notch_reveal`, `set_notch_focus`, `set_notch_placement`, `begin_notch_drag`, `finish_notch_drag`, `set_notch_surface`
 - Activity & Diagnostics: `get_provider_activity`, `get_diagnostics`, `check_for_updates`, `quit_app`
 

@@ -7,8 +7,7 @@ def prepare_preview(page, *, always_show=True):
         const invoke = window.__TAURI__.core.invoke;
         await invoke('set_hover_detail', {enabled: true});
         await invoke('set_always_show_notch', {enabled: alwaysShow});
-        await invoke('set_show_orbit', {enabled: true});
-        await invoke('set_show_icon_glow', {enabled: true});
+        await invoke('set_show_animation', {enabled: true});
         for (const provider of ['claude', 'codex', 'grok', 'agy']) {
             await invoke('set_provider_enabled', {provider, enabled: true});
         }

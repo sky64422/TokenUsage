@@ -40,7 +40,7 @@ their timestamp. Missing/malformed output is unavailable, never 0%.
 Old window geometry/defaults/clamping, panel/header/content styles and unused
 tokens, token-count formatters, placement-preview/manual-refresh/header-hide IPC.
 Legacy `window` JSON loads but is omitted on save. Current placement, opacity,
-provider tint and placement preferences remain supported.
+placement and opacity preferences remain supported.
 
 ## Verification
 

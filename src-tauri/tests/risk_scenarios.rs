@@ -60,7 +60,6 @@ fn risk_partial_state_deserializes_with_defaults() {
     let loaded = load_state(dir.path()).unwrap();
     assert!((loaded.settings.opacity - 0.5).abs() < 0.001);
     assert!(loaded.settings.claude.enabled);
-    assert_eq!(loaded.settings.refresh_secs, 45);
     assert_eq!(loaded.settings.notch, Default::default());
     save_state(dir.path(), &loaded).unwrap();
     let saved: serde_json::Value =
@@ -97,10 +96,7 @@ fn risk_legacy_fields_ignored() {
     let loaded = load_state(dir.path()).unwrap();
     assert!(loaded.settings.autostart);
     assert!((loaded.settings.opacity - 0.9).abs() < 0.001);
-    assert_eq!(
-        loaded.settings.claude.card_tint,
-        token_usage_lib::domain::types::CardTint::Mint
-    );
+    assert!(loaded.settings.claude.enabled);
 }
 
 #[test]
@@ -214,9 +210,7 @@ fn risk_appearance_toggles_persist_and_update_core() {
     assert!(core.get_state().settings.show_icon_glow);
 
     // Toggle off
-    core.set_show_orbit(false).unwrap();
-    core.set_show_icon_glow(false).unwrap();
-
+    core.set_show_animation(false).unwrap();
     assert!(!core.get_state().settings.show_orbit);
     assert!(!core.get_state().settings.show_icon_glow);
 
@@ -225,18 +219,12 @@ fn risk_appearance_toggles_persist_and_update_core() {
     assert!(!loaded.settings.show_icon_glow);
 
     // Toggle on
-    core.set_show_orbit(true).unwrap();
-    assert!(core.get_state().settings.show_orbit);
-    let loaded_on = load_state(dir.path()).unwrap();
-    assert!(loaded_on.settings.show_orbit);
-
-    core.set_show_animation(false).unwrap();
-    assert!(!core.get_state().settings.show_orbit);
-    assert!(!core.get_state().settings.show_icon_glow);
-
     core.set_show_animation(true).unwrap();
     assert!(core.get_state().settings.show_orbit);
     assert!(core.get_state().settings.show_icon_glow);
+    let loaded_on = load_state(dir.path()).unwrap();
+    assert!(loaded_on.settings.show_orbit);
+    assert!(loaded_on.settings.show_icon_glow);
 }
 
 #[test]
@@ -250,20 +238,17 @@ fn legacy_period_setting_is_ignored_and_not_saved() {
 
 #[test]
 fn risk_failed_settings_write_preserves_memory() {
-    use token_usage_lib::domain::types::CardTint;
     let dir = tempdir().unwrap();
     let blocked = dir.path().join("blocked");
     fs::write(&blocked, "not a directory").unwrap();
     let initial = default_state();
     type SettingMutation = fn(&AppCore) -> Result<(), String>;
-    let mutations: [SettingMutation; 7] = [
+    let mutations: [SettingMutation; 5] = [
         |core| core.set_opacity(0.5).map(|_| ()),
         |core| core.set_autostart(!default_state().settings.autostart),
         |core| core.set_hover_detail(!default_state().settings.hover_detail),
         |core| core.set_always_show_notch(true),
-        |core| core.set_show_orbit(false),
-        |core| core.set_show_icon_glow(false),
-        |core| core.set_provider_tint(ProviderId::Grok, CardTint::Mint),
+        |core| core.set_show_animation(false),
     ];
     for (index, mutate) in mutations.into_iter().enumerate() {
         let core = AppCore::new(initial.clone(), blocked.clone());

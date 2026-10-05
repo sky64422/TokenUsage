@@ -1,6 +1,6 @@
 use crate::domain::constants::clamp_opacity;
 use crate::domain::types::{
-    AppSettings, CardTint, DataSource, DiagnosticsSnapshot, PersistedState,
+    AppSettings, DataSource, DiagnosticsSnapshot, PersistedState,
     ProviderId, ProviderSnapshot, SnapshotStatus,
 };
 use crate::infrastructure::store::save_state;
@@ -166,18 +166,6 @@ impl AppCore {
         })
     }
 
-    pub fn set_show_orbit(&self, enabled: bool) -> Result<(), String> {
-        self.mutate_settings(|s| {
-            s.show_orbit = enabled;
-        })
-    }
-
-    pub fn set_show_icon_glow(&self, enabled: bool) -> Result<(), String> {
-        self.mutate_settings(|s| {
-            s.show_icon_glow = enabled;
-        })
-    }
-
     pub fn set_show_animation(&self, enabled: bool) -> Result<(), String> {
         self.mutate_settings(|s| {
             s.show_orbit = enabled;
@@ -220,12 +208,6 @@ impl AppCore {
             guard.state = next;
         }
         Ok(self.refresh_all())
-    }
-
-    pub fn set_provider_tint(&self, id: ProviderId, tint: CardTint) -> Result<(), String> {
-        self.mutate_settings(|s| {
-            s.provider_config_mut(id).card_tint = tint;
-        })
     }
 
     pub fn diagnostics(&self) -> DiagnosticsSnapshot {

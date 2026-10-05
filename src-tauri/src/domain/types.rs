@@ -1,4 +1,4 @@
-use crate::domain::constants::{OpacityPolicy, RefreshPolicy};
+use crate::domain::constants::OpacityPolicy;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -69,18 +69,6 @@ pub enum DataSource {
     Unavailable,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum CardTint {
-    #[default]
-    None,
-    Rose,
-    Peach,
-    Mint,
-    Sky,
-    Lavender,
-    Lemon,
-}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UsageWindow {
@@ -112,22 +100,15 @@ pub struct ProviderSnapshot {
     pub primary_used_percent: Option<f64>,
 }
 
-fn default_card_tint() -> CardTint {
-    CardTint::None
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProviderConfig {
     pub enabled: bool,
-    #[serde(default = "default_card_tint")]
-    pub card_tint: CardTint,
 }
 
 impl Default for ProviderConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            card_tint: CardTint::None,
         }
     }
 }
@@ -146,9 +127,6 @@ pub struct AppSettings {
     pub show_orbit: bool,
     #[serde(default = "default_true")]
     pub show_icon_glow: bool,
-    /// Legacy persist field; poll interval is always `RefreshPolicy::DEFAULT_REFRESH_SECS`.
-    #[serde(default = "default_refresh_secs")]
-    pub refresh_secs: u64,
     #[serde(default)]
     pub claude: ProviderConfig,
     #[serde(default)]
@@ -163,9 +141,6 @@ fn default_true() -> bool {
     true
 }
 
-fn default_refresh_secs() -> u64 {
-    RefreshPolicy::DEFAULT_REFRESH_SECS
-}
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -177,7 +152,6 @@ impl Default for AppSettings {
             always_show_notch: false,
             show_orbit: true,
             show_icon_glow: true,
-            refresh_secs: RefreshPolicy::DEFAULT_REFRESH_SECS,
             claude: ProviderConfig::default(),
             codex: ProviderConfig::default(),
             grok: ProviderConfig::default(),

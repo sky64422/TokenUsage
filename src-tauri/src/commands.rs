@@ -1,5 +1,5 @@
 use crate::domain::types::{
-    CardTint, DiagnosticsSnapshot, PersistedState, ProviderId, ProviderSnapshot,
+    DiagnosticsSnapshot, PersistedState, ProviderId, ProviderSnapshot,
 };
 use crate::infrastructure::window_ctl;
 use crate::state::AppHandleState;
@@ -127,16 +127,6 @@ pub fn set_always_show_notch(
 }
 
 #[tauri::command]
-pub fn set_show_orbit(state: State<'_, AppHandleState>, enabled: bool) -> Result<(), String> {
-    state.core.set_show_orbit(enabled)
-}
-
-#[tauri::command]
-pub fn set_show_icon_glow(state: State<'_, AppHandleState>, enabled: bool) -> Result<(), String> {
-    state.core.set_show_icon_glow(enabled)
-}
-
-#[tauri::command]
 pub fn set_show_animation(state: State<'_, AppHandleState>, enabled: bool) -> Result<(), String> {
     state.core.set_show_animation(enabled)
 }
@@ -154,15 +144,6 @@ pub async fn set_provider_enabled(
         .map_err(|e| e.to_string())??;
     let _ = app.emit("snapshots-updated", &snaps);
     Ok(snaps)
-}
-
-#[tauri::command]
-pub fn set_provider_tint(
-    state: State<'_, AppHandleState>,
-    provider: ProviderId,
-    tint: CardTint,
-) -> Result<(), String> {
-    state.core.set_provider_tint(provider, tint)
 }
 
 #[tauri::command]

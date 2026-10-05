@@ -96,12 +96,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   const providers = mountProviders(
     root.querySelector<HTMLElement>(".quota-root")!,
   );
-  providers.setTints({
-    claude: persisted.settings.claude.card_tint,
-    codex: persisted.settings.codex.card_tint,
-    grok: persisted.settings.grok.card_tint,
-    agy: persisted.settings.agy.card_tint,
-  });
   function applyAppearanceClasses(st: AppSettings) {
     const showAnim = st.show_orbit !== false || st.show_icon_glow !== false;
     rail.classList.toggle("hide-orbit", !showAnim);
@@ -284,6 +278,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   rail.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     openSettings();
+  }, eventOptions);
+  detail.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
   }, eventOptions);
   rail.addEventListener("keydown", (e) => {
     if (e.key === "Tab" && rail.classList.contains("is-folded")) {

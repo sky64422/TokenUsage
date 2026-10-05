@@ -31,22 +31,8 @@ export interface ProviderSnapshot {
   primary_used_percent: number | null;
 }
 
-export type CardTint =
-  "none" | "rose" | "peach" | "mint" | "sky" | "lavender" | "lemon";
-
-export const CARD_TINTS: { value: CardTint; label: string }[] = [
-  { value: "none", label: "Default" },
-  { value: "rose", label: "Rose" },
-  { value: "peach", label: "Peach" },
-  { value: "mint", label: "Mint" },
-  { value: "sky", label: "Sky" },
-  { value: "lavender", label: "Lavender" },
-  { value: "lemon", label: "Lemon" },
-];
-
 export interface ProviderConfig {
   enabled: boolean;
-  card_tint?: CardTint;
 }
 
 export interface AppSettings {
@@ -58,7 +44,6 @@ export interface AppSettings {
   show_orbit?: boolean;
   show_icon_glow?: boolean;
   show_animation?: boolean;
-  refresh_secs: number;
   claude: ProviderConfig;
   codex: ProviderConfig;
   grok: ProviderConfig;

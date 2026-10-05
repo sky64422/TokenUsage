@@ -49,8 +49,6 @@ export function mountSettingsPanel(
     onAutostart: (v: boolean) => void | Promise<void>;
     onHoverDetail: (v: boolean) => void | Promise<void>;
     onAlwaysShowNotch?: (v: boolean) => void | Promise<void>;
-    onShowOrbit?: (v: boolean) => void | Promise<void>;
-    onShowIconGlow?: (v: boolean) => void | Promise<void>;
     onShowAnimation?: (v: boolean) => void | Promise<void>;
     onOpacityChange: (o: number) => void;
     onProviderEnabled: (id: ProviderId, enabled: boolean) => void | Promise<void>;
@@ -365,14 +363,7 @@ export function mountSettingsPanel(
   bindToggle("hover-detail", Boolean(settings.hover_detail), handlers.onHoverDetail);
   const initialAnim = settings.show_orbit !== false || settings.show_icon_glow !== false;
   bindToggle("show-animation", initialAnim, async (enabled) => {
-    if (handlers.onShowAnimation) {
-      await handlers.onShowAnimation(enabled);
-      return;
-    }
-    await Promise.all([
-      handlers.onShowOrbit?.(enabled),
-      handlers.onShowIconGlow?.(enabled),
-    ]);
+    await handlers.onShowAnimation?.(enabled);
   });
 
   function paintUpdateUi(state: UpdateState): void {

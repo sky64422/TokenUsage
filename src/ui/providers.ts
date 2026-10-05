@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
   clampPct,
   formatCountdown,
@@ -10,116 +9,22 @@ import {
   isOver,
   levelClass,
 } from "./format";
-import type { CardTint, ProviderActivity, ProviderId, ProviderSnapshot, UsageWindow } from "./types";
-import { CARD_TINTS, PROVIDER_IDS } from "./types";
-
-function normalizeTint(raw: string | null | undefined): CardTint {
-  return CARD_TINTS.some((t) => t.value === raw) ? (raw as CardTint) : "none";
-}
+import type { ProviderActivity, ProviderId, ProviderSnapshot, UsageWindow } from "./types";
 
 export function mountProviders(root: HTMLElement): {
   setSnapshots: (snaps: ProviderSnapshot[]) => void;
-  setTints: (tints: Partial<Record<ProviderId, CardTint>>) => void;
   setActivities: (acts: ProviderActivity[]) => void;
 } {
   let snaps: ProviderSnapshot[] = [];
   const activities = new Map<ProviderId, string>();
-  const tints: Record<ProviderId, CardTint> = {
-    claude: "none",
-    codex: "none",
-    grok: "none",
-    agy: "none",
-  };
-  let tintMenuEl: HTMLElement | null = null;
-
-  function closeTintMenu(): void {
-    if (tintMenuEl) {
-      tintMenuEl.remove();
-      tintMenuEl = null;
-    }
-  }
-
-  function openTintMenu(id: ProviderId, clientX: number, clientY: number): void {
-    closeTintMenu();
-    const current = tints[id];
-    const menu = document.createElement("div");
-    menu.className = "tint-menu";
-    menu.setAttribute("role", "menu");
-    menu.innerHTML = `
-      <div class="tint-menu-label">Card color</div>
-      <div class="tint-swatches">
-        ${CARD_TINTS.map(
-          (t) => `
-          <button type="button" class="tint-swatch tint-${t.value}${t.value === current ? " active" : ""}"
-            data-tint="${t.value}" title="${t.label}" aria-label="${t.label}"></button>`,
-        ).join("")}
-      </div>
-    `;
-    document.body.appendChild(menu);
-    const pad = 8;
-    const rect = menu.getBoundingClientRect();
-    let left = clientX;
-    let top = clientY;
-    if (left + rect.width > window.innerWidth - pad) {
-      left = window.innerWidth - rect.width - pad;
-    }
-    if (top + rect.height > window.innerHeight - pad) {
-      top = window.innerHeight - rect.height - pad;
-    }
-    menu.style.left = `${Math.max(pad, left)}px`;
-    menu.style.top = `${Math.max(pad, top)}px`;
-    tintMenuEl = menu;
-
-    menu.querySelectorAll<HTMLButtonElement>("[data-tint]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const tint = normalizeTint(btn.dataset.tint);
-        closeTintMenu();
-        tints[id] = tint;
-        applyTintClass(id, tint);
-        void invoke("set_provider_tint", { provider: id, tint }).catch((err) => {
-          console.error("set_provider_tint failed", err);
-        });
-      });
-    });
-  }
-
-  function applyTintClass(id: ProviderId, tint: CardTint): void {
-    const el = root.querySelector<HTMLElement>(`[data-provider="${id}"]`);
-    if (!el) return;
-    for (const t of CARD_TINTS) {
-      if (t.value === "none") continue;
-      el.classList.toggle(`tint-${t.value}`, t.value === tint);
-    }
-  }
-
-  function bindTintMenus(): void {
-    root.querySelectorAll<HTMLElement>("[data-provider]").forEach((card) => {
-      card.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const id = card.dataset.provider as ProviderId | undefined;
-        if (!id) return;
-        openTintMenu(id, e.clientX, e.clientY);
-      });
-    });
-  }
 
   function render(): void {
-    closeTintMenu();
     if (snaps.length === 0) {
       root.innerHTML = `<div class="empty-state">Waiting for usage…</div>`;
       return;
     }
-    root.innerHTML = `<div class="provider-list">${snaps.map((s) => cardHtml(s, tints[s.provider_id], activities.get(s.provider_id) === "running")).join("")}</div>`;
-    bindTintMenus();
+    root.innerHTML = `<div class="provider-list">${snaps.map((s) => cardHtml(s, activities.get(s.provider_id) === "running")).join("")}</div>`;
   }
-
-  document.addEventListener("pointerdown", (e) => {
-    if (tintMenuEl && !tintMenuEl.contains(e.target as Node)) {
-      closeTintMenu();
-    }
-  });
 
   setInterval(() => {
     root.querySelectorAll<HTMLElement>("[data-resets-at]").forEach((el) => {
@@ -137,12 +42,6 @@ export function mountProviders(root: HTMLElement): {
       snaps = next;
       render();
     },
-    setTints(next) {
-      for (const id of PROVIDER_IDS) {
-        if (next[id] != null) tints[id] = normalizeTint(next[id]);
-      }
-      render();
-    },
     setActivities(acts) {
       activities.clear();
       for (const a of acts) activities.set(a.provider_id, a.state);
@@ -151,7 +50,7 @@ export function mountProviders(root: HTMLElement): {
   };
 }
 
-function cardHtml(s: ProviderSnapshot, tint: CardTint, isRunning: boolean): string {
+function cardHtml(s: ProviderSnapshot, isRunning: boolean): string {
   const hasUsage = s.windows.some(
     (w) => (w.used_percent ?? 0) > 0 || w.used > 0,
   );
@@ -188,10 +87,9 @@ function cardHtml(s: ProviderSnapshot, tint: CardTint, isRunning: boolean): stri
         .join("")
     : emptyUsageRow(s, idle, over);
 
-  const tintClass = tint !== "none" ? ` tint-${tint}` : "";
   const activityAttr = isRunning ? ' data-activity="running"' : "";
   return `
-    <div class="provider-card${idle ? " is-idle" : ""}${tintClass}" data-provider="${s.provider_id}"${activityAttr}>
+    <div class="provider-card${idle ? " is-idle" : ""}" data-provider="${s.provider_id}"${activityAttr}>
       ${s.windows.some(w => w.group) ? `<div class="quota-service-name">${escapeHtml(s.display_name)}</div>` : ""}
       ${rows}
     </div>
