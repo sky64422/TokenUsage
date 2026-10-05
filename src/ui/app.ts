@@ -132,6 +132,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       },
       onProviderEnabled: async (provider, isEnabled) => {
         try {
+          if (persisted?.settings) {
+            persisted.settings[provider].enabled = isEnabled;
+          }
           snaps = await invoke("set_provider_enabled", {
             provider,
             enabled: isEnabled,
@@ -139,6 +142,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           persisted = await invoke("get_state");
           refreshView();
         } catch (e) {
+          persisted = await invoke<PersistedState>("get_state").catch(() => persisted);
+          refreshView();
           fail(e);
           throw e;
         }

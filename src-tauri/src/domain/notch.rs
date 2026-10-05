@@ -309,7 +309,9 @@ pub fn calculate_layout_target(
                     ideal.clamp(w.y, (w.y + w.height - dh).max(w.y))
                 }
             } else {
-                notch.y.clamp(w.y, (w.y + w.height - dh).max(w.y))
+                let center = notch.y + notch.height / 2.0;
+                let ideal = center - dh / 2.0;
+                ideal.clamp(w.y, (w.y + w.height - dh).max(w.y))
             };
             (x, y)
         } else {
@@ -327,12 +329,9 @@ pub fn calculate_layout_target(
                     ideal.clamp(w.x, (w.x + w.width - dw).max(w.x))
                 }
             } else {
-                match anchor_x {
-                    AnchorX::Left => notch.x.clamp(w.x, (w.x + w.width - dw).max(w.x)),
-                    AnchorX::Right => {
-                        (notch.x + notch.width - dw).clamp(w.x, (w.x + w.width - dw).max(w.x))
-                    }
-                }
+                let center = notch.x + notch.width / 2.0;
+                let ideal = center - dw / 2.0;
+                ideal.clamp(w.x, (w.x + w.width - dw).max(w.x))
             };
             (x, y)
         };
@@ -380,15 +379,17 @@ fn surface_canvas(notch: Rect, work: Rect, edge: NotchEdge, scale: f64) -> Rect 
         .min(work.height - if edge.vertical() { 0. } else { notch.height + gap });
     if width <= 0. || height <= 0. { return notch; }
     let reserve = if edge.vertical() {
-        let top = (notch.y - height / 2.).floor().clamp(work.y, work.y + work.height - height);
-        let bottom = (notch.y + notch.height + height).ceil().min(work.y + work.height);
+        let center = notch.y + notch.height / 2.;
+        let top = (center - height).floor().clamp(work.y, work.y + work.height - height);
+        let bottom = (center + height).ceil().min(work.y + work.height);
         Rect {
             x: if edge == NotchEdge::Left { notch.x + notch.width + gap } else { notch.x - gap - width },
             y: top, width, height: bottom - top,
         }
     } else {
-        let left = (notch.x - width / 2.).floor().clamp(work.x, work.x + work.width - width);
-        let right = (notch.x + notch.width + width / 2.).ceil().min(work.x + work.width);
+        let center = notch.x + notch.width / 2.;
+        let left = (center - width).floor().clamp(work.x, work.x + work.width - width);
+        let right = (center + width).ceil().min(work.x + work.width);
         Rect {
             x: left,
             y: if edge == NotchEdge::Top { notch.y + notch.height + gap } else { notch.y - gap - height },
