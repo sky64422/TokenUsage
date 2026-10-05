@@ -120,11 +120,28 @@ export function mountNotchDrag(
   handlers: Omit<DragHandlers, "onState">,
 ) {
   const events = new AbortController();
+  let snapTimer: ReturnType<typeof setTimeout> | null = null;
+  let wasDragging = false;
+  const triggerSnapSlosh = () => {
+    rail.classList.remove("is-snapped");
+    void rail.offsetWidth;
+    rail.classList.add("is-snapped");
+    if (snapTimer) clearTimeout(snapTimer);
+    snapTimer = setTimeout(() => rail.classList.remove("is-snapped"), 450);
+  };
   const drag = createNotchDrag({
     ...handlers,
+    onNotice: event => {
+      if (wasDragging && event.finished) {
+        triggerSnapSlosh();
+        wasDragging = false;
+      }
+      handlers.onNotice(event);
+    },
     onState: ({ armed, dragging }) => {
       rail.classList.toggle("is-drag-armed", armed);
       rail.classList.toggle("is-dragging", dragging);
+      if (dragging) wasDragging = true;
     },
   });
   const options = { signal: events.signal };
@@ -150,6 +167,11 @@ export function mountNotchDrag(
     get dragging() { return drag.dragging; },
     finish: drag.finish,
     notice: drag.notice,
-    destroy() { events.abort(); drag.destroy(); },
+    destroy() {
+      events.abort();
+      if (snapTimer) clearTimeout(snapTimer);
+      rail.classList.remove("is-snapped");
+      drag.destroy();
+    },
   };
 }

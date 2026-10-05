@@ -300,13 +300,47 @@
 .notch.is-dragging {
   transition: filter 0.2s ease;
 }
-/* Bencho commitment: Visual tension/glow armed at threshold distance before release */
-.notch.is-dragging.is-drag-armed .notch-surface {
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.22));
+/* Bencho commitment: Surface tension armed at threshold distance before release */
+.notch.is-drag-armed:not(.is-dragging) .notch-surface {
+  transform: scale(0.975);
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+  transition: transform 120ms ease-out, filter 160ms ease-out;
 }
-.notch.is-dragging.is-drag-armed .notch-shape path {
-  stroke: rgba(255, 255, 255, 0.26);
+.notch.is-drag-armed .notch-shape path {
+  stroke: rgba(255, 255, 255, 0.32);
   stroke-width: 1px;
+}
+/* Liquid floating droplet elevation while actively dragging */
+.notch.is-dragging .notch-surface {
+  transform: scale(1.025);
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 14px rgba(255, 255, 255, 0.25));
+  transition: transform 180ms cubic-bezier(0.34, 1.4, 0.64, 1), filter 200ms ease;
+}
+.notch.is-dragging .notch-shape path {
+  stroke: rgba(255, 255, 255, 0.42);
+  stroke-width: 1.2px;
+}
+
+/* Liquid snap slosh when docking on edge release */
+.notch[data-edge="right"].is-snapped .notch-surface,
+.notch[data-edge="left"].is-snapped .notch-surface {
+  animation: liquid-snap-x 420ms cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+.notch[data-edge="top"].is-snapped .notch-surface,
+.notch[data-edge="bottom"].is-snapped .notch-surface {
+  animation: liquid-snap-y 420ms cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+@keyframes liquid-snap-x {
+  0% { transform: scaleX(0.88) scaleY(1.06); }
+  40% { transform: scaleX(1.04) scaleY(0.98); }
+  75% { transform: scaleX(0.99) scaleY(1.01); }
+  100% { transform: scale(1); }
+}
+@keyframes liquid-snap-y {
+  0% { transform: scaleY(0.88) scaleX(1.06); }
+  40% { transform: scaleY(1.04) scaleX(0.98); }
+  75% { transform: scaleY(0.99) scaleX(1.01); }
+  100% { transform: scale(1); }
 }
 .notch[data-edge="top"] .notch-cells,
 .notch[data-edge="bottom"] .notch-cells {
@@ -469,8 +503,9 @@
   .activity-pulse-dot {
     animation: none !important;
   }
-  .notch-detail {
-    animation: none;
+  .notch-detail,
+  .notch.is-snapped .notch-surface {
+    animation: none !important;
   }
   .ring-fill {
     animation: none !important;
