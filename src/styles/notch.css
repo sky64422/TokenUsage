@@ -506,16 +506,13 @@ body:has(.notch[data-edge="bottom"]) .notch-detail {
 @keyframes liquid-detail-drop-right {
   0% {
     opacity: 0;
-    transform: scaleX(0.75) scaleY(0.88) translateX(16px);
-    clip-path: inset(5% 0 5% 15% round 20px);
+    transform: scaleX(0.82) translateX(14px);
+    clip-path: inset(0 0 0 16% round 16px);
   }
-  60% {
+  65% {
     opacity: 1;
-    transform: scaleX(1.025) scaleY(0.985) translateX(-2.5px);
+    transform: scaleX(1.015) translateX(-2px);
     clip-path: inset(0 round 16px);
-  }
-  85% {
-    transform: scaleX(0.995) scaleY(1.005) translateX(0.5px);
   }
   100% {
     opacity: 1;
@@ -527,16 +524,13 @@ body:has(.notch[data-edge="bottom"]) .notch-detail {
 @keyframes liquid-detail-drop-left {
   0% {
     opacity: 0;
-    transform: scaleX(0.75) scaleY(0.88) translateX(-16px);
-    clip-path: inset(5% 15% 5% 0 round 20px);
+    transform: scaleX(0.82) translateX(-14px);
+    clip-path: inset(0 16% 0 0 round 16px);
   }
-  60% {
+  65% {
     opacity: 1;
-    transform: scaleX(1.025) scaleY(0.985) translateX(2.5px);
+    transform: scaleX(1.015) translateX(2px);
     clip-path: inset(0 round 16px);
-  }
-  85% {
-    transform: scaleX(0.995) scaleY(1.005) translateX(-0.5px);
   }
   100% {
     opacity: 1;
@@ -548,16 +542,13 @@ body:has(.notch[data-edge="bottom"]) .notch-detail {
 @keyframes liquid-detail-drop-top {
   0% {
     opacity: 0;
-    transform: scaleY(0.75) scaleX(0.88) translateY(-16px);
-    clip-path: inset(0 5% 15% 5% round 20px);
+    transform: scaleY(0.88) translateY(-14px);
+    clip-path: inset(0 0 16% 0 round 16px);
   }
-  60% {
+  65% {
     opacity: 1;
-    transform: scaleY(1.025) scaleX(0.985) translateY(2.5px);
+    transform: scaleY(1.012) translateY(2px);
     clip-path: inset(0 round 16px);
-  }
-  85% {
-    transform: scaleY(0.995) scaleX(1.005) translateY(-0.5px);
   }
   100% {
     opacity: 1;
@@ -569,16 +560,13 @@ body:has(.notch[data-edge="bottom"]) .notch-detail {
 @keyframes liquid-detail-drop-bottom {
   0% {
     opacity: 0;
-    transform: scaleY(0.75) scaleX(0.88) translateY(16px);
-    clip-path: inset(15% 5% 0 5% round 20px);
+    transform: scaleY(0.88) translateY(14px);
+    clip-path: inset(16% 0 0 0 round 16px);
   }
-  60% {
+  65% {
     opacity: 1;
-    transform: scaleY(1.025) scaleX(0.985) translateY(-2.5px);
+    transform: scaleY(1.012) translateY(-2px);
     clip-path: inset(0 round 16px);
-  }
-  85% {
-    transform: scaleY(0.995) scaleX(1.005) translateY(0.5px);
   }
   100% {
     opacity: 1;

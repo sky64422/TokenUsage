@@ -179,7 +179,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     const expanded = !drag.dragging && (interaction.settings || interaction.provider !== null);
     const height = interaction.settings
       ? settings.getContentHeight()
-      : Math.ceil(body.getBoundingClientRect().height + SURFACE_PADDING);
+      : Math.ceil(Math.max(body.offsetHeight, body.scrollHeight) + SURFACE_PADDING);
     let target: number | null = null;
     if (interaction.provider && !interaction.settings) {
       const cell = root.querySelector<HTMLElement>(
