@@ -12,11 +12,6 @@ impl OpacityPolicy {
     pub const DEFAULT: f64 = 0.92;
 }
 
-pub struct HotkeyPolicy;
-impl HotkeyPolicy {
-    pub const DEFAULT: &'static str = "Ctrl+Shift+U";
-}
-
 pub fn clamp_opacity(v: f64) -> f64 {
     v.clamp(OpacityPolicy::MIN, OpacityPolicy::MAX)
 }

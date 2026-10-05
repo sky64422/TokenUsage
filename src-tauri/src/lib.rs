@@ -13,7 +13,6 @@ use state::AppHandleState;
 use std::sync::Arc;
 use tauri::Manager;
 use tauri_plugin_autostart::MacosLauncher;
-use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -24,15 +23,6 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(move |app, _sc, event| {
-                    if event.state() == ShortcutState::Pressed {
-                        commands::toggle_visibility_from_handle(app);
-                    }
-                })
-                .build(),
-        )
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
             std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
@@ -63,11 +53,6 @@ pub fn run() {
 
             // Prefer release binary for OS login items (see commands::sync_os_autostart).
             let _ = commands::sync_os_autostart(app.handle(), persisted.settings.autostart);
-
-            let hotkey = persisted.settings.hotkey.clone();
-            if let Ok(shortcut) = hotkey.parse::<Shortcut>() {
-                let _ = app.global_shortcut().register(shortcut);
-            }
 
             app.manage(handle_state);
             infrastructure::activity::start(app.handle());

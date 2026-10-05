@@ -1,4 +1,4 @@
-use crate::domain::constants::{HotkeyPolicy, OpacityPolicy, RefreshPolicy};
+use crate::domain::constants::{OpacityPolicy, RefreshPolicy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -137,7 +137,6 @@ pub struct AppSettings {
     #[serde(default)]
     pub notch: super::notch::NotchPlacement,
     pub opacity: f64,
-    pub hotkey: String,
     pub autostart: bool,
     #[serde(default)]
     pub hover_detail: bool,
@@ -173,7 +172,6 @@ impl Default for AppSettings {
         Self {
             notch: super::notch::NotchPlacement::default(),
             opacity: OpacityPolicy::DEFAULT,
-            hotkey: HotkeyPolicy::DEFAULT.into(),
             autostart: true,
             hover_detail: false,
             always_show_notch: false,

@@ -1,6 +1,6 @@
 # TokenUsage visual system — edge notch
 
-Updated: 2026-10-03. Implements the user-approved [edge notch design](docs/superpowers/specs/2026-09-30-edge-notch-design.md). Windows is the native validation target.
+Updated: 2026-10-05 (v0.3.6). Implements the user-approved [edge notch design](docs/superpowers/specs/2026-09-30-edge-notch-design.md). Windows is the native validation target.
 
 ## Purpose
 
@@ -25,8 +25,8 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 - Detail cards use a near-black surface, 16px radius, thin quiet border, 16px padding. Native width 260 DIP, max native height 560 DIP, bounded to work area. Scroll only on actual overflow.
 - Settings request 400 DIP height so normal appearance controls fit without scrolling; smaller work areas retain body-only scrolling. Action buttons use 32 DIP targets and 8px corners. A pinned provider has a quiet rounded background and border distinct from hover.
 - Existing detail rows keep name / period / refill and `1fr` bar / `2.9em` percentage columns, with 2px gutter. Dual and grouped rows use compact `--usage-row-gap: 8px`. Quiet Luxury 6px pill tracks remain.
-- Settings sheet uses a 3-tab layout (`모양`, `서비스`, `일반`) with fixed header and tab bar while the body scrolls. Standardized controls: `불투명도` (opacity meter), `노치 항상 표시` (always show), `마우스 올릴 때 상세 열기` (hover detail), `작업 중 강조 효과` (highlight effect while working), `서비스` on/off grid (`표시`/`숨김`, minimum 1 locked), `로그 복사` (copy diagnostics), and `종료` (quit). Edge and display placement is managed directly by dragging the notch.
-- Opacity slider remains neutral with off-white thumb. `applyPanelOpacity` and semantic `max(...)` floors preserve readability. Card tints apply only to quota detail surfaces.
+- Settings sheet uses a 3-tab layout (`모양`, `서비스`, `일반`) with fixed header and tab bar while the body scrolls. Standardized controls: `불투명도` (opacity meter), `노치 항상 표시` (always show), `마우스 올릴 때 상세 열기` (hover detail), `작업 중 강조 효과` (show_animation, unified activity animation toggle), `서비스` on/off grid (`표시`/`숨김`, minimum 1 locked). The General tab features docked footer actions (`로그 복사`, `종료` with precision power icon geometry and 100% symmetric margins). Tab panel heights are unified with `scrollbar-gutter: stable` to eliminate tab-switch scrollbar flashes. Edge and display placement is managed directly by dragging the notch.
+- Opacity slider remains neutral with off-white thumb. `applyPanelOpacity` and semantic `max(...)` floors preserve readability. Card tints apply only to quota detail surfaces. Hovering over a provider cell reinforces clear visual identity and stable inward anchor geometry.
 
 ## Native contracts
 

@@ -1,6 +1,6 @@
 # Windows development (TokenUsage)
 
-**Updated:** 2026-08-15  
+**Updated:** 2026-10-05  
 Companion to [ARCHITECTURE.md](./ARCHITECTURE.md), [PRODUCT.md](../PRODUCT.md), [DESIGN.md](../DESIGN.md).
 
 ## Prerequisites
@@ -23,7 +23,7 @@ npm run build
 
 ## Autostart note
 
-- Settings **Launch at login** is stored always. Refresh interval is fixed (5s) — no in-app control.
+- Settings **Windows 시작 시 실행** (Autostart under `일반` tab) is stored always. Refresh interval is fixed (5s) — no in-app control.
 - OS `HKCU\...\Run` is updated **only by release builds** so `npm run tauri dev` does not point boot at `target\debug\token-usage.exe` (no Vite → blank UI).
 - To fix a machine that already has a bad Run key: run the **installed** app once with autostart on, or set Run to `%LocalAppData%\TokenUsage\token-usage.exe`.
 
@@ -38,8 +38,8 @@ npm run release:publish -- --dry-run
 ## Notes
 
 - Transparent + always-on-top chrome behaves best on real Windows (not WSL GUI).
-- Hotkey and autostart need a packaged/dev Tauri process, not plain `vite` alone.
-- Design tokens: `src/styles/tokens.css`; UI primitives: `src/styles/app.css`.
+- Autostart and native window behaviors need a packaged/dev Tauri process, not plain `vite` alone.
+- Design tokens: `src/styles/tokens.css`; Notch chrome: `src/styles/notch.css`; UI primitives: `src/styles/app.css`.
 
 ## Background quota reads
 

@@ -38,7 +38,6 @@ A screen-edge **usage monitor notch** that shows personal vendor quota (Claude /
 
 - Auth: local CLI credential files and official CLI only (no in-app login flow).
 - HTTP usage endpoints are metadata (do not burn coding tokens).
-- Default hotkey: `Ctrl+Shift+U` (toggle; refresh on show).
 - In-app updater via signed GitHub releases (`latest.json`).
 - Autostart: OS login item for **release/install** binary only (never `tauri dev` debug path).
 
@@ -63,7 +62,7 @@ A screen-edge **usage monitor notch** that shows personal vendor quota (Claude /
 | Surface | Mode | Job |
 |---------|------|-----|
 | Main notch (provider rings) | Operate | See % used / risk / reset at a glance |
-| Inward settings sheet | Operate | 3-tab layout: 불투명도, 노치 항상 표시, 마우스 올릴 때 상세 열기, 애니메이션, 서비스 표시/숨김, autostart, 버전, 로그 복사, 종료 |
+| Inward settings sheet | Operate | 3-tab layout: 불투명도, 노치 항상 표시, 마우스 올릴 때 상세 열기, 작업 중 강조 효과, 서비스 표시/숨김, autostart, 버전, 로그 복사, 종료 |
 | System tray | Operate | Show / hide / quit affordances |
 
 ## Anti-references

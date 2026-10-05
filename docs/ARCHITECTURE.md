@@ -32,7 +32,7 @@ Rust AppCore
 - The main transparent HWND expands inward for details. The frontend renders at local DIP coordinates from the returned physical layout; it never moves or resizes the HWND itself.
 - No DWM rounded clipping, resize handles, legacy 240px width floor, or MutationObserver content-hug loop. Custom SVG owns the shape.
 - Details retain 6px Quiet Luxury pill tracks, fixed name/period/refill columns and `1fr / 2.9em` metrics with 2px gutter. Multi-group and dual rows use compact `--usage-row-gap: 8px`. Opacity readability floors remain.
-- Settings sheet uses a 3-tab layout (`모양`, `서비스`, `일반`) with fixed header and tab bar while the body scrolls. Service badges mean shown/hidden (`표시`/`숨김`), not account health; minimum 1 provider is locked. Toggle saves disable pending controls and roll back failed changes; update actions use explicit text.
+- Settings sheet uses a 3-tab layout (`모양`, `서비스`, `일반`) with fixed header and tab bar while the body scrolls. Appearance provides `불투명도` (opacity), `노치 항상 표시` (always show), `마우스 올릴 때 상세 열기` (hover detail), and unified `작업 중 강조 효과` (activity animations). Service badges mean shown/hidden (`표시`/`숨김`), not account health; minimum 1 provider is locked. General tab docks footer actions (`로그 복사`, `종료`) with symmetric margins and precision icons. Tab panel heights are unified and scrollbar flash eliminated. Toggle saves disable pending controls and roll back failed changes; update actions use explicit text.
 - Provider failures use a compact status summary once per card; full vendor messages remain in the element title and diagnostic data.
 - Legacy `settings.window` is accepted on load and omitted on save. `settings.notch` defaults to right / centre / primary display.
 - `begin_notch_drag` / `finish_notch_drag` and `notch-drag` events coordinate session IDs, capture cleanup and frontend detail restoration. Native cursor sampling selects edges/displays in physical coordinates; release outside the HWND is detected by native button state. Keyboard arrows do not move the widget.
@@ -104,6 +104,6 @@ The original command names and JSON payloads are unchanged.
 - Manual: Settings > 일반 > 앱 정보 > 업데이트 확인 (`btn-check-update`) → `check_for_updates`
 - Publish: `npm run release:publish` — see [release.md](./release.md)
 
-## Hotkey
 
-Default: `Ctrl+Shift+U` (toggle visibility; refresh on show).
+
+

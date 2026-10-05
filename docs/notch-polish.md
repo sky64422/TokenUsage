@@ -11,8 +11,10 @@ drag-between-displays and anchor jitter fixes. [CodeNotch source/license](../thi
   settings, drag and keyboard focus hold it open. Right-click settings remains.
 - The activity arc is independent of quota. Codex uses local explicit lifecycle
   events, expiring unmatched starts after 120s without structural progress.
-  Claude shows inferred recent activity for 15s. Grok/AGY activity is unknown.
-  No hooks are installed, prompts retained, or quota estimated from transcripts.
+  Claude shows inferred recent activity for 15s. Grok detects turn start/end in
+  session event logs (120s TTL). AGY detects recent local session transcripts
+  (Running <= 45s, Recent <= 120s). No hooks are installed, prompts retained, or
+  quota estimated from transcripts.
 - Activity discovery is bounded and read-only. Web/remote sessions, old date
   directories and long silent turns may be missed. Unknown never becomes working.
 - Reduced-motion disables orbit/reveal animation; folded cells are inert.
@@ -38,7 +40,7 @@ their timestamp. Missing/malformed output is unavailable, never 0%.
 Old window geometry/defaults/clamping, panel/header/content styles and unused
 tokens, token-count formatters, placement-preview/manual-refresh/header-hide IPC.
 Legacy `window` JSON loads but is omitted on save. Current placement, opacity,
-provider tint and hotkeys remain supported.
+provider tint and placement preferences remain supported.
 
 ## Verification
 

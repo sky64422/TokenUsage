@@ -52,7 +52,6 @@ export interface ProviderConfig {
 export interface AppSettings {
   notch: NotchPlacement;
   opacity: number;
-  hotkey: string;
   autostart: boolean;
   hover_detail: boolean;
   always_show_notch?: boolean;

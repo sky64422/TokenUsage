@@ -20,7 +20,7 @@
 - A final test run initially encountered Windows' running-executable lock; the isolated
   preview was closed and the complete test command then passed. Close preview before rebuilding.
 
-**Updated:** 2026-10-01 (v0.2.0)
+**Updated:** 2026-10-05 (v0.3.6)
 
 ## Snapshot
 
@@ -31,7 +31,7 @@
 | Opacity | `src/ui/opacity.test.ts` | opacity snapping, conversions, meter calc, CSS var styling |
 | Grok | `quota/grok.rs` tests | weekly credits, legacy cents, **ignores productUsage**, omitted % + period → **unknown**, explicit zero → **0%** |
 | Risk | `src-tauri/tests/risk_scenarios.rs` | Corrupt JSON, AppCore visibility, legacy settings |
-| GUI | Manual `npm run tauri dev` / `run:exe` | Glass chrome, Quiet Luxury tracks, hotkey, updater, opacity floors |
+| GUI | Manual `npm run tauri dev` / `run:exe` | Glass chrome, Quiet Luxury tracks, auto-fold/reveal, updater, opacity floors |
 
 ## Commands
 
@@ -87,9 +87,9 @@ Risk tests set this automatically.
 |-------|-----|
 | Low opacity | Settings opacity meter → 35–50%; meta/reset/labels still readable; meter fill stays neutral |
 | Live motion | Idle track static; active fill may sheen; critical+active may breathe |
-| Settings | No refresh chips; footer shows `vX.Y.Z`; last provider chip locked |
+| Settings | 3-tab layout ('모양', '서비스', '일반'); unified '작업 중 강조 효과'; locked last provider; docked footer ('로그 복사', '종료') |
 | Autostart (release only) | Install build; Run key should be install path, not `target\debug` |
-| Updater | Prior signed build → header ↻ / auto-check to newer `latest.json` |
+| Updater | Prior signed build → Settings > 일반 > 앱 정보 '업데이트 확인' / auto-check to newer `latest.json` |
 
 ## Coverage gate
 
