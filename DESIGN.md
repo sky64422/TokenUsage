@@ -1,6 +1,6 @@
 # TokenUsage visual system — edge notch
 
-Updated: 2026-10-05 (v0.3.6). Implements the user-approved [edge notch design](docs/superpowers/specs/2026-09-30-edge-notch-design.md). Windows is the native validation target.
+Updated: 2026-10-05 (v0.3.7). Implements the user-approved [edge notch design](docs/superpowers/specs/2026-09-30-edge-notch-design.md). Windows is the native validation target.
 
 ## Purpose
 

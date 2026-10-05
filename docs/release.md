@@ -1,7 +1,7 @@
 # Release & in-app updates
 
 **Updated:** 2026-10-05
-**Current public tag:** v0.3.6
+**Current public tag:** v0.3.7
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,7 +12,8 @@
 
 | Tag | Highlights |
 |-----|------------|
-| **v0.3.6** | Settings: unified activity animation toggle ('작업 중 강조 효과'), docked footer actions ('로그 복사', '종료') with precision power icon geometry, elimination of tab-reveal scrollbar flash, and 100% symmetric margins |
+| **v0.3.7** | Grok: xAI credential session prioritization & CLI renewal fallback; Notch: Windows topmost band watchdog & automatic z-order reassertion; Codex: real-time SQLite turn activity tracking |
+| v0.3.6 | Settings: unified activity animation toggle ('작업 중 강조 효과'), docked footer actions ('로그 복사', '종료') with precision power icon geometry, elimination of tab-reveal scrollbar flash, and 100% symmetric margins |
 | v0.3.5 | Stable hover detail geometry, clearer hovered provider identity, and settings layout polish; includes AGY background auto-update suppression introduced in v0.3.4 |
 | v0.3.4 | Settings: standardized Korean terminology, inline version badge with sky tint next to update button, uniform 40px row height cadence; Clippy & activity detection refinements |
 | v0.3.3 | Settings: 3-tab layout ('모양', '서비스', '일반'), appearance toggles (period, orbit, icon glow), refined readability & spacing; Notch: active-only orbit, default top-window metric |

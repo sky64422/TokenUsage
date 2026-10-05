@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/sky64422/TokenUsage/releases/latest">
-    <img src="https://img.shields.io/badge/Download-Windows%20Installer%20(v0.3.6)-blue?style=for-the-badge&logo=windows" alt="Download TokenUsage" />
+    <img src="https://img.shields.io/badge/Download-Windows%20Installer%20(v0.3.7)-blue?style=for-the-badge&logo=windows" alt="Download TokenUsage" />
   </a>
 </p>
 
