@@ -91,3 +91,10 @@ npm run build
 - 아키텍처: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · 프로바이더: [`docs/providers.md`](docs/providers.md) · 디자인: [`DESIGN.md`](DESIGN.md)
 
 </details>
+
+---
+
+## 참고 및 크레딧 (References & Credits)
+
+- **[CodeNotch](https://github.com/vinzdg/codenotch)** — 화면 가장자리에 자연스럽게 밀착되는 에지 노치 디자인과 인터랙션 콘셉트, 그리고 Windows 환경의 Antigravity CLI ConPTY 연동 방식에 많은 영감과 참조를 받았습니다. (MIT License · [`third-party/codenotch/NOTICE.md`](third-party/codenotch/NOTICE.md))
+
