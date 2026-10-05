@@ -1500,7 +1500,13 @@ body {
   user-select: none;
   transition:
     background var(--duration-fast) ease,
-    border-color var(--duration-fast) ease;
+    border-color var(--duration-fast) ease,
+    transform 0.16s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.opacity-meter:active {
+  /* Bencho depth + elastic press: sinks slightly like touching fluid glass */
+  transform: scaleY(0.94);
 }
 
 .opacity-meter:focus-within {
@@ -1518,18 +1524,22 @@ body {
   border-radius: var(--radius-full);
   background: rgba(255, 255, 255, 0.58);
   pointer-events: none;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.15);
   transition:
-    width 0.32s cubic-bezier(0.34, 1.25, 0.64, 1),
-    background var(--duration-fast) ease;
+    width 0.32s cubic-bezier(0.34, 1.35, 0.64, 1),
+    background var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
 }
 
 .opacity-meter:hover .opacity-meter-fill {
   background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
 }
 
 .opacity-meter:active .opacity-meter-fill {
-  background: rgba(255, 255, 255, 0.78);
-  transition: width 0.08s cubic-bezier(0.25, 1.15, 0.45, 1);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+  transition: width 0.06s cubic-bezier(0.25, 1.15, 0.45, 1);
 }
 
 /* 20-column Precision Etched Hairline Notches (macOS / Raycast inspired) */
@@ -1663,7 +1673,10 @@ body {
   border-radius: var(--radius-full);
   background: var(--track);
   position: relative;
-  transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.2s ease,
+    transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1);
   box-shadow: inset 0 1px 2px var(--track-inset);
 }
 
@@ -1676,10 +1689,11 @@ body {
   height: 14px;
   border-radius: 50%;
   background: var(--primary-foreground);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
   transition:
-    transform 0.36s cubic-bezier(0.34, 1.56, 0.64, 1),
-    width 0.2s ease,
+    transform 0.38s cubic-bezier(0.34, 1.45, 0.64, 1),
+    width 0.24s cubic-bezier(0.34, 1.35, 0.64, 1),
+    border-radius 0.24s ease,
     background 0.25s ease;
 }
 
@@ -1691,12 +1705,20 @@ body {
   transform: translateX(14px);
 }
 
+.settings-group-row:hover .settings-switch {
+  box-shadow: inset 0 1px 2px var(--track-inset), 0 0 4px rgba(255, 255, 255, 0.08);
+}
+
 .settings-group-row:active .settings-switch-input:not(:disabled) + .settings-switch::after {
-  transform: scale(1.18, 0.86);
+  width: 18px;
+  border-radius: 7px;
+  transform: scale(1.05, 0.88);
   transform-origin: left center;
 }
 .settings-group-row:active .settings-switch-input:checked:not(:disabled) + .settings-switch::after {
-  transform: translateX(14px) scale(1.18, 0.86);
+  width: 18px;
+  border-radius: 7px;
+  transform: translateX(10px) scale(1.05, 0.88);
   transform-origin: right center;
 }
 .settings-switch-input:disabled + .settings-switch { opacity: 0.55; }
@@ -1775,7 +1797,7 @@ body {
   filter: none;
 }
 
-/* Shared sliding selection keeps the tab row fixed while content changes. */
+/* Shared sliding selection keeps the tab row fixed with liquid spring dynamics */
 .settings-tabs { --tab-gap: 4px; gap: var(--tab-gap); }
 .settings-tabs::before {
   content: "";
@@ -1783,12 +1805,25 @@ body {
   inset: 0 auto 0 0;
   width: calc((100% - 2 * var(--tab-gap)) / 3);
   border-radius: 8px 8px 0 0;
-  background: rgba(255, 255, 255, 0.065);
+  background: rgba(255, 255, 255, 0.075);
   border-bottom: 2px solid var(--foreground);
   box-sizing: border-box;
   transform: translateX(calc(var(--active-tab, 0) * (100% + var(--tab-gap))));
-  transition: transform var(--duration-normal) cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    transform 320ms cubic-bezier(0.34, 1.45, 0.64, 1),
+    background 200ms ease;
   pointer-events: none;
+}
+.settings-tab-btn {
+  transition:
+    color var(--duration-normal) ease,
+    transform 220ms cubic-bezier(0.34, 1.35, 0.64, 1);
+}
+.settings-tab-btn:hover {
+  transform: scale(1.03);
+}
+.settings-tab-btn:active {
+  transform: scale(0.96);
 }
 .settings-tab-panel { animation: settings-panel-reveal var(--duration-fast) ease-out; }
 @keyframes settings-panel-reveal {
@@ -1801,7 +1836,11 @@ body {
 .settings-row-btn[data-feedback="error"] { color: var(--warn); border-color: var(--warn); }
 @media (prefers-reduced-motion: reduce) {
   .settings-tabs::before, .settings-tab-btn, .settings-pill-action, .settings-row-btn,
-  .diag-copy-icon, .diag-check-icon, .diag-text, .quit-text, .quit-icon-wrap { transition: none; }
+  .settings-switch, .settings-switch::after, .opacity-meter, .opacity-meter-fill,
+  .diag-copy-icon, .diag-check-icon, .diag-text, .quit-text, .quit-icon-wrap {
+    transition: none !important;
+    transform: none !important;
+  }
   .settings-tab-panel,
   .settings-pill-action[data-feedback="loading"] .diag-copy-icon,
   .settings-row-btn[data-feedback="loading"] .diag-copy-icon { animation: none; }
