@@ -107,20 +107,50 @@
 .activity-orbit {
   display: none;
   position: absolute;
-  inset: 6px;
+  inset: -1px;
   box-sizing: border-box;
-  border: 1.5px solid transparent;
-  border-top-color: rgba(255, 255, 255, 0.92);
   border-radius: 50%;
   pointer-events: none;
   z-index: 2;
+  /* Fluid liquid plasma tail with organic luminous gradient */
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 180deg,
+    rgba(255, 255, 255, 0.12) 240deg,
+    rgba(255, 255, 255, 0.75) 320deg,
+    #ffffff 360deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff calc(100% - 2px));
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.85));
 }
 .notch-cell[data-activity="running"] .activity-orbit {
   display: block;
-  animation: activity-turn 1.4s linear infinite;
+  animation: activity-fluid-turn 1.6s cubic-bezier(0.4, 0.08, 0.25, 0.95) infinite;
 }
 .notch.is-folded .activity-orbit { animation-play-state: paused; }
-@keyframes activity-turn { to { transform: rotate(360deg); } }
+@keyframes activity-fluid-turn {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(185deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Fluid breathing aura around running provider cell */
+.notch-cell[data-activity="running"] .ring-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, transparent 72%);
+  animation: fluid-aura-breathe 2.4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes fluid-aura-breathe {
+  0%, 100% { transform: scale(0.94); opacity: 0.35; }
+  50% { transform: scale(1.06); opacity: 0.9; }
+}
 
 /* Center model icon steady luminous glow when running (no pulse, clean & distinct) */
 .notch-cell[data-activity="running"] .ring-wrap img {
@@ -183,6 +213,9 @@
   height: 40px;
   transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+.notch-cell:hover .ring-wrap {
+  transform: scale(1.04);
+}
 .notch-cell:active .ring-wrap {
   /* Bencho philosophy: Sinks, it does not lift (tactile press depth) */
   transform: scale(0.93) translateY(0.5px);
@@ -208,8 +241,11 @@
   transform: rotate(-90deg);
   transform-origin: center;
   stroke-dasharray: 0 100;
-  /* Bencho physics: Delicate spring mass tension (Quiet Luxury ease) */
-  transition: stroke-dasharray 0.8s cubic-bezier(0.34, 1.25, 0.64, 1);
+  /* Bencho physics: Delicate spring mass slosh (Quiet Luxury ease) */
+  transition:
+    stroke-dasharray 0.85s cubic-bezier(0.34, 1.35, 0.64, 1),
+    stroke 0.4s ease;
+  filter: drop-shadow(0 0 2px currentColor);
 }
 .ring-wrap img {
   position: absolute;
@@ -474,11 +510,19 @@
   border-radius: 50%;
   background: #4ade80;
   box-shadow: 0 0 6px #4ade80;
-  animation: dot-pulse 1.8s ease-in-out infinite;
+  animation: liquid-dot-pulse 2s cubic-bezier(0.34, 1.4, 0.64, 1) infinite;
 }
-@keyframes dot-pulse {
-  0%, 100% { opacity: 0.55; transform: scale(0.9); }
-  50% { opacity: 1; transform: scale(1.2); }
+@keyframes liquid-dot-pulse {
+  0%, 100% {
+    opacity: 0.55;
+    transform: scale(0.9);
+    box-shadow: 0 0 4px #4ade80;
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+    box-shadow: 0 0 10px #4ade80, 0 0 16px rgba(74, 222, 128, 0.45);
+  }
 }
 .notch-detail {
   scrollbar-width: thin;
@@ -500,7 +544,8 @@
     transform: none !important;
   }
   .activity-orbit,
-  .activity-pulse-dot {
+  .activity-pulse-dot,
+  .notch-cell[data-activity="running"] .ring-wrap::after {
     animation: none !important;
   }
   .notch-detail,
