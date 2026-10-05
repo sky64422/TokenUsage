@@ -9,6 +9,62 @@ use super::grok_fetch;
 
 const MISSING_USAGE: &str = "Usage unavailable — Grok did not report a percentage";
 
+fn find_grok_cli() -> Option<std::path::PathBuf> {
+    let names = if cfg!(windows) {
+        vec!["grok.exe", "grok.cmd", "grok.bat"]
+    } else {
+        vec!["grok"]
+    };
+    let mut candidates = Vec::new();
+    if let Some(h) = dirs::home_dir() {
+        for n in &names {
+            candidates.push(h.join(".grok").join("bin").join(n));
+        }
+    }
+    if let Some(path) = std::env::var_os("PATH") {
+        for dir in std::env::split_paths(&path) {
+            for n in &names {
+                candidates.push(dir.join(n));
+            }
+        }
+    }
+    candidates.into_iter().find(|p| p.is_file())
+}
+
+fn renew_via_cli(cli: &std::path::Path, auth_path: &std::path::Path) -> Result<(), String> {
+    use std::process::{Command, Stdio};
+    let mut cmd = Command::new(cli);
+    cmd.arg("models")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    if let Some(parent) = auth_path.parent() {
+        cmd.env("GROK_HOME", parent);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let mut child = cmd.spawn().map_err(|e| format!("spawn grok CLI: {e}"))?;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    loop {
+        match child.try_wait() {
+            Ok(Some(_status)) => break,
+            Ok(None) => {
+                if std::time::Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err("grok CLI renewal timed out".into());
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            Err(e) => return Err(format!("wait grok CLI: {e}")),
+        }
+    }
+    Ok(())
+}
+
 pub fn fetch() -> Result<ProviderSnapshot, String> {
     if super::http::skip_direct_quota() {
         return Err(super::http::skip_err());
@@ -17,42 +73,50 @@ pub fn fetch() -> Result<ProviderSnapshot, String> {
     let mut creds = grok_creds::load()?;
     // Refresh near/after expiry so cold start after reboot still works.
     if grok_creds::needs_refresh(&creds, Duration::minutes(2)) {
+        let mut refreshed = false;
         if let (Some(rt), Some(client_id)) =
             (creds.refresh_token.clone(), creds.oidc_client_id.clone())
         {
-            match grok_fetch::refresh_access_token(&creds.oidc_issuer, &client_id, &rt) {
-                Ok(tok) => {
-                    let exp = Utc::now() + Duration::seconds(tok.expires_in.max(60));
-                    let new_rt = tok.refresh_token.as_deref().or(Some(rt.as_str()));
-                    // Best-effort persist so next boot has a fresh access token
-                    let _ = grok_creds::write_refreshed(
-                        &creds.path,
-                        &creds.storage_key,
-                        &tok.access_token,
-                        new_rt,
-                        exp,
-                    );
-                    creds.access_token = tok.access_token;
-                    if let Some(r) = tok.refresh_token {
-                        creds.refresh_token = Some(r);
-                    }
-                    creds.expires_at = Some(exp);
+            if let Ok(tok) = grok_fetch::refresh_access_token(&creds.oidc_issuer, &client_id, &rt) {
+                let exp = Utc::now() + Duration::seconds(tok.expires_in.max(60));
+                let new_rt = tok.refresh_token.as_deref().or(Some(rt.as_str()));
+                // Best-effort persist so next boot has a fresh access token
+                let _ = grok_creds::write_refreshed(
+                    &creds.path,
+                    &creds.storage_key,
+                    &tok.access_token,
+                    new_rt,
+                    exp,
+                );
+                creds.access_token = tok.access_token;
+                if let Some(r) = tok.refresh_token {
+                    creds.refresh_token = Some(r);
                 }
-                Err(e) => {
-                    // If already expired hard, surface auth; otherwise try old token
-                    if creds
-                        .expires_at
-                        .map(|e| e <= Utc::now())
-                        .unwrap_or(false)
-                    {
-                        return Err(format!("grok token expired ({e}); run `grok login`"));
+                creds.expires_at = Some(exp);
+                refreshed = true;
+            }
+        }
+
+        // Fallback: If direct OIDC refresh didn't succeed, try official Grok CLI renewal
+        if !refreshed {
+            if let Some(cli) = find_grok_cli() {
+                if renew_via_cli(&cli, &creds.path).is_ok() {
+                    let parent = creds.path.parent().unwrap_or(&creds.path);
+                    if let Ok(fresh) = grok_creds::load_from_dir(parent) {
+                        if !grok_creds::needs_refresh(&fresh, Duration::zero()) {
+                            creds = fresh;
+                            refreshed = true;
+                        }
                     }
                 }
             }
-        } else if creds
-            .expires_at
-            .map(|e| e <= Utc::now())
-            .unwrap_or(false)
+        }
+
+        if !refreshed
+            && creds
+                .expires_at
+                .map(|e| e <= Utc::now())
+                .unwrap_or(false)
         {
             return Err("grok token expired; run `grok login`".into());
         }

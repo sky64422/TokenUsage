@@ -70,6 +70,7 @@ impl TrackedFile {
 
 pub struct ActivityMonitor {
     codex_root: Option<PathBuf>,
+    codex_db: Option<PathBuf>,
     claude_root: Option<PathBuf>,
     grok_root: Option<PathBuf>,
     files: HashMap<(ProviderId, PathBuf), TrackedFile>,
@@ -87,6 +88,7 @@ impl ActivityMonitor {
     pub fn new() -> Self {
         Self {
             codex_root: paths::codex_home().map(|p| p.join("sessions")),
+            codex_db: paths::codex_home().map(|p| p.join("thread_history_1.sqlite")),
             claude_root: paths::claude_home().map(|p| p.join("projects")),
             grok_root: paths::grok_home().map(|p| p.join("sessions")),
             files: HashMap::new(),
@@ -124,6 +126,20 @@ impl ActivityMonitor {
                         state,
                         observed_at,
                     }
+                } else if provider == ProviderId::Codex {
+                    if !self.disabled {
+                        if let Some(act) = self.check_codex_db(now) {
+                            return act;
+                        }
+                    }
+                    aggregate(
+                        provider,
+                        self.files
+                            .iter()
+                            .filter(|((id, _), _)| *id == provider)
+                            .map(|(_, file)| &file.evidence),
+                        now,
+                    )
                 } else {
                     aggregate(
                         provider,
@@ -136,6 +152,47 @@ impl ActivityMonitor {
                 }
             })
             .collect()
+    }
+
+    fn check_codex_db(&self, now: DateTime<Utc>) -> Option<ProviderActivity> {
+        let db_path = self.codex_db.as_ref()?;
+        if !db_path.is_file() {
+            return None;
+        }
+        let conn = rusqlite::Connection::open_with_flags(
+            db_path,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )
+        .ok()?;
+
+        let mut stmt = conn
+            .prepare("SELECT started_at FROM thread_turns WHERE status = 'inProgress' ORDER BY started_at DESC LIMIT 1")
+            .ok()?;
+
+        let mut rows = stmt.query([]).ok()?;
+        if let Ok(Some(row)) = rows.next() {
+            let started_raw: i64 = row.get(0).unwrap_or(0);
+            if started_raw <= 0 {
+                return None;
+            }
+            let started_time = if started_raw > 10_000_000_000 {
+                DateTime::from_timestamp_millis(started_raw)
+            } else {
+                DateTime::from_timestamp(started_raw, 0)
+            };
+            let Some(started_at) = started_time else {
+                return None;
+            };
+            // Guard against stale inProgress turns left behind after app crashes (older than 10 minutes)
+            if now >= started_at && now - started_at <= Duration::minutes(10) {
+                return Some(ProviderActivity {
+                    provider_id: ProviderId::Codex,
+                    state: ActivityState::Running,
+                    observed_at: Some(started_at),
+                });
+            }
+        }
+        None
     }
 
     fn discover(&mut self, now: DateTime<Utc>) {
@@ -335,6 +392,7 @@ mod tests {
         fs::write(dir.path().join("session.jsonl"), b"sensitive content").unwrap();
         let mut monitor = ActivityMonitor {
             codex_root: Some(dir.path().into()),
+            codex_db: None,
             claude_root: Some(dir.path().into()),
             grok_root: Some(dir.path().into()),
             files: HashMap::new(),
@@ -346,6 +404,41 @@ mod tests {
             .iter()
             .all(|item| item.state == ActivityState::Unknown));
         assert!(monitor.last_discovery.is_none());
+    }
+
+    #[test]
+    fn codex_db_turns_detect_running_activity() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("thread_history_1.sqlite");
+        let conn = rusqlite::Connection::open(&db_path).unwrap();
+        conn.execute(
+            "CREATE TABLE thread_turns (thread_id TEXT, turn_id TEXT, status TEXT, started_at INTEGER, completed_at INTEGER)",
+            [],
+        )
+        .unwrap();
+        let t_now = Utc::now();
+        conn.execute(
+            "INSERT INTO thread_turns (thread_id, turn_id, status, started_at) VALUES ('t1', 'turn1', 'inProgress', ?1)",
+            [t_now.timestamp()],
+        )
+        .unwrap();
+
+        let mut monitor = ActivityMonitor {
+            codex_root: None,
+            codex_db: Some(db_path),
+            claude_root: None,
+            grok_root: None,
+            files: HashMap::new(),
+            last_discovery: None,
+            disabled: false,
+        };
+
+        let activities = monitor.sample(t_now);
+        let codex_act = activities
+            .into_iter()
+            .find(|a| a.provider_id == ProviderId::Codex)
+            .unwrap();
+        assert_eq!(codex_act.state, ActivityState::Running);
     }
 
     #[test]

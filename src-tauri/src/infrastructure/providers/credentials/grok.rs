@@ -62,7 +62,8 @@ pub fn parse_auth_json(raw: &str, path: PathBuf) -> Result<GrokCredentials, Stri
         return Err("Grok auth.json has no accounts".into());
     }
 
-    // Prefer entries with a non-empty access key; first wins.
+    let mut candidates: Vec<GrokCredentials> = Vec::new();
+
     for (storage_key, val) in obj {
         let entry: GrokAuthEntry = match serde_json::from_value(val.clone()) {
             Ok(e) => e,
@@ -84,7 +85,7 @@ pub fn parse_auth_json(raw: &str, path: PathBuf) -> Result<GrokCredentials, Stri
             .oidc_issuer
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "https://auth.x.ai".into());
-        return Ok(GrokCredentials {
+        candidates.push(GrokCredentials {
             storage_key: storage_key.clone(),
             access_token: access_token.to_string(),
             refresh_token: entry.refresh_token.filter(|s| !s.is_empty()),
@@ -93,10 +94,30 @@ pub fn parse_auth_json(raw: &str, path: PathBuf) -> Result<GrokCredentials, Stri
             oidc_issuer: issuer,
             oidc_client_id: entry.oidc_client_id.filter(|s| !s.is_empty()),
             email: entry.email.filter(|s| !s.is_empty()),
-            path,
+            path: path.clone(),
         });
     }
-    Err("Grok auth.json has no usable access token".into())
+
+    if candidates.is_empty() {
+        return Err("Grok auth.json has no usable access token".into());
+    }
+
+    // Prefer official xAI issuer entries over third-party IDPs and unexpired sessions over expired ones.
+    let now = Utc::now();
+    let is_xai = |c: &GrokCredentials| {
+        c.storage_key.starts_with("https://auth.x.ai::")
+            || c.oidc_issuer.trim_end_matches('/') == "https://auth.x.ai"
+    };
+
+    candidates.sort_by_key(|c| {
+        let xai_priority = if is_xai(c) { 0 } else { 1 };
+        let expired = c.expires_at.map_or(false, |exp| exp <= now);
+        let exp_priority = if !expired { 0 } else { 1 };
+        let has_rt_priority = if c.refresh_token.is_some() { 0 } else { 1 };
+        (xai_priority, exp_priority, has_rt_priority)
+    });
+
+    Ok(candidates.remove(0))
 }
 
 fn parse_expires_at(s: &str) -> Option<DateTime<Utc>> {
@@ -188,6 +209,29 @@ mod tests {
     #[test]
     fn empty_map_errors() {
         assert!(parse_auth_json("{}", PathBuf::from("a")).is_err());
+    }
+
+    #[test]
+    fn picks_live_xai_session_over_expired_or_idp() {
+        let raw = r#"{
+          "https://idp.example.com::customer": {
+            "key": "idp-tok",
+            "oidc_issuer": "https://idp.example.com"
+          },
+          "https://auth.x.ai::expired": {
+            "key": "expired-tok",
+            "expires_at": "2020-01-01T00:00:00Z"
+          },
+          "https://auth.x.ai::live": {
+            "key": "live-tok",
+            "expires_at": "2099-01-01T00:00:00Z",
+            "email": "user@example.com"
+          }
+        }"#;
+        let c = parse_auth_json(raw, PathBuf::from("auth.json")).unwrap();
+        assert_eq!(c.access_token, "live-tok");
+        assert_eq!(c.storage_key, "https://auth.x.ai::live");
+        assert_eq!(c.email.as_deref(), Some("user@example.com"));
     }
 
     #[test]

@@ -261,6 +261,11 @@ pub fn start(app: AppHandle) {
                 last_display_check = Instant::now();
                 let handle = app.clone();
                 if let Err(e) = app.run_on_main_thread(move || {
+                    if let Ok(win) = super::window_ctl::main_window(&handle) {
+                        if super::topmost::is_out_of_topmost_band(&win) {
+                            super::topmost::reassert(&win);
+                        }
+                    }
                     if let Err(e) = apply(&handle, None) {
                         eprintln!("notch placement: {e}");
                     }
