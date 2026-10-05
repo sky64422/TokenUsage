@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub const DEPTH: f64 = 56.;
 pub const CELL: f64 = 72.;
+pub const CELL_HORIZONTAL: f64 = 96.;
 pub const SHOULDER: f64 = DEPTH / 2.;
 pub const INNER_RADIUS: f64 = DEPTH - SHOULDER;
 // Content nestles into the curved ends instead of starting after the entire curve.
@@ -233,7 +234,8 @@ pub fn calculate_layout_target(
     .into_iter()
     .find(|e| available(*e))
     .ok_or("No screen edge available")?;
-    let len = ((count as f64 * CELL + END_PADDING * 2.) * s).round();
+    let cell = if edge.vertical() { CELL } else { CELL_HORIZONTAL };
+    let len = ((count as f64 * cell + END_PADDING * 2.) * s).round();
     let depth = (DEPTH * s).round();
     let gap = (GAP * s).round();
     let span = if edge.vertical() { w.height } else { w.width };
@@ -358,7 +360,7 @@ pub fn calculate_layout_target(
         monitor: m.name.clone(),
         metrics: NotchMetrics {
             depth: DEPTH,
-            cell: CELL,
+            cell,
             shoulder: SHOULDER,
             inner_radius: INNER_RADIUS,
             inset: END_PADDING,

@@ -264,7 +264,7 @@ fn drag_keeps_grab_ratio_and_handles_zero_travel() {
     d.update(&[m.clone()], 1000., 1.).unwrap();
     let moved = calculate_layout(&m, &d.placement, 1, false, 200.).unwrap();
     assert!((moved.notch.x + moved.notch.width / 4. - 1000.).abs() <= 1.);
-    m.bounds.width = CELL + END_PADDING * 2.;
+    m.bounds.width = CELL_HORIZONTAL + END_PADDING * 2.;
     m.work.width = m.bounds.width;
     d.update(&[m], 100., 1.).unwrap();
     assert_eq!(d.placement.offset, 0.);
@@ -449,8 +449,9 @@ fn changing_detail_preserves_native_canvas_and_notch_position() {
                     let m = monitor(scale);
                     let p = NotchPlacement { edge, offset, monitor_hint: None };
                     let closed = calculate_layout(&m, &p, count, false, 0.).unwrap();
-                    let last = END_PADDING + CELL * (count as f64 - 0.5);
-                    for target in [None, Some(END_PADDING + CELL / 2.), Some(last)] {
+                    let cell = closed.metrics.cell;
+                    let last = END_PADDING + cell * (count as f64 - 0.5);
+                    for target in [None, Some(END_PADDING + cell / 2.), Some(last)] {
                         for height in [78., 150., 234., 400., DETAIL_HEIGHT] {
                             let open = calculate_layout_target(&m, &p, count, true, height, target).unwrap();
                             assert_eq!(closed.window, open.window);
