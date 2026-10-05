@@ -1,7 +1,7 @@
 //! Physical screen placement; no OS calls, persistence, or vendor policy.
 use serde::{Deserialize, Serialize};
 
-pub const DEPTH: f64 = 64.;
+pub const DEPTH: f64 = 56.;
 pub const CELL: f64 = 72.;
 pub const SHOULDER: f64 = DEPTH / 2.;
 pub const INNER_RADIUS: f64 = DEPTH - SHOULDER;

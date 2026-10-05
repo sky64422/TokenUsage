@@ -172,7 +172,11 @@ fn circular_end_hit_regions_follow_the_visible_silhouette() {
         let l =
             calculate_layout(&monitor(scale), &NotchPlacement::default(), 3, false, 360.).unwrap();
         // Midpoints on each half of the S curve; check both sides of the arc.
-        for (along, boundary) in [(16., 32. + 768_f64.sqrt()), (48., 32. - 768_f64.sqrt())] {
+        let p1_along = SHOULDER / 2.;
+        let p1_boundary = DEPTH - SHOULDER + (SHOULDER.powi(2) - p1_along.powi(2)).sqrt();
+        let p2_along = SHOULDER + INNER_RADIUS / 2.;
+        let p2_boundary = INNER_RADIUS - (INNER_RADIUS.powi(2) - (p2_along - SHOULDER - INNER_RADIUS).powi(2)).sqrt();
+        for (along, boundary) in [(p1_along, p1_boundary), (p2_along, p2_boundary)] {
             for end in [along * scale, l.notch.height - along * scale] {
                 assert!(!l.hit(l.notch.x + (boundary - 0.5) * scale, l.notch.y + end));
                 assert!(l.hit(l.notch.x + (boundary + 0.5) * scale, l.notch.y + end));
