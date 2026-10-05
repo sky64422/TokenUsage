@@ -32,7 +32,6 @@ const PROVIDER_VISIBLE = "표시";
 const PROVIDER_HIDDEN = "숨김";
 const PROVIDER_MINIMUM = "최소 1개 서비스를 표시해야 합니다";
 const SAVE_FAILED = "저장하지 못했습니다. 다시 시도해 주세요.";
-const SAVING = "저장 중…";
 const SAVE_RESTORED = "저장 실패 · 이전 설정으로 복원됨";
 const UPDATE_CHECK = "업데이트 확인";
 const UPDATE_RESTART = "재시작하여 적용";
@@ -340,8 +339,6 @@ export function mountSettingsPanel(
       input.disabled = true;
       row.dataset.saveState = "saving";
       row.setAttribute("aria-busy", "true");
-      status.hidden = false;
-      status.textContent = SAVING;
       try {
         await save!(input.checked);
         row.dataset.saveState = "saved";
@@ -350,6 +347,7 @@ export function mountSettingsPanel(
       } catch {
         input.checked = previous;
         row.dataset.saveState = "restored";
+        status.hidden = false;
         status.textContent = SAVE_RESTORED;
       } finally {
         input.disabled = false;
@@ -490,13 +488,11 @@ export function mountSettingsPanel(
       }
       providerSaving = true;
       const status = root.querySelector<HTMLElement>("#provider-save-status")!;
-      status.textContent = SAVING;
-      status.classList.add("is-visible");
+      status.textContent = "";
+      status.classList.remove("is-visible");
       setProviderOn(id, next);
       try {
         await handlers.onProviderEnabled(id, next);
-        status.textContent = "";
-        status.classList.remove("is-visible");
       } catch {
         setProviderOn(id, !next);
         status.textContent = SAVE_FAILED;

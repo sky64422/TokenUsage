@@ -494,21 +494,14 @@ body {
 .settings-save-status {
   margin: 0;
   font-size: 11px;
-  line-height: 18px;
-  min-height: 18px;
+  line-height: 1.5;
   color: var(--muted-foreground);
   overflow-wrap: anywhere;
 }
 
-.settings-save-status {
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
-}
-
-.settings-save-status.is-visible {
-  visibility: visible;
-  opacity: 1;
+.settings-save-status[hidden],
+.settings-save-status:empty:not(.is-visible) {
+  display: none !important;
 }
 
 .settings-group > .settings-save-status {
@@ -756,10 +749,12 @@ body {
   cursor: pointer;
   user-select: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  contain: layout style;
   transition: background var(--duration-fast) ease;
 }
 
-.settings-group-row:last-child {
+.settings-group-row:last-child,
+.settings-group-row:last-of-type {
   border-bottom: none;
 }
 
