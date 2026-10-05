@@ -258,6 +258,18 @@
   stroke: rgba(255, 255, 255, 0.26);
   stroke-width: 1px;
 }
+.notch[data-edge="right"] .notch-cells {
+  transform: translateX(-2px);
+}
+.notch[data-edge="left"] .notch-cells {
+  transform: translateX(2px);
+}
+.notch[data-edge="top"] .notch-cells {
+  transform: translateY(2px);
+}
+.notch[data-edge="bottom"] .notch-cells {
+  transform: translateY(-2px);
+}
 .notch[data-edge="top"] .notch-cells,
 .notch[data-edge="bottom"] .notch-cells {
   left: var(--notch-inset);
