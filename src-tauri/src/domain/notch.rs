@@ -11,7 +11,7 @@ pub const DETAIL_RADIUS: f64 = 16.;
 pub const DETAIL_WIDTH: f64 = 260.;
 pub const DETAIL_HEIGHT: f64 = 560.;
 pub const MIN_DETAIL_HEIGHT: f64 = 48.;
-pub const GAP: f64 = 4.;
+pub const GAP: f64 = 2.;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
@@ -134,11 +134,12 @@ impl NotchLayout {
             }
             // A narrow bridge keeps hover alive while crossing to the detail.
             let n = self.notch;
+            let gap = (GAP * self.scale).round();
             let bridge = if self.edge.vertical() {
                 Rect {
                     x: n.x.min(d.x + d.width),
                     y: n.y.max(d.y),
-                    width: GAP * self.scale,
+                    width: gap,
                     height: (n.y + n.height).min(d.y + d.height) - n.y.max(d.y),
                 }
             } else {
@@ -146,7 +147,7 @@ impl NotchLayout {
                     x: n.x.max(d.x),
                     y: n.y.min(d.y + d.height),
                     width: (n.x + n.width).min(d.x + d.width) - n.x.max(d.x),
-                    height: GAP * self.scale,
+                    height: gap,
                 }
             };
             let bridge = match self.edge {
@@ -234,6 +235,7 @@ pub fn calculate_layout_target(
     .ok_or("No screen edge available")?;
     let len = ((count as f64 * CELL + END_PADDING * 2.) * s).round();
     let depth = (DEPTH * s).round();
+    let gap = (GAP * s).round();
     let span = if edge.vertical() { w.height } else { w.width };
     if len > span || depth > w.width.min(w.height) {
         return Err("Display is too small for the notch".into());
@@ -283,17 +285,17 @@ pub fn calculate_layout_target(
     let detail = if expanded {
         let dw = (DETAIL_WIDTH * s)
             .ceil()
-            .min(w.width - if edge.vertical() { depth + GAP * s } else { 0. });
+            .min(w.width - if edge.vertical() { depth + gap } else { 0. });
         let dh = (detail_height.clamp(MIN_DETAIL_HEIGHT, DETAIL_HEIGHT) * s)
             .ceil()
-            .min(w.height - if edge.vertical() { 0. } else { depth + GAP * s });
+            .min(w.height - if edge.vertical() { 0. } else { depth + gap });
         if dw <= 0. || dh <= 0. {
             return Err("Display is too small for usage details".into());
         }
         let (dx, dy) = if edge.vertical() {
             let x = match edge {
-                NotchEdge::Right => notch.x - GAP * s - dw,
-                NotchEdge::Left => notch.x + depth + GAP * s,
+                NotchEdge::Right => notch.x - gap - dw,
+                NotchEdge::Left => notch.x + depth + gap,
                 _ => unreachable!(),
             };
             let y = if let Some(t) = target {
@@ -310,8 +312,8 @@ pub fn calculate_layout_target(
             (x, y)
         } else {
             let y = match edge {
-                NotchEdge::Top => notch.y + depth + GAP * s,
-                NotchEdge::Bottom => notch.y - GAP * s - dh,
+                NotchEdge::Top => notch.y + depth + gap,
+                NotchEdge::Bottom => notch.y - gap - dh,
                 _ => unreachable!(),
             };
             let x = if let Some(t) = target {
@@ -369,7 +371,7 @@ pub fn calculate_layout_target(
 }
 
 fn surface_canvas(notch: Rect, work: Rect, edge: NotchEdge, scale: f64) -> Rect {
-    let gap = GAP * scale;
+    let gap = (GAP * scale).round();
     let width = (DETAIL_WIDTH * scale).ceil()
         .min(work.width - if edge.vertical() { notch.width + gap } else { 0. });
     let height = (DETAIL_HEIGHT * scale).ceil()
