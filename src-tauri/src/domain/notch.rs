@@ -11,7 +11,7 @@ pub const DETAIL_RADIUS: f64 = 16.;
 pub const DETAIL_WIDTH: f64 = 260.;
 pub const DETAIL_HEIGHT: f64 = 560.;
 pub const MIN_DETAIL_HEIGHT: f64 = 48.;
-pub const GAP: f64 = 0.;
+pub const GAP: f64 = 4.;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]

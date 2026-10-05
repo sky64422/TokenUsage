@@ -121,10 +121,10 @@ fn all_four_edges_and_open_corridors_work_without_taskbar() {
         let n = l.notch;
         let d = l.detail.unwrap();
         let (x, y) = match edge {
-            NotchEdge::Right => (n.x - 1., n.y + n.height / 2.),
-            NotchEdge::Left => (n.x + n.width + 1., n.y + n.height / 2.),
-            NotchEdge::Top => (n.x + n.width / 2., n.y + n.height + 1.),
-            NotchEdge::Bottom => (n.x + n.width / 2., n.y - 1.),
+            NotchEdge::Right => (n.x - 2., n.y + n.height / 2.),
+            NotchEdge::Left => (n.x + n.width + 2., n.y + n.height / 2.),
+            NotchEdge::Top => (n.x + n.width / 2., n.y + n.height + 2.),
+            NotchEdge::Bottom => (n.x + n.width / 2., n.y - 2.),
         };
         assert!(l.hit(x, y), "bridge missing for {edge:?}");
         assert!(l.hit(d.x + d.width / 2., d.y + d.height / 2.));
