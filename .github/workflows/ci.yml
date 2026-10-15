@@ -16,7 +16,7 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -31,7 +31,7 @@ jobs:
     env:
       TOKENUSAGE_SKIP_TOKSCALE: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -53,7 +53,7 @@ jobs:
   secret-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Reject private updater key in tree
         run: |
           if git ls-files | grep -E '(^|/)updater\.key$|(^|/)tmp/updater\.key$'; then
@@ -74,7 +74,7 @@ jobs:
     env:
       TOKENUSAGE_SKIP_TOKSCALE: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
