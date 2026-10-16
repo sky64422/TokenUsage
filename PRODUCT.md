@@ -44,7 +44,7 @@ A screen-edge **usage monitor notch** that shows personal vendor quota (Claude /
 ## Brand commitments
 
 - **Voice:** calm, short labels, no marketing buzzwords (“supercharge”, “unlock potential”).
-- **다크 / 글라스** themes, both with dark backgrounds. `다크` preserves the original appearance and is the default; `글라스` adds reflective glass and holographic sheen. Select and persist the theme in `모양`.
+- **다크 / 글라스 / 리퀴드** themes. `다크` is the original/default; `글라스` keeps the silver/pearl painted finish without desktop capture; `리퀴드` adds a brighter translucent surface and real desktop refraction on Windows. Select and persist the theme in `모양`.
 - Standardized, concise Korean UI chrome (`설정`, `모양`, `서비스`, `일반`, `불투명도`, `노치 항상 표시`, `마우스 올릴 때 상세 열기`, `작업 중 강조 효과`, `로그 복사`, `종료`); local time for reset stamps.
 
 ## Non-goals (until explicitly requested)

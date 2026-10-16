@@ -26,7 +26,7 @@ import {
 } from "./update-controller";
 export type { UpdatePhase, UpdateInfo, DownloadProgress } from "./update-controller";
 
-export const SETTINGS_PANEL_HEIGHT = 420;
+export const SETTINGS_PANEL_HEIGHT = 440;
 
 const PROVIDER_VISIBLE = "표시";
 const PROVIDER_HIDDEN = "숨김";
@@ -121,6 +121,9 @@ export function mountSettingsPanel(
             </button>
             <button type="button" class="settings-theme-option" data-theme-option="glass" aria-pressed="false">
               <span class="theme-swatch theme-swatch-glass" aria-hidden="true"></span>글라스
+            </button>
+            <button type="button" class="settings-theme-option" data-theme-option="liquid" aria-pressed="false">
+              <span class="theme-swatch theme-swatch-liquid" aria-hidden="true"></span>리퀴드
             </button>
           </div>
           <p class="settings-save-status" id="theme-save-status" role="status" hidden></p>

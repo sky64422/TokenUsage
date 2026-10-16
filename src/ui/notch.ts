@@ -24,8 +24,16 @@ export function mountNotch(
             <stop offset=".62" stop-color="#c4c1ca" stop-opacity=".2"/>
             <stop offset="1" stop-color="#b9c7c9" stop-opacity=".13"/>
           </linearGradient>
+          <linearGradient id="notch-liquid-rim" x1="0" y1="0" x2="1" y2="1">
+            <stop stop-color="#b4e5ee" stop-opacity=".82"/>
+            <stop offset=".28" stop-color="#c1b4ec" stop-opacity=".58"/>
+            <stop offset=".52" stop-color="#f1bed8" stop-opacity=".52"/>
+            <stop offset=".74" stop-color="#f2d5aa" stop-opacity=".66"/>
+            <stop offset="1" stop-color="#b9e5d2" stop-opacity=".64"/>
+          </linearGradient>
         </defs>
         <use class="notch-glass-rim" href="#notch-outline"/>
+        <use class="notch-liquid-edge" href="#notch-outline"/>
       </svg>
       <div class="notch-finish" aria-hidden="true"></div>
       <div class="notch-cells"></div>

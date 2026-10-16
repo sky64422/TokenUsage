@@ -48,6 +48,13 @@ values), glass/dark persistence across an AppCore restart, and failed-write roll
 and a successful retry. Compare native dark/glass rendering and pointer reflections
 in the isolated preview; neither theme may change notch placement or input regions.
 
+Liquid tests cover theme persistence, bounded capture regions, and the deferred-frame
+race when switching away and back before capture finishes. Native verification must
+use an external patterned window (a DOM backdrop cannot prove desktop refraction),
+check absence of foreground in the captured source, Dark/Glass capture rejection,
+reload restoration, and actual drag cadence. Do not infer 60 fps from the configured
+frame interval alone.
+
 Native smoke scripts share `scripts/notch_test_support.py`: they assert the preview
 identifier before setting fixture preferences, enable all four providers and hover,
 and reset details using Escape. They cover the current provider cards and right-click

@@ -7,3 +7,4 @@ pub mod updater;
 pub mod window_ctl;
 pub mod activity;
 pub mod topmost;
+pub mod liquid_glass;

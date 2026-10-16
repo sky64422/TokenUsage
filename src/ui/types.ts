@@ -35,7 +35,7 @@ export interface ProviderConfig {
   enabled: boolean;
 }
 
-export type AppTheme = "dark" | "glass";
+export type AppTheme = "dark" | "glass" | "liquid";
 
 export interface AppSettings {
   theme: AppTheme;

@@ -107,6 +107,7 @@ fn risk_theme_migration_preserves_existing_preferences() {
         (Some("light"), "dark"),
         (Some("future-theme"), "dark"),
         (Some("glass"), "glass"),
+        (Some("liquid"), "liquid"),
     ] {
         let dir = tempdir().unwrap();
         let mut legacy = serde_json::json!({
@@ -133,7 +134,7 @@ fn risk_theme_selection_survives_restart() {
     let dir = tempdir().unwrap();
     let core = AppCore::new(default_state(), dir.path().to_path_buf());
     assert_eq!(core.get_state().settings.theme, AppTheme::Dark);
-    for theme in [AppTheme::Glass, AppTheme::Dark] {
+    for theme in [AppTheme::Glass, AppTheme::Liquid, AppTheme::Dark] {
         core.set_theme(theme).unwrap();
         assert_eq!(core.get_state().settings.theme, theme);
         let restarted = AppCore::new(load_state(dir.path()).unwrap(), dir.path().to_path_buf());
@@ -285,13 +286,14 @@ fn risk_failed_settings_write_preserves_memory() {
     fs::write(&blocked, "not a directory").unwrap();
     let initial = default_state();
     type SettingMutation = fn(&AppCore) -> Result<(), String>;
-    let mutations: [SettingMutation; 6] = [
+    let mutations: [SettingMutation; 7] = [
         |core| core.set_opacity(0.5).map(|_| ()),
         |core| core.set_autostart(!default_state().settings.autostart),
         |core| core.set_hover_detail(!default_state().settings.hover_detail),
         |core| core.set_always_show_notch(true),
         |core| core.set_show_animation(false),
         |core| core.set_theme(AppTheme::Glass),
+        |core| core.set_theme(AppTheme::Liquid),
     ];
     for (index, mutate) in mutations.into_iter().enumerate() {
         let core = AppCore::new(initial.clone(), blocked.clone());

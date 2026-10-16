@@ -79,3 +79,12 @@ For manual theme review with actual usage, keep the separate identifier but omit
 snapshot timers. A fixture timer racing the five-second backend refresh alternates
 sample percentages with unavailable values; reload or restart after fixture checks
 before handing the preview to a user.
+
+Select `모양` > `테마` > `리퀴드` to compare live desktop refraction with the
+unchanged `다크` and `글라스` finishes. No query parameter or injected script is
+needed; selection survives reload/restart. Capture is local and in-memory, limited
+to visible notch/detail rectangles. Liquid uses `WDA_EXCLUDEFROMCAPTURE` to avoid
+recursive copies, so OS screenshots/screen sharing omit the widget while active;
+WebView2 CDP screenshots still show its rendered foreground. Theme exit, navigation
+and a 750ms capture lease restore the previous capture behavior. Windows capture
+availability and mixed-DPI performance need native verification.

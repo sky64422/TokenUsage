@@ -10,6 +10,7 @@ import { mountNotch, position } from "./notch";
 import { createNotchSurface } from "./notch-surface";
 import { mountNotchDrag } from "./notch-drag";
 import { mountSurfaceFinish } from "./surface-finish";
+import { mountLiquidGlass } from "./liquid-glass";
 import type { DragNotice } from "./notch-drag";
 import {
   createCloseDelay,
@@ -98,9 +99,11 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     root.querySelector<HTMLElement>(".quota-root")!,
   );
   const surfaceFinish = mountSurfaceFinish([rail, detail]);
+  const liquidGlass = mountLiquidGlass(shell, rail, detail);
   function applyAppearanceClasses(st: AppSettings) {
     shell.dataset.theme = st.theme ?? "dark";
     surfaceFinish.setEnabled(st.theme === "glass");
+    liquidGlass.setEnabled(st.theme === "liquid");
     const showAnim = st.show_orbit !== false || st.show_icon_glow !== false;
     rail.classList.toggle("hide-orbit", !showAnim);
     rail.classList.toggle("hide-icon-glow", !showAnim);
@@ -352,6 +355,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     surface.destroy();
     drag.destroy();
     surfaceFinish.destroy();
+    liquidGlass.destroy();
     settings.destroy();
     for (const unlisten of unlisteners) unlisten();
   }, { once: true });

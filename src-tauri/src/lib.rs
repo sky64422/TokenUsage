@@ -23,6 +23,7 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .on_page_load(|view, _| infrastructure::liquid_glass::reset_on_load(view))
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
             std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
@@ -55,6 +56,7 @@ pub fn run() {
             let _ = commands::sync_os_autostart(app.handle(), persisted.settings.autostart);
 
             app.manage(handle_state);
+            app.manage(infrastructure::liquid_glass::LiquidBackdrop::default());
             infrastructure::activity::start(app.handle());
             app.manage(infrastructure::notch_window::NotchController::default());
             infrastructure::notch_window::start(app.handle().clone());
@@ -84,6 +86,8 @@ pub fn run() {
             commands::get_snapshots,
             commands::set_opacity,
             commands::set_theme,
+            infrastructure::liquid_glass::release_liquid_backdrop,
+            infrastructure::liquid_glass::capture_liquid_backdrop,
             commands::set_autostart,
             commands::set_hover_detail,
             commands::set_always_show_notch,
