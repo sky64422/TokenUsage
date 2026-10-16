@@ -644,7 +644,30 @@ export function mountSettingsPanel(
       updater.destroy();
     },
     getContentHeight(scale: number = 1): number {
-      return Math.round(SETTINGS_PANEL_HEIGHT * scale);
+      const activePanel = root.querySelector<HTMLElement>(".settings-tab-panel:not([hidden])");
+      const header = root.querySelector<HTMLElement>(".settings-header");
+      const tabs = root.querySelector<HTMLElement>(".settings-tabs");
+      const fallbackHeight = Math.round(SETTINGS_PANEL_HEIGHT * scale);
+      if (activePanel && header && tabs) {
+        let contentH = 0;
+        for (const child of Array.from(activePanel.children) as HTMLElement[]) {
+          if (!child.hidden) contentH += child.offsetHeight;
+        }
+        if (contentH > 0) {
+          const panelStyle = window.getComputedStyle(activePanel);
+          const gap = parseFloat(panelStyle.rowGap || panelStyle.gap || "0") || 6;
+          const visibleCount = Array.from(activePanel.children).filter(c => !(c as HTMLElement).hidden).length;
+          if (visibleCount > 1) contentH += gap * (visibleCount - 1);
+          contentH += (parseFloat(panelStyle.paddingTop || "0") || 0) + (parseFloat(panelStyle.paddingBottom || "0") || 0);
+
+          const headerH = header.offsetHeight || 28;
+          const tabsH = tabs.offsetHeight || 37;
+          // header + tabs + content + root gaps (8px * 2 * scale) + detail padding & border (34px * scale)
+          const measured = Math.ceil(headerH + tabsH + contentH + 16 * scale + 34 * scale);
+          return measured;
+        }
+      }
+      return fallbackHeight;
     },
   };
 }

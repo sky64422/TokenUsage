@@ -590,14 +590,14 @@ body {
 .settings-tab-btn {
   position: relative;
   flex: 1 1 0;
-  height: calc(32px * var(--notch-scale, 1));
+  height: calc(37px * var(--notch-scale, 1));
   padding: 0 calc(8px * var(--notch-scale, 1));
   border: 1px solid transparent;
   border-bottom: 2px solid transparent;
   border-radius: 8px 8px 0 0;
   background: transparent;
   color: rgba(255, 255, 255, 0.5);
-  font-size: max(11px, calc(12px * var(--notch-scale, 1)));
+  font-size: max(11px, calc(12.5px * var(--notch-scale, 1)));
   font-weight: 500;
   font-family: inherit;
   display: flex;

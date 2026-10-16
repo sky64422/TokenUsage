@@ -178,6 +178,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   settings.show();
 
   let lastLayoutKey = "";
+  let lastContentScale = -1;
+  let lastMonitorScale = -1;
   function paintLayout(next: NotchLayout) {
     const key = `${next.edge}:${next.scale}:${next.notch.x},${next.notch.y},${next.notch.width},${next.notch.height}:${next.window.x},${next.window.y},${next.window.width},${next.window.height}:${next.detail ? `${next.detail.x},${next.detail.y},${next.detail.width},${next.detail.height}` : "none"}`;
     if (key === lastLayoutKey) return;
@@ -189,8 +191,18 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       "--detail-radius",
       `${next.metrics.detail_radius}px`,
     );
-    shell.style.setProperty("--notch-scale", String(next.metrics.content_scale ?? 1));
+    const currentScale = next.metrics.content_scale ?? 1;
+    shell.style.setProperty("--notch-scale", String(currentScale));
     if (next.detail) position(detail, next.detail, next);
+
+    const scaleChanged =
+      (lastContentScale !== -1 && Math.abs(lastContentScale - currentScale) > 0.001) ||
+      (lastMonitorScale !== -1 && Math.abs(lastMonitorScale - next.scale) > 0.001);
+    lastContentScale = currentScale;
+    lastMonitorScale = next.scale;
+    if (scaleChanged && !drag.dragging && (interaction.settings || interaction.provider !== null)) {
+      requestSurface();
+    }
   }
   function requestSurface() {
     const expanded = !drag.dragging && (interaction.settings || interaction.provider !== null);
