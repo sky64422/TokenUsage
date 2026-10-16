@@ -73,3 +73,9 @@ These smoke scripts refuse the production identifier. They use synthetic quota d
 move the pointer and exercise notch interactions. Close the preview before Rust rebuilds
 (Windows locks its running executable). Remove the three environment variables before
 normal development. Actual vendor data is not validated by these fixture runs.
+
+For manual theme review with actual usage, keep the separate identifier but omit
+`TOKENUSAGE_SKIP_DIRECT_QUOTA`. Use the normal backend quota stream without injected
+snapshot timers. A fixture timer racing the five-second backend refresh alternates
+sample percentages with unavailable values; reload or restart after fixture checks
+before handing the preview to a user.

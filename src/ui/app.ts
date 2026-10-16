@@ -9,6 +9,7 @@ import { mountSettingsPanel } from "./settings-panel";
 import { mountNotch, position } from "./notch";
 import { createNotchSurface } from "./notch-surface";
 import { mountNotchDrag } from "./notch-drag";
+import { mountSurfaceFinish } from "./surface-finish";
 import type { DragNotice } from "./notch-drag";
 import {
   createCloseDelay,
@@ -96,7 +97,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   const providers = mountProviders(
     root.querySelector<HTMLElement>(".quota-root")!,
   );
+  const surfaceFinish = mountSurfaceFinish([rail, detail]);
   function applyAppearanceClasses(st: AppSettings) {
+    shell.dataset.theme = st.theme ?? "dark";
+    surfaceFinish.setEnabled(st.theme === "glass");
     const showAnim = st.show_orbit !== false || st.show_icon_glow !== false;
     rail.classList.toggle("hide-orbit", !showAnim);
     rail.classList.toggle("hide-icon-glow", !showAnim);
@@ -108,6 +112,11 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     root.querySelector<HTMLElement>(".settings-root")!,
     persisted.settings,
     {
+      onTheme: async theme => {
+        await invoke("set_theme", { theme });
+        persisted.settings.theme = theme;
+        applyAppearanceClasses(persisted.settings);
+      },
       onAutostart: async (v) => {
         await invoke("set_autostart", { enabled: v });
         persisted.settings.autostart = v;
@@ -342,6 +351,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     events.abort();
     surface.destroy();
     drag.destroy();
+    surfaceFinish.destroy();
     settings.destroy();
     for (const unlisten of unlisteners) unlisten();
   }, { once: true });

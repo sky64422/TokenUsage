@@ -1,5 +1,5 @@
 use crate::domain::types::{
-    DiagnosticsSnapshot, PersistedState, ProviderId, ProviderSnapshot,
+    AppTheme, DiagnosticsSnapshot, PersistedState, ProviderId, ProviderSnapshot,
 };
 use crate::infrastructure::window_ctl;
 use crate::state::AppHandleState;
@@ -71,6 +71,11 @@ pub fn get_snapshots(state: State<'_, AppHandleState>) -> Vec<ProviderSnapshot> 
 #[tauri::command]
 pub fn set_opacity(state: State<'_, AppHandleState>, opacity: f64) -> Result<f64, String> {
     state.core.set_opacity(opacity)
+}
+
+#[tauri::command]
+pub fn set_theme(state: State<'_, AppHandleState>, theme: AppTheme) -> Result<(), String> {
+    state.core.set_theme(theme)
 }
 
 /// Sync login-item registration with the OS.

@@ -83,6 +83,7 @@ pub fn run() {
             commands::set_notch_surface,
             commands::get_snapshots,
             commands::set_opacity,
+            commands::set_theme,
             commands::set_autostart,
             commands::set_hover_detail,
             commands::set_always_show_notch,

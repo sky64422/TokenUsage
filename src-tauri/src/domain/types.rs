@@ -113,8 +113,19 @@ impl Default for ProviderConfig {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AppTheme {
+    Glass,
+    #[default]
+    #[serde(other)]
+    Dark,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppSettings {
+    #[serde(default)]
+    pub theme: AppTheme,
     #[serde(default)]
     pub notch: super::notch::NotchPlacement,
     pub opacity: f64,
@@ -145,6 +156,7 @@ fn default_true() -> bool {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            theme: AppTheme::default(),
             notch: super::notch::NotchPlacement::default(),
             opacity: OpacityPolicy::DEFAULT,
             autostart: true,

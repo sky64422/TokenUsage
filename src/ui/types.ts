@@ -35,7 +35,10 @@ export interface ProviderConfig {
   enabled: boolean;
 }
 
+export type AppTheme = "dark" | "glass";
+
 export interface AppSettings {
+  theme: AppTheme;
   notch: NotchPlacement;
   opacity: number;
   autostart: boolean;

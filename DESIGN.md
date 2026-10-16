@@ -13,7 +13,7 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 - The notch shows percentage only; periods are available in quota details. There is no period-display preference. Backend primary percentage is retained; do not silently relabel it as session usage.
 - Missing/auth-required values show a dash with explicit status, never a zero. Overage preserves the number while only the arc is clamped.
 - Provider icons identify Claude, Codex, Grok, and Antigravity. Source/license notices live in `src/assets/marks`.
-- Dark-only; Pretendard, tabular numbers; no continuous decorative ring motion.
+- Two dark-background themes: `다크` retains the original surface, `글라스` adds the selected glass/foil finish. Pretendard, tabular numbers; no continuous decorative ring motion.
 
 ## Details and settings
 
@@ -23,7 +23,7 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 - The provider whose detail is open stays highlighted while crossing into the panel; pinned state uses a stronger border. Grouped quotas show the service name above model groups so AGY's Gemini/Claude rows retain their source identity.
 - 180ms leave grace permits crossing into the detail. 160ms reveal; reduced-motion disables motion.
 - Detail cards use a near-black surface, 16px radius, thin quiet border, 16px padding. Native width 260 DIP, max native height 560 DIP, bounded to work area. Scroll only on actual overflow.
-- Settings request 400 DIP height so normal appearance controls fit without scrolling; smaller work areas retain body-only scrolling. Action buttons use 32 DIP targets and 8px corners. A pinned provider has a quiet rounded background and border distinct from hover.
+- Settings request 420 DIP height so normal appearance controls, including the theme picker, fit without scrolling; smaller work areas retain body-only scrolling. Action buttons use 32 DIP targets and 8px corners. A pinned provider has a quiet rounded background and border distinct from hover.
 - Existing detail rows keep name / period / refill and `1fr` bar / `2.9em` percentage columns, with 2px gutter. Dual and grouped rows use compact `--usage-row-gap: 8px`. Quiet Luxury 6px pill tracks remain.
 - Settings sheet uses a 3-tab layout (`모양`, `서비스`, `일반`) with fixed header and tab bar while the body scrolls. Standardized controls: `불투명도` (opacity meter), `노치 항상 표시` (always show), `마우스 올릴 때 상세 열기` (hover detail), `작업 중 강조 효과` (show_animation, unified activity animation toggle), `서비스` on/off grid (`표시`/`숨김`, minimum 1 locked). The General tab features docked footer actions (`로그 복사`, `종료` with precision power icon geometry and 100% symmetric margins). Tab panel heights are unified with `scrollbar-gutter: stable` to eliminate tab-switch scrollbar flashes. Edge and display placement is managed directly by dragging the notch.
 - Opacity slider remains neutral with off-white thumb. `applyPanelOpacity` and semantic `max(...)` floors preserve readability. Hovering over a provider cell reinforces clear visual identity and stable inward anchor geometry.
@@ -40,6 +40,15 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 ## Tokens and colors
 
 Sources: `src/styles/tokens.css`, `src/styles/notch.css`. Existing semantic foreground/muted/primary/border/ring and opacity floors remain. Safe/warning/critical colors come from existing quota risk helpers. Settings chrome stays neutral; color communicates usage and state.
+
+### Glass and holographic finish (001 / 052 preview)
+
+- Select `다크` / `글라스` under `모양` > `테마`; selection persists as `settings.theme`. Existing settings, including retired `system` / `light` values, default to `dark` without losing other preferences. Only the glass theme mounts the visible material layers and enables reflection tracking.
+- User-selected references: [Lucian 001](https://lucianlabs.dev/uxui-prompt/#001) glass reflection and [052](https://lucianlabs.dev/uxui-prompt/#052) holographic sheen.
+- Keep the black concave notch, with a silver reflective rim and low-chroma pearl sheen beneath its content. Cool tints remain faint; details and settings share the layered glass surface, while controls retain neutral chrome and semantic status colors.
+- Pointer movement changes the light position and foil angle, never the surface transform, native geometry, or hit regions. Dragging and touch do not steer reflections.
+- Reduced motion keeps the material static. Reflection tracking schedules work only on pointer movement and is disposed with the app.
+- The reference's card flip and simulated loading/success logic are not part of this material treatment.
 
 ## Verification
 

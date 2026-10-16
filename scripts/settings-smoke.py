@@ -33,12 +33,12 @@ with sync_playwright() as p:
         document.querySelector('.notch-detail').style.height = SETTINGS_PANEL_HEIGHT+'px';
         window.saves=0;
         const save=()=>{window.saves++;return new Promise((resolve,reject)=>{window.saveResolve=resolve;window.saveReject=reject;});};
-        const st={opacity:0.675,autostart:false,hover_detail:false,always_show_notch:false,
+        const st={theme:'dark',opacity:0.675,autostart:false,hover_detail:false,always_show_notch:false,
             show_orbit:true,show_icon_glow:true,
             claude:{enabled:true},codex:{enabled:true},grok:{enabled:true},agy:{enabled:true}};
         const noop=()=>{};
         mountSettingsPanel(document.querySelector('#root'),st,{
-            onAutostart:save,onHoverDetail:save,onAlwaysShowNotch:save,onShowAnimation:save,
+            onTheme:save,onAutostart:save,onHoverDetail:save,onAlwaysShowNotch:save,onShowAnimation:save,
             onOpacityChange:noop,
             onProviderEnabled:save,onDiagnostics:()=>new Promise((resolve,reject)=>{
                 window.diagResolve=resolve;window.diagReject=reject;
@@ -46,13 +46,32 @@ with sync_playwright() as p:
         await document.fonts.ready;
     }""")
 
+    # Theme saves lock the picker and restore the previous choice on write failure.
+    dark_theme = page.locator('[data-theme-option="dark"]')
+    glass_theme = page.locator('[data-theme-option="glass"]')
+    expect(dark_theme).to_have_attribute('aria-pressed', 'true')
+    glass_theme.click()
+    expect(dark_theme).to_be_disabled()
+    expect(glass_theme).to_be_disabled()
+    page.evaluate('window.saveReject(new Error("theme write failure"))')
+    expect(dark_theme).to_have_attribute('aria-pressed', 'true')
+    expect(glass_theme).to_have_attribute('aria-pressed', 'false')
+    expect(page.locator('#theme-save-status')).to_be_visible()
+    glass_theme.click()
+    page.evaluate('window.saveResolve()')
+    expect(glass_theme).to_have_attribute('aria-pressed', 'true')
+    expect(page.locator('#theme-save-status')).not_to_be_visible()
+    dark_theme.click()
+    page.evaluate('window.saveResolve()')
+    expect(dark_theme).to_have_attribute('aria-pressed', 'true')
+
     # A rejected save must roll back rather than leave an unsaved checked switch.
     page.locator('label[for="always-show"]').click()
     expect(page.locator('#always-show')).to_be_disabled()
     page.evaluate('window.saveReject(new Error("simulated write failure"))')
     expect(page.locator('#always-show')).not_to_be_checked()
     expect(page.locator('#always-show')).to_be_enabled()
-    expect(page.locator('.settings-save-status').first).to_contain_text("이전 설정으로 복원됨")
+    expect(page.locator('#always-show-status')).to_contain_text("이전 설정으로 복원됨")
     expect(page.locator('label[for="always-show"]')).to_have_attribute('data-save-state','restored')
     page.screenshot(path='tmp/settings-rollback.png',animations='disabled')
     page.locator('label[for="always-show"]').click()

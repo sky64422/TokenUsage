@@ -11,7 +11,7 @@ import {
   pctToOpacity,
   snapOpacityPct,
 } from "./opacity";
-import type { AppSettings, ProviderId } from "./types";
+import type { AppSettings, AppTheme, ProviderId } from "./types";
 import { PROVIDER_IDS } from "./types";
 
 import { PROVIDER_CATALOG } from "./provider-catalog";
@@ -26,7 +26,7 @@ import {
 } from "./update-controller";
 export type { UpdatePhase, UpdateInfo, DownloadProgress } from "./update-controller";
 
-export const SETTINGS_PANEL_HEIGHT = 362;
+export const SETTINGS_PANEL_HEIGHT = 420;
 
 const PROVIDER_VISIBLE = "표시";
 const PROVIDER_HIDDEN = "숨김";
@@ -45,6 +45,7 @@ export function mountSettingsPanel(
   root: HTMLElement,
   settings: AppSettings,
   handlers: {
+    onTheme?: (theme: AppTheme) => void | Promise<void>;
     onAutostart: (v: boolean) => void | Promise<void>;
     onHoverDetail: (v: boolean) => void | Promise<void>;
     onAlwaysShowNotch?: (v: boolean) => void | Promise<void>;
@@ -112,6 +113,18 @@ export function mountSettingsPanel(
 
       <div class="settings-scroll">
       <div class="settings-tab-panel" id="tab-panel-appearance" role="tabpanel" aria-labelledby="tab-btn-appearance">
+        <div class="settings-section">
+          <span class="settings-label">테마</span>
+          <div class="settings-theme-picker" role="group" aria-label="테마">
+            <button type="button" class="settings-theme-option" data-theme-option="dark" aria-pressed="true">
+              <span class="theme-swatch theme-swatch-dark" aria-hidden="true"></span>다크
+            </button>
+            <button type="button" class="settings-theme-option" data-theme-option="glass" aria-pressed="false">
+              <span class="theme-swatch theme-swatch-glass" aria-hidden="true"></span>글라스
+            </button>
+          </div>
+          <p class="settings-save-status" id="theme-save-status" role="status" hidden></p>
+        </div>
         <div class="settings-section">
           <span class="settings-label">불투명도</span>
           <div class="settings-card opacity-card">
@@ -288,6 +301,39 @@ export function mountSettingsPanel(
     tabs[next].focus();
   }));
   switchTab("appearance");
+
+  let activeTheme: AppTheme = settings.theme ?? "dark";
+  let themeSaving = false;
+  const themePicker = root.querySelector<HTMLElement>(".settings-theme-picker")!;
+  const themeButtons = root.querySelectorAll<HTMLButtonElement>("[data-theme-option]");
+  const themeStatus = root.querySelector<HTMLElement>("#theme-save-status")!;
+  function paintTheme() {
+    themePicker.setAttribute("aria-busy", String(themeSaving));
+    themeButtons.forEach(button => {
+      button.setAttribute("aria-pressed", String(button.dataset.themeOption === activeTheme));
+      button.disabled = themeSaving || !handlers.onTheme;
+    });
+  }
+  themeButtons.forEach(button => button.addEventListener("click", async () => {
+    const next = button.dataset.themeOption as AppTheme;
+    if (themeSaving || next === activeTheme || !handlers.onTheme) return;
+    const previous = activeTheme;
+    activeTheme = next;
+    themeSaving = true;
+    themeStatus.hidden = true;
+    paintTheme();
+    try {
+      await handlers.onTheme(next);
+    } catch {
+      activeTheme = previous;
+      themeStatus.textContent = SAVE_RESTORED;
+      themeStatus.hidden = false;
+    } finally {
+      themeSaving = false;
+      paintTheme();
+    }
+  }));
+  paintTheme();
 
   const opacityRange = root.querySelector("#opacity-range") as HTMLInputElement;
   const opacityVal = root.querySelector("#opacity-val") as HTMLElement;

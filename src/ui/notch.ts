@@ -12,7 +12,24 @@ export function mountNotch(
 ) {
   root.tabIndex = 0;
   root.setAttribute("aria-label", "AI usage. Drag to move; right-click or Shift+F10 for settings.");
-  root.innerHTML = `<span class="notch-rest" aria-hidden="true"></span><div class="notch-surface"><svg class="notch-shape" aria-hidden="true"><path/></svg><div class="notch-cells"></div></div>`;
+  root.innerHTML = `<span class="notch-rest" aria-hidden="true"></span>
+    <div class="notch-surface">
+      <svg class="notch-shape" aria-hidden="true">
+        <path id="notch-outline"/>
+        <defs>
+          <clipPath id="notch-finish-clip"><use href="#notch-outline"/></clipPath>
+          <linearGradient id="notch-glass-rim" x1="0" y1="0" x2="1" y2="1">
+            <stop stop-color="#e3e5e9" stop-opacity=".48"/>
+            <stop offset=".3" stop-color="#bdc2cc" stop-opacity=".08"/>
+            <stop offset=".62" stop-color="#c4c1ca" stop-opacity=".2"/>
+            <stop offset="1" stop-color="#b9c7c9" stop-opacity=".13"/>
+          </linearGradient>
+        </defs>
+        <use class="notch-glass-rim" href="#notch-outline"/>
+      </svg>
+      <div class="notch-finish" aria-hidden="true"></div>
+      <div class="notch-cells"></div>
+    </div>`;
   const cells = root.querySelector<HTMLElement>(".notch-cells")!;
   const buttons = new Map<ProviderId, HTMLButtonElement>();
   let restoringFocus = false;

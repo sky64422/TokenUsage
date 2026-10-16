@@ -26,6 +26,7 @@ Rust AppCore
 - `src/ui/update-controller.ts` owns updater IPC, phases, feedback timers and event subscriptions. `settings-panel.ts` renders that state; `provider-catalog.ts` shares provider marks/labels between settings and the rail.
 - `src/ui/notch.ts` renders keyed provider rings (40 DIP) and the concave SVG silhouette (64 DIP depth, 32 DIP arcs, 44 DIP end insets). Ring DOM survives snapshot refreshes.
 - `src/ui/notch-state.ts` owns hover/pin/settings/escape transitions, delayed close, and headline presentation.
+- `src/ui/surface-finish.ts` tracks pointer-driven reflections only for the opt-in glass theme; it never transforms native geometry. `settings.theme` defaults to dark and persists through `set_theme`.
 - `domain/notch.rs` computes physical monitor/working-area bounds and shape hit regions (64 DIP depth, 72 DIP provider cells, 12 DIP lateral margins). Negative coordinates and per-monitor scale are valid.
 - `domain/notch/drag.rs` owns pure edge/monitor drag selection, reexported through `domain::notch::NotchDrag` to preserve the existing API.
 - `infrastructure/notch_window.rs` serializes native layout requests, samples the native cursor every 32ms for transparent input, and rechecks display geometry about once per second.
@@ -92,7 +93,7 @@ show-window refresh; worker and event-delivery failures are recorded in diagnost
 The original command names and JSON payloads are unchanged.
 
 - State & Snapshots: `get_state`, `get_snapshots`
-- Preferences & Controls: `set_opacity`, `set_autostart`, `set_hover_detail`, `set_always_show_notch`, `set_show_animation`, `set_provider_enabled`
+- Preferences & Controls: `set_theme`, `set_opacity`, `set_autostart`, `set_hover_detail`, `set_always_show_notch`, `set_show_animation`, `set_provider_enabled`
 - Notch & Window Geometry: `get_notch_monitors`, `get_notch_reveal`, `set_notch_focus`, `set_notch_placement`, `begin_notch_drag`, `finish_notch_drag`, `set_notch_surface`
 - Activity & Diagnostics: `get_provider_activity`, `get_diagnostics`, `check_for_updates`, `quit_app`
 

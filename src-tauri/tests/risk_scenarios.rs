@@ -13,7 +13,7 @@ fn ensure_skip_network() {
 }
 
 use token_usage_lib::application::service::AppCore;
-use token_usage_lib::domain::types::{DataSource, PersistedState, ProviderId};
+use token_usage_lib::domain::types::{AppTheme, DataSource, PersistedState, ProviderId};
 use token_usage_lib::infrastructure::store::{default_state, load_state, save_state, state_path};
 
 #[test]
@@ -97,6 +97,48 @@ fn risk_legacy_fields_ignored() {
     assert!(loaded.settings.autostart);
     assert!((loaded.settings.opacity - 0.9).abs() < 0.001);
     assert!(loaded.settings.claude.enabled);
+}
+
+#[test]
+fn risk_theme_migration_preserves_existing_preferences() {
+    for (legacy_theme, expected) in [
+        (None, "dark"),
+        (Some("system"), "dark"),
+        (Some("light"), "dark"),
+        (Some("future-theme"), "dark"),
+        (Some("glass"), "glass"),
+    ] {
+        let dir = tempdir().unwrap();
+        let mut legacy = serde_json::json!({
+            "version": 1,
+            "settings": {"opacity": 0.77, "autostart": true, "hover_detail": true}
+        });
+        if let Some(theme) = legacy_theme {
+            legacy["settings"]["theme"] = serde_json::json!(theme);
+        }
+        fs::write(state_path(dir.path()), legacy.to_string()).unwrap();
+        let loaded = load_state(dir.path()).unwrap();
+        assert_eq!(loaded.settings.opacity, 0.77);
+        assert!(loaded.settings.hover_detail);
+        save_state(dir.path(), &loaded).unwrap();
+        let saved: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(state_path(dir.path())).unwrap(),
+        ).unwrap();
+        assert_eq!(saved["settings"]["theme"], expected, "legacy {legacy_theme:?}");
+    }
+}
+
+#[test]
+fn risk_theme_selection_survives_restart() {
+    let dir = tempdir().unwrap();
+    let core = AppCore::new(default_state(), dir.path().to_path_buf());
+    assert_eq!(core.get_state().settings.theme, AppTheme::Dark);
+    for theme in [AppTheme::Glass, AppTheme::Dark] {
+        core.set_theme(theme).unwrap();
+        assert_eq!(core.get_state().settings.theme, theme);
+        let restarted = AppCore::new(load_state(dir.path()).unwrap(), dir.path().to_path_buf());
+        assert_eq!(restarted.get_state().settings.theme, theme);
+    }
 }
 
 #[test]
@@ -243,12 +285,13 @@ fn risk_failed_settings_write_preserves_memory() {
     fs::write(&blocked, "not a directory").unwrap();
     let initial = default_state();
     type SettingMutation = fn(&AppCore) -> Result<(), String>;
-    let mutations: [SettingMutation; 5] = [
+    let mutations: [SettingMutation; 6] = [
         |core| core.set_opacity(0.5).map(|_| ()),
         |core| core.set_autostart(!default_state().settings.autostart),
         |core| core.set_hover_detail(!default_state().settings.hover_detail),
         |core| core.set_always_show_notch(true),
         |core| core.set_show_animation(false),
+        |core| core.set_theme(AppTheme::Glass),
     ];
     for (index, mutate) in mutations.into_iter().enumerate() {
         let core = AppCore::new(initial.clone(), blocked.clone());

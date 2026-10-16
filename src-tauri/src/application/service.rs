@@ -1,6 +1,6 @@
 use crate::domain::constants::clamp_opacity;
 use crate::domain::types::{
-    AppSettings, DataSource, DiagnosticsSnapshot, PersistedState,
+    AppSettings, AppTheme, DataSource, DiagnosticsSnapshot, PersistedState,
     ProviderId, ProviderSnapshot, SnapshotStatus,
 };
 use crate::infrastructure::store::save_state;
@@ -152,6 +152,10 @@ impl AppCore {
         self.mutate_settings(|s| {
             s.autostart = enabled;
         })
+    }
+
+    pub fn set_theme(&self, theme: AppTheme) -> Result<(), String> {
+        self.mutate_settings(|s| s.theme = theme)
     }
 
     pub fn set_hover_detail(&self, enabled: bool) -> Result<(), String> {

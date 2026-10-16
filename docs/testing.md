@@ -42,6 +42,12 @@ cleanup without real timers or vendor requests. Rust `infrastructure::poll::test
 checks snapshot delivery and worker/event failures. Risk tests exercise real failed
 filesystem writes for all preference setters and provider visibility.
 
+Theme risk tests cover dark defaults for old settings (including retired system/light
+values), glass/dark persistence across an AppCore restart, and failed-write rollback.
+`settings-smoke.py` also covers pending theme controls, failed-save selection rollback
+and a successful retry. Compare native dark/glass rendering and pointer reflections
+in the isolated preview; neither theme may change notch placement or input regions.
+
 Native smoke scripts share `scripts/notch_test_support.py`: they assert the preview
 identifier before setting fixture preferences, enable all four providers and hover,
 and reset details using Escape. They cover the current provider cards and right-click
