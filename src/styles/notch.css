@@ -6,6 +6,7 @@
   position: relative;
   width: 100%;
   height: 100%;
+  --notch-rim-scale: max(0.55, calc(1 + (var(--notch-scale, 1) - 1) * 5));
 }
 .notch {
   cursor: grab;
@@ -14,6 +15,7 @@
   position: absolute;
   color: var(--foreground);
   contain: layout style;
+  --notch-rim-scale: max(0.55, calc(1 + (var(--notch-scale, 1) - 1) * 5));
 }
 .notch[data-edge="right"] {
   --rest-clip: inset(calc(50% - var(--rest-length) / 2) 0 calc(50% - var(--rest-length) / 2) calc(100% - var(--rest-depth)) round 6px 0 0 6px);
@@ -57,7 +59,7 @@
   z-index: 1;
   position: absolute;
   background: rgba(0, 0, 0, var(--panel-opacity));
-  border: 1px solid rgba(255, 255, 255, .24);
+  border: calc(1px * var(--notch-rim-scale, 1)) solid rgba(255, 255, 255, .24);
   opacity: 0;
   pointer-events: none;
   transform-origin: var(--edge-origin, center);
@@ -107,9 +109,9 @@
 .activity-orbit {
   display: none;
   position: absolute;
-  inset: 6px;
+  inset: calc(6px * var(--notch-scale, 1));
   box-sizing: border-box;
-  border: 1.5px solid transparent;
+  border: calc(1.5px * var(--notch-scale, 1)) solid transparent;
   border-top-color: rgba(255, 255, 255, 0.92);
   border-radius: 50%;
   pointer-events: none;
@@ -172,7 +174,7 @@
   display: inline;
   fill: none;
   stroke: url(#notch-glass-rim);
-  stroke-width: 1.2;
+  stroke-width: calc(1.2px * var(--notch-rim-scale, 1));
   vector-effect: non-scaling-stroke;
   opacity: var(--chrome-opacity);
 }
@@ -220,7 +222,7 @@
   display: inline;
   fill: none;
   stroke: url(#notch-liquid-rim);
-  stroke-width: 2.4;
+  stroke-width: calc(2.4px * var(--notch-rim-scale, 1));
   opacity: .75;
   clip-path: url(#notch-finish-clip);
   vector-effect: non-scaling-stroke;
@@ -230,26 +232,28 @@
   display: inline;
   fill: none;
   stroke: rgba(232, 241, 249, .45);
-  stroke-width: .7;
+  stroke-width: calc(0.7px * var(--notch-rim-scale, 1));
   vector-effect: non-scaling-stroke;
 }
 .notch-shell[data-theme="liquid"] .notch-cells { z-index: 2; }
 .notch-shell[data-theme="liquid"] .notch-rest {
   background: linear-gradient(145deg, rgba(186, 215, 236, .38), rgba(51, 72, 91, .8));
+  border-width: calc(1px * var(--notch-rim-scale, 1));
   border-color: rgba(225, 241, 255, .45);
 }
 .notch-shell[data-theme="liquid"] .ring-pct { position: relative; isolation: isolate; }
 .notch-shell[data-theme="liquid"] .ring-pct::before {
   content: "";
   position: absolute;
-  inset: 0 -4px;
+  inset: 0 calc(-4px * var(--notch-scale, 1));
   z-index: -1;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--notch-scale, 1));
   background: rgba(4, 8, 14, max(.76, var(--panel-opacity)));
 }
 .notch-shell[data-theme="liquid"] .notch-detail {
   isolation: isolate;
   background: rgba(32, 43, 56, max(.80, var(--panel-opacity)));
+  border-width: calc(1px * var(--notch-scale, 1));
   border-color: rgba(225, 239, 251, .16);
   box-shadow: 0 14px 36px rgba(0, 0, 0, .5);
 }
@@ -257,7 +261,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  padding: .5px;
+  padding: calc(0.5px * var(--notch-rim-scale, 1));
   border-radius: inherit;
   pointer-events: none;
   background: linear-gradient(135deg, rgba(180, 229, 238, .6), rgba(193, 180, 236, .35) 30%,
@@ -400,10 +404,10 @@
 .notch-cell[data-detail-open="true"]::before {
   content: "";
   position: absolute;
-  inset: 5px 6px;
-  border-radius: 12px;
+  inset: calc(5px * var(--notch-scale, 1)) calc(6px * var(--notch-scale, 1));
+  border-radius: calc(12px * var(--notch-scale, 1));
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: calc(1px * var(--notch-scale, 1)) solid rgba(255, 255, 255, 0.12);
   pointer-events: none;
 }
 .notch-cell[data-detail-open="true"][aria-pressed="true"]::before {
@@ -414,8 +418,8 @@
   font-size: 12px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.85);
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: calc(6px * var(--notch-scale, 1));
+  border-bottom: calc(1px * var(--notch-scale, 1)) solid rgba(255, 255, 255, 0.1);
 }
 .notch-cell:focus-visible {
   outline-offset: -5px;
@@ -434,7 +438,7 @@
 }
 .notch.is-drag-armed .notch-shape path {
   stroke: rgba(255, 255, 255, 0.32);
-  stroke-width: 1px;
+  stroke-width: calc(1px * var(--notch-rim-scale, 1));
 }
 /* Liquid floating droplet elevation while actively dragging */
 .notch.is-dragging .notch-surface {
@@ -444,7 +448,7 @@
 }
 .notch.is-dragging .notch-shape path {
   stroke: rgba(255, 255, 255, 0.42);
-  stroke-width: 1.2px;
+  stroke-width: calc(1.2px * var(--notch-rim-scale, 1));
 }
 
 /* Liquid snap slosh when docking on edge release */
@@ -499,7 +503,7 @@
   box-sizing: border-box;
   border-radius: var(--detail-radius);
   background: rgba(8, 8, 10, max(0.88, var(--panel-opacity)));
-  border: 1px solid rgba(255, 255, 255, 0.11);
+  border: calc(1px * var(--notch-scale, 1)) solid rgba(255, 255, 255, 0.11);
   box-shadow:
     0 16px 40px -4px rgba(0, 0, 0, 0.75),
     0 6px 16px rgba(0, 0, 0, 0.45),
@@ -515,6 +519,7 @@
   background:
     radial-gradient(ellipse at 15% 0, rgba(146, 151, 160, .055), transparent 68%),
     rgba(9, 10, 12, max(0.88, var(--panel-opacity)));
+  border-width: calc(1px * var(--notch-scale, 1));
   border-color: rgba(211, 216, 224, .19);
   box-shadow:
     0 16px 40px -4px rgba(0, 0, 0, .75),
@@ -546,7 +551,7 @@
 }
 .notch-shell[data-theme="glass"] .notch-detail[data-finish-active]::before { opacity: var(--chrome-opacity); }
 .notch-shell[data-theme="glass"] .notch-detail::after {
-  padding: 1px;
+  padding: calc(1px * var(--notch-scale, 1));
   background: linear-gradient(var(--finish-angle), rgba(242, 244, 247, .5),
     rgba(178, 185, 196, .035) 28%, rgba(200, 195, 205, .14) 55%, rgba(177, 199, 201, .12) 78%, transparent);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);

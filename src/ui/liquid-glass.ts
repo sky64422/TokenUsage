@@ -81,8 +81,7 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
   observer.observe(detail,{attributes:true,attributeFilter:["hidden"]});
 
   function mapFor(entry: SurfaceLayer, width: number, height: number) {
-    const contentScale = entry.surface === rail
-      ? Number(getComputedStyle(rail).getPropertyValue("--notch-scale")) || 1 : 1;
+    const contentScale = Number(getComputedStyle(entry.surface).getPropertyValue("--notch-scale")) || 1;
     const bezel = BEZEL * contentScale;
     entry.filter.querySelectorAll("feDisplacementMap").forEach((node, index) => {
       const dispersion = [.93, 1, 1.07][index];
@@ -96,7 +95,7 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
       const m = path.transform.baseVal.consolidate()?.matrix;
       if (m) ctx.setTransform(m.a,m.b,m.c,m.d,m.e,m.f);
       ctx.fill(new Path2D(path.getAttribute('d')!)); ctx.resetTransform();
-    } else {ctx.beginPath(); ctx.roundRect(0,0,width,height,16); ctx.fill();}
+    } else {ctx.beginPath(); ctx.roundRect(0,0,width,height,16 * contentScale); ctx.fill();}
     const pixels=ctx.getImageData(0,0,width,height).data;
     const dist=new Float32Array(width*height);
     for(let y=0;y<height;y++)for(let x=0;x<width;x++) {

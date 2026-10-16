@@ -192,7 +192,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       `${next.metrics.detail_radius}px`,
     );
     const currentScale = next.metrics.content_scale ?? 1;
+    const rimScale = Math.max(0.55, 1 + (currentScale - 1) * 5);
     shell.style.setProperty("--notch-scale", String(currentScale));
+    shell.style.setProperty("--notch-rim-scale", rimScale.toFixed(3));
     if (next.detail) position(detail, next.detail, next);
 
     const scaleChanged =

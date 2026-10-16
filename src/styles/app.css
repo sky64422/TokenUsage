@@ -578,7 +578,7 @@ body {
 .settings-tabs {
   display: flex;
   position: relative;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: calc(1px * var(--notch-scale, 1)) solid rgba(255, 255, 255, 0.08);
   padding: 0;
   gap: 4px;
   box-sizing: border-box;
@@ -592,8 +592,8 @@ body {
   flex: 1 1 0;
   height: calc(37px * var(--notch-scale, 1));
   padding: 0 calc(8px * var(--notch-scale, 1));
-  border: 1px solid transparent;
-  border-bottom: 2px solid transparent;
+  border: calc(1px * var(--notch-scale, 1)) solid transparent;
+  border-bottom: calc(2px * var(--notch-scale, 1)) solid transparent;
   border-radius: 8px 8px 0 0;
   background: transparent;
   color: rgba(255, 255, 255, 0.5);
@@ -673,7 +673,7 @@ body {
 .settings-card {
   box-sizing: border-box;
   background: rgba(255, 255, 255, 0.035);
-  border: 1px solid var(--border-soft);
+  border: calc(1px * var(--notch-scale, 1)) solid var(--border-soft);
   border-radius: var(--radius-lg);
   padding: 9px 12px;
   display: flex;
@@ -692,7 +692,7 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   padding: 3px;
-  border: 1px solid var(--border-soft);
+  border: calc(1px * var(--notch-scale, 1)) solid var(--border-soft);
   border-radius: var(--radius-lg);
   background: rgba(0, 0, 0, .16);
 }
@@ -780,7 +780,7 @@ body {
 .settings-group {
   box-sizing: border-box;
   background: rgba(255, 255, 255, 0.035);
-  border: 1px solid var(--border-soft);
+  border: calc(1px * var(--notch-scale, 1)) solid var(--border-soft);
   border-radius: var(--radius-lg);
   overflow: hidden;
   display: flex;
@@ -802,7 +802,7 @@ body {
   box-sizing: border-box;
   cursor: pointer;
   user-select: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  border-bottom: calc(1px * var(--notch-scale, 1)) solid rgba(255, 255, 255, 0.045);
   contain: layout style;
   transition: background var(--duration-fast) ease;
 }
@@ -1257,7 +1257,7 @@ body {
   min-width: 0;
   margin-top: auto;
   padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: calc(1px * var(--notch-scale, 1)) solid rgba(255, 255, 255, 0.07);
   box-sizing: border-box;
 }
 
@@ -1271,7 +1271,7 @@ body {
   margin: 0;
   padding: 0 calc(10px * var(--notch-scale, 1));
   border-radius: var(--radius-lg, 9px);
-  border: 1px solid var(--border-soft);
+  border: calc(1px * var(--notch-scale, 1)) solid var(--border-soft);
   background: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.88);
   font: inherit;
@@ -1867,7 +1867,7 @@ body {
   width: calc((100% - 2 * var(--tab-gap)) / 3);
   border-radius: 8px 8px 0 0;
   background: rgba(255, 255, 255, 0.075);
-  border-bottom: 2px solid var(--foreground);
+  border-bottom: calc(2px * var(--notch-scale, 1)) solid var(--foreground);
   box-sizing: border-box;
   transform: translateX(calc(var(--active-tab, 0) * (100% + var(--tab-gap))));
   transition:
