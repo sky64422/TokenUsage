@@ -13,6 +13,8 @@ pub const DETAIL_WIDTH: f64 = 260.;
 pub const DETAIL_HEIGHT: f64 = 560.;
 pub const MIN_DETAIL_HEIGHT: f64 = 48.;
 pub const GAP: f64 = 8.;
+const CONTENT_REFERENCE_SHORT_SIDE: f64 = 1440.;
+const MIN_CONTENT_SCALE: f64 = 0.85;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
@@ -110,6 +112,7 @@ pub struct NotchLayout {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct NotchMetrics {
+    pub content_scale: f64,
     pub depth: f64,
     pub cell: f64,
     pub shoulder: f64,
@@ -171,18 +174,23 @@ impl NotchLayout {
         }
         let n = self.notch;
         let s = self.scale;
+        let depth = self.metrics.depth;
+        let shoulder = self.metrics.shoulder;
+        let inner = self.metrics.inner_radius;
+        // The HWND rounds depth to physical pixels; mirror the SVG's cross-axis stretch.
+        let across_scale = if self.edge.vertical() { n.width } else { n.height } / depth;
         let (across, along, length) = match self.edge {
-            NotchEdge::Right => ((x - n.x) / s, (y - n.y) / s, n.height / s),
-            NotchEdge::Left => ((n.x + n.width - x) / s, (y - n.y) / s, n.height / s),
-            NotchEdge::Bottom => ((y - n.y) / s, (x - n.x) / s, n.width / s),
-            NotchEdge::Top => ((n.y + n.height - y) / s, (x - n.x) / s, n.width / s),
+            NotchEdge::Right => ((x - n.x) / across_scale, (y - n.y) / s, n.height / s),
+            NotchEdge::Left => ((n.x + n.width - x) / across_scale, (y - n.y) / s, n.height / s),
+            NotchEdge::Bottom => ((y - n.y) / across_scale, (x - n.x) / s, n.width / s),
+            NotchEdge::Top => ((n.y + n.height - y) / across_scale, (x - n.x) / s, n.width / s),
         };
         let end = along.min(length - along);
-        let boundary = if end < SHOULDER {
-            DEPTH - SHOULDER + (SHOULDER.powi(2) - end.powi(2)).max(0.).sqrt()
-        } else if end < SHOULDER + INNER_RADIUS {
-            INNER_RADIUS
-                - (INNER_RADIUS.powi(2) - (end - SHOULDER - INNER_RADIUS).powi(2))
+        let boundary = if end < shoulder {
+            depth - shoulder + (shoulder.powi(2) - end.powi(2)).max(0.).sqrt()
+        } else if end < shoulder + inner {
+            inner
+                - (inner.powi(2) - (end - shoulder - inner).powi(2))
                     .max(0.)
                     .sqrt()
         } else {
@@ -217,6 +225,9 @@ pub fn calculate_layout_target(
     let b = m.bounds;
     let w = m.work;
     let s = m.scale;
+    let content_scale = ((b.width.min(b.height) / s) / CONTENT_REFERENCE_SHORT_SIDE)
+        .sqrt()
+        .clamp(MIN_CONTENT_SCALE, 1.);
     let available = |e| match e {
         NotchEdge::Right => w.x + w.width >= b.x + b.width,
         NotchEdge::Left => w.x <= b.x,
@@ -234,9 +245,10 @@ pub fn calculate_layout_target(
     .into_iter()
     .find(|e| available(*e))
     .ok_or("No screen edge available")?;
-    let cell = if edge.vertical() { CELL } else { CELL_HORIZONTAL };
-    let len = ((count as f64 * cell + END_PADDING * 2.) * s).round();
-    let depth = (DEPTH * s).round();
+    let cell = if edge.vertical() { CELL } else { CELL_HORIZONTAL } * content_scale;
+    let inset = END_PADDING * content_scale;
+    let len = ((count as f64 * cell + inset * 2.) * s).round();
+    let depth = (DEPTH * content_scale * s).round();
     let gap = (GAP * s).round();
     let span = if edge.vertical() { w.height } else { w.width };
     if len > span || depth > w.width.min(w.height) {
@@ -358,15 +370,16 @@ pub fn calculate_layout_target(
         scale: s,
         monitor: m.name.clone(),
         metrics: NotchMetrics {
-            depth: DEPTH,
+            content_scale,
+            depth: DEPTH * content_scale,
             cell,
-            shoulder: SHOULDER,
-            inner_radius: INNER_RADIUS,
-            inset: END_PADDING,
+            shoulder: SHOULDER * content_scale,
+            inner_radius: INNER_RADIUS * content_scale,
+            inset,
             detail_radius: DETAIL_RADIUS,
-            drag_threshold: DRAG_THRESHOLD,
-            rest_depth: super::reveal::REST_DEPTH,
-            rest_length: super::reveal::REST_LENGTH,
+            drag_threshold: DRAG_THRESHOLD * content_scale,
+            rest_depth: super::reveal::REST_DEPTH * content_scale,
+            rest_length: super::reveal::REST_LENGTH * content_scale,
         },
     })
 }

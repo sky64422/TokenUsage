@@ -51,8 +51,8 @@ impl NotchReveal {
 
 pub fn folded_rect(layout: &NotchLayout) -> Rect {
     let n = layout.notch;
-    let depth = REST_DEPTH * layout.scale;
-    let length = REST_LENGTH * layout.scale;
+    let depth = layout.metrics.rest_depth * layout.scale;
+    let length = layout.metrics.rest_length * layout.scale;
     if layout.edge.vertical() {
         Rect {
             x: if layout.edge == NotchEdge::Right {
@@ -150,19 +150,19 @@ mod tests {
                 let rest = folded_rect(&layout);
                 let n = layout.notch;
                 if edge.vertical() {
-                    assert_eq!(rest.width, REST_DEPTH * scale);
-                    assert_eq!(rest.height, REST_LENGTH * scale);
-                    assert_eq!(rest.y + rest.height / 2., n.y + n.height / 2.);
+                    assert_eq!(rest.width, REST_DEPTH * layout.metrics.content_scale * scale);
+                    assert_eq!(rest.height, REST_LENGTH * layout.metrics.content_scale * scale);
+                    assert!((rest.y + rest.height / 2. - n.y - n.height / 2.).abs() < 1e-9);
                 } else {
-                    assert_eq!(rest.width, REST_LENGTH * scale);
-                    assert_eq!(rest.height, REST_DEPTH * scale);
-                    assert_eq!(rest.x + rest.width / 2., n.x + n.width / 2.);
+                    assert_eq!(rest.width, REST_LENGTH * layout.metrics.content_scale * scale);
+                    assert_eq!(rest.height, REST_DEPTH * layout.metrics.content_scale * scale);
+                    assert!((rest.x + rest.width / 2. - n.x - n.width / 2.).abs() < 1e-9);
                 }
                 match edge {
                     NotchEdge::Left => assert_eq!(rest.x, bounds.x),
-                    NotchEdge::Right => assert_eq!(rest.x + rest.width, bounds.x + bounds.width),
+                    NotchEdge::Right => assert!((rest.x + rest.width - bounds.x - bounds.width).abs() < 1e-9),
                     NotchEdge::Top => assert_eq!(rest.y, bounds.y),
-                    NotchEdge::Bottom => assert_eq!(rest.y + rest.height, bounds.y + bounds.height),
+                    NotchEdge::Bottom => assert!((rest.y + rest.height - bounds.y - bounds.height).abs() < 1e-9),
                 }
                 assert!(rest.contains(rest.x + rest.width / 2., rest.y + rest.height / 2.));
                 assert!(!rest.contains(n.x + 1., n.y + 1.));

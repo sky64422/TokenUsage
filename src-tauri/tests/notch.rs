@@ -1,4 +1,5 @@
 use token_usage_lib::domain::notch::*;
+use token_usage_lib::domain::reveal::{REST_DEPTH, REST_LENGTH};
 use token_usage_lib::domain::types::PersistedState;
 
 fn monitor(scale: f64) -> MonitorArea {
@@ -17,6 +18,64 @@ fn monitor(scale: f64) -> MonitorArea {
             height: 1040.,
         },
         scale,
+    }
+}
+
+#[test]
+fn smaller_logical_displays_shrink_only_the_rail() {
+    let large = drag_monitor(1.);
+    let mut small = large.clone();
+    small.bounds.width = 1024.;
+    small.bounds.height = 1280.;
+    small.work = small.bounds;
+    let placement = NotchPlacement::default();
+    let baseline = calculate_layout(&large, &placement, 3, true, 200.).unwrap();
+    let compact = calculate_layout(&small, &placement, 3, true, 200.).unwrap();
+    assert_eq!(baseline.notch.width, DEPTH);
+    assert_eq!(baseline.notch.height, CELL * 3. + END_PADDING * 2.);
+    assert_eq!(compact.notch.width, (DEPTH * 0.85).round());
+    assert_eq!(compact.notch.height, ((CELL * 3. + END_PADDING * 2.) * 0.85).round());
+    assert_eq!(compact.detail.unwrap().width, baseline.detail.unwrap().width);
+    assert_eq!(compact.detail.unwrap().height, baseline.detail.unwrap().height);
+    assert_eq!(compact.scale, 1.);
+}
+
+#[test]
+fn adaptive_scale_is_continuous_bounded_and_dpi_aware() {
+    for scale in [1., 1.25, 1.5, 2.] {
+        for (width, height, expected) in [
+            (2560., 1440., 1.),
+            (1920., 1080., (1080_f64 / 1440.).sqrt()),
+            (1024., 1280., 0.85),
+            (3840., 2160., 1.),
+        ] {
+            let mut m = drag_monitor(scale);
+            m.bounds.width = width * scale;
+            m.bounds.height = height * scale;
+            m.work = m.bounds;
+            for edge in [NotchEdge::Right, NotchEdge::Left, NotchEdge::Top, NotchEdge::Bottom] {
+                let p = NotchPlacement { edge, offset: 0.7, monitor_hint: Some(m.name.clone()) };
+                let closed = calculate_layout(&m, &p, 3, false, 0.).unwrap();
+                let open = calculate_layout(&m, &p, 3, true, 200.).unwrap();
+                assert!((closed.metrics.content_scale - expected).abs() < 1e-12);
+                assert_eq!(closed.scale, scale);
+                assert_eq!(closed.metrics.depth, DEPTH * expected);
+                assert_eq!(closed.metrics.inset, END_PADDING * expected);
+                assert_eq!(closed.metrics.rest_depth, REST_DEPTH * expected);
+                assert_eq!(closed.metrics.rest_length, REST_LENGTH * expected);
+                let (depth, length, cell) = if edge.vertical() {
+                    (closed.notch.width, closed.notch.height, CELL)
+                } else {
+                    (closed.notch.height, closed.notch.width, CELL_HORIZONTAL)
+                };
+                assert_eq!(depth, (DEPTH * expected * scale).round());
+                assert_eq!(length, ((cell * 3. + END_PADDING * 2.) * expected * scale).round());
+                assert_eq!(open.detail.unwrap().width, (DETAIL_WIDTH * scale).ceil());
+                assert_eq!(open.detail.unwrap().height, (200. * scale).ceil());
+                assert_eq!(closed.window, open.window);
+                assert_eq!(closed.notch, open.notch);
+            }
+        }
     }
 }
 
@@ -134,7 +193,8 @@ fn all_four_edges_and_open_corridors_work_without_taskbar() {
 #[test]
 fn insufficient_detail_space_is_an_error_not_a_negative_rectangle() {
     let mut m = monitor(1.);
-    m.bounds.width = DEPTH + GAP;
+    // This width reaches the minimum adaptive scale and leaves no detail space.
+    m.bounds.width = (DEPTH * 0.85).round() + GAP;
     m.work = m.bounds;
     assert!(calculate_layout(&m, &NotchPlacement::default(), 1, true, 200.).is_err());
 }
@@ -169,17 +229,32 @@ fn failed_placement_save_keeps_committed_settings() {
 #[test]
 fn circular_end_hit_regions_follow_the_visible_silhouette() {
     for scale in [1., 1.25, 1.5, 2.] {
-        let l =
-            calculate_layout(&monitor(scale), &NotchPlacement::default(), 3, false, 360.).unwrap();
-        // Midpoints on each half of the S curve; check both sides of the arc.
-        let p1_along = SHOULDER / 2.;
-        let p1_boundary = DEPTH - SHOULDER + (SHOULDER.powi(2) - p1_along.powi(2)).sqrt();
-        let p2_along = SHOULDER + INNER_RADIUS / 2.;
-        let p2_boundary = INNER_RADIUS - (INNER_RADIUS.powi(2) - (p2_along - SHOULDER - INNER_RADIUS).powi(2)).sqrt();
-        for (along, boundary) in [(p1_along, p1_boundary), (p2_along, p2_boundary)] {
-            for end in [along * scale, l.notch.height - along * scale] {
-                assert!(!l.hit(l.notch.x + (boundary - 0.5) * scale, l.notch.y + end));
-                assert!(l.hit(l.notch.x + (boundary + 0.5) * scale, l.notch.y + end));
+        for edge in [NotchEdge::Right, NotchEdge::Left, NotchEdge::Top, NotchEdge::Bottom] {
+            let l = calculate_layout(
+                &monitor(scale), &NotchPlacement { edge, ..Default::default() }, 3, false, 360.,
+            ).unwrap();
+            // Midpoints on each half of the S curve; check both sides of the arc.
+            let shoulder = l.metrics.shoulder;
+            let inner = l.metrics.inner_radius;
+            let p1_along = shoulder / 2.;
+            let p1_boundary = l.metrics.depth - shoulder + (shoulder.powi(2) - p1_along.powi(2)).sqrt();
+            let p2_along = shoulder + inner / 2.;
+            let p2_boundary = inner - (inner.powi(2) - (p2_along - shoulder - inner).powi(2)).sqrt();
+            let n = l.notch;
+            let length = if edge.vertical() { n.height } else { n.width };
+            let across_scale = if edge.vertical() { n.width } else { n.height } / l.metrics.depth;
+            for (along, boundary) in [(p1_along, p1_boundary), (p2_along, p2_boundary)] {
+                for end in [along * scale, length - along * scale] {
+                    for (across, expected) in [(boundary - 0.5, false), (boundary + 0.5, true)] {
+                        let (x, y) = match edge {
+                            NotchEdge::Right => (n.x + across * across_scale, n.y + end),
+                            NotchEdge::Left => (n.x + n.width - across * across_scale, n.y + end),
+                            NotchEdge::Bottom => (n.x + end, n.y + across * across_scale),
+                            NotchEdge::Top => (n.x + end, n.y + n.height - across * across_scale),
+                        };
+                        assert_eq!(l.hit(x, y), expected, "edge={edge:?} scale={scale}");
+                    }
+                }
             }
         }
     }
@@ -264,7 +339,7 @@ fn drag_keeps_grab_ratio_and_handles_zero_travel() {
     d.update(&[m.clone()], 1000., 1.).unwrap();
     let moved = calculate_layout(&m, &d.placement, 1, false, 200.).unwrap();
     assert!((moved.notch.x + moved.notch.width / 4. - 1000.).abs() <= 1.);
-    m.bounds.width = CELL_HORIZONTAL + END_PADDING * 2.;
+    m.bounds.width = ((CELL_HORIZONTAL + END_PADDING * 2.) * 0.85).round();
     m.work.width = m.bounds.width;
     d.update(&[m], 100., 1.).unwrap();
     assert_eq!(d.placement.offset, 0.);
@@ -311,6 +386,44 @@ fn drag_can_cross_monitor_seams_while_following_an_outer_edge() {
     d.update(&[m, above], 10., -100.).unwrap();
     assert_eq!(d.placement.monitor_hint.as_deref(), Some("above"));
     assert_eq!(d.placement.edge, NotchEdge::Left);
+}
+
+#[test]
+fn dragging_between_logical_sizes_preserves_grab_ratio_and_scaled_threshold() {
+    for scale in [1., 1.25, 1.5, 2.] {
+        let mut large = drag_monitor(scale);
+        large.bounds.width *= scale;
+        large.bounds.height *= scale;
+        large.work = large.bounds;
+        let mut small = large.clone();
+        small.name = "small".into();
+        small.bounds.x = -1024. * scale;
+        small.bounds.width = 1024. * scale;
+        small.bounds.height = 1280. * scale;
+        small.work = small.bounds;
+        let layout = calculate_layout(&small, &NotchPlacement::default(), 3, false, 0.).unwrap();
+        let start = (-24. * scale, layout.notch.y + layout.notch.height / 4.);
+        let mut drag = NotchDrag::new(&layout, start.0, start.1, 3);
+        let threshold = layout.metrics.drag_threshold * scale;
+        let monitors = [large.clone(), small.clone()];
+        drag.update(&monitors, start.0 - threshold * 0.99, start.1).unwrap();
+        assert!(!drag.active);
+        drag.update(&monitors, start.0 - threshold * 1.01, start.1).unwrap();
+        assert!(drag.active);
+        let pointer_y = 700. * scale;
+        for (x, target, edge, expected_scale) in [
+            (180. * scale, &large, NotchEdge::Left, 1.),
+            (-180. * scale, &small, NotchEdge::Right, 0.85),
+        ] {
+            drag.update(&monitors, x, pointer_y).unwrap();
+            assert_eq!(drag.placement.monitor_hint.as_deref(), Some(target.name.as_str()));
+            assert_eq!(drag.placement.edge, edge);
+            let moved = calculate_layout(target, &drag.placement, 3, false, 0.).unwrap();
+            assert_eq!(moved.metrics.content_scale, expected_scale);
+            assert!((moved.notch.y + moved.notch.height / 4. - pointer_y).abs() <= 1.);
+            assert_eq!(moved.notch.width, (DEPTH * expected_scale * scale).round());
+        }
+    }
 }
 
 #[test]
@@ -450,8 +563,9 @@ fn changing_detail_preserves_native_canvas_and_notch_position() {
                     let p = NotchPlacement { edge, offset, monitor_hint: None };
                     let closed = calculate_layout(&m, &p, count, false, 0.).unwrap();
                     let cell = closed.metrics.cell;
-                    let last = END_PADDING + cell * (count as f64 - 0.5);
-                    for target in [None, Some(END_PADDING + cell / 2.), Some(last)] {
+                    let inset = closed.metrics.inset;
+                    let last = inset + cell * (count as f64 - 0.5);
+                    for target in [None, Some(inset + cell / 2.), Some(last)] {
                         for height in [78., 150., 234., 400., DETAIL_HEIGHT] {
                             let open = calculate_layout_target(&m, &p, count, true, height, target).unwrap();
                             assert_eq!(closed.window, open.window);

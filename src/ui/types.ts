@@ -71,6 +71,7 @@ export type AnchorY = "top" | "bottom";
 
 export interface NotchLayout {
   metrics: {
+    content_scale?: number;
     rest_depth: number;
     rest_length: number;
     depth: number;

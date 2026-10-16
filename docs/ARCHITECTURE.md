@@ -28,6 +28,7 @@ Rust AppCore
 - `src/ui/notch-state.ts` owns hover/pin/settings/escape transitions, delayed close, and headline presentation.
 - `src/ui/surface-finish.ts` tracks pointer-driven reflections only for the opt-in glass theme; it never transforms native geometry. `settings.theme` defaults to dark and persists through `set_theme`.
 - `domain/notch.rs` computes physical monitor/working-area bounds and shape hit regions (64 DIP depth, 72 DIP provider cells, 12 DIP lateral margins). Negative coordinates and per-monitor scale are valid.
+- Native notch metrics include a separate `content_scale` (0.85–1): compact the rail on smaller logical displays, capped at the current QHD size. Actual DPI conversion stays in `layout.scale`; detail/settings dimensions remain independent.
 - `domain/notch/drag.rs` owns pure edge/monitor drag selection, reexported through `domain::notch::NotchDrag` to preserve the existing API.
 - `infrastructure/notch_window.rs` serializes native layout requests, samples the native cursor every 32ms for transparent input, and rechecks display geometry about once per second.
 - The main transparent HWND expands inward for details. The frontend renders at local DIP coordinates from the returned physical layout; it never moves or resizes the HWND itself.

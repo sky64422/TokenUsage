@@ -55,7 +55,7 @@ export function mountNotch(
     const vertical = layout.edge === "left" || layout.edge === "right";
     const length =
       (vertical ? layout.notch.height : layout.notch.width) / layout.scale;
-    const shapeKey = `${layout.edge}:${length}:${layout.scale}`;
+    const shapeKey = `${layout.edge}:${length}:${layout.scale}:${layout.metrics.content_scale ?? 1}`;
     if (shapeKey === lastShapeKey) return;
     lastShapeKey = shapeKey;
 
@@ -65,6 +65,7 @@ export function mountNotch(
       inner_radius: INNER,
     } = layout.metrics;
     root.style.setProperty("--notch-depth", `${layout.metrics.depth}px`);
+    root.style.setProperty("--notch-scale", String(layout.metrics.content_scale ?? 1));
     root.style.setProperty("--notch-cell", `${layout.metrics.cell}px`);
     root.style.setProperty("--notch-inset", `${layout.metrics.inset}px`);
     root.style.setProperty("--rest-depth", `${layout.metrics.rest_depth}px`);

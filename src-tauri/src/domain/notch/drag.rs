@@ -38,7 +38,7 @@ impl NotchDrag {
             active: false,
             start: (x, y),
             previous: (x, y),
-            start_scale: layout.scale,
+            start_scale: layout.scale * layout.metrics.content_scale,
             grab_ratio: ((along - origin) / len).clamp(0., 1.),
             count,
         }

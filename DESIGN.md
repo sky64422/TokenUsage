@@ -50,6 +50,19 @@ Sources: `src/styles/tokens.css`, `src/styles/notch.css`. Existing semantic fore
 - Reduced motion keeps the material static. Reflection tracking schedules work only on pointer movement and is disposed with the app.
 - The reference's card flip and simulated loading/success logic are not part of this material treatment.
 
+### Monitor-aware notch size
+
+- Resolve the monitor's logical short side as `min(width, height) / DPI scale`.
+  Scale the notch by `clamp(sqrt(shortSide / 1440), 0.85, 1)`; current QHD
+  size is the upper limit and smaller screens reduce continuously. This policy
+  applies to every resolution rather than matching particular display names.
+- Scale the silhouette, cell spacing, rings, marks, folded target and native input
+  geometry together. Keep percentages at least 12 DIP. Detail/settings width,
+  fonts and column contracts keep their current size.
+- `layout.scale` remains the actual Windows DPI factor; `metrics.content_scale`
+  separately describes the compact notch. Monitor hints and normalized placement
+  offsets retain their persistence/drag behavior.
+
 ## Verification
 
 Use actual Windows WebView2 on desktop backgrounds: no square black/white fringe, no clipped shoulders, stable outer contact during expand/collapse. Validate native click-through and focus separately from browser screenshot layout. See `docs/testing.md` for the matrix and recorded limitations.

@@ -230,8 +230,8 @@
 .ring-wrap {
   position: relative;
   flex: none;
-  width: 40px;
-  height: 40px;
+  width: calc(40px * var(--notch-scale, 1));
+  height: calc(40px * var(--notch-scale, 1));
   transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .notch-cell:active .ring-wrap {
@@ -264,10 +264,10 @@
 }
 .ring-wrap img {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  width: 20px;
-  height: 20px;
+  top: calc(10px * var(--notch-scale, 1));
+  left: calc(10px * var(--notch-scale, 1));
+  width: calc(20px * var(--notch-scale, 1));
+  height: calc(20px * var(--notch-scale, 1));
   display: block;
   pointer-events: none;
   filter: brightness(0) invert(1);
@@ -285,9 +285,9 @@
   gap: 1px;
 }
 .ring-pct {
-  font-size: 13px;
+  font-size: max(12px, calc(13px * var(--notch-scale, 1)));
   font-weight: 600;
-  line-height: 16px;
+  line-height: max(14px, calc(16px * var(--notch-scale, 1)));
   font-variant-numeric: tabular-nums;
   transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
 }
