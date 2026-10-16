@@ -3,7 +3,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyPanelOpacity } from "./opacity";
-import { formatProviderStatus } from "./format";
 import { mountProviders } from "./providers";
 import { mountSettingsPanel } from "./settings-panel";
 import { mountNotch, position } from "./notch";
@@ -30,7 +29,7 @@ import type {
 
 const SURFACE_PADDING = 36; // 16px padding and 1px border on both sides + 2px headroom.
 export async function mountApp(root: HTMLElement): Promise<void> {
-  root.innerHTML = `<div class="notch-shell"><nav class="notch" aria-label="AI usage"></nav><section class="notch-detail" aria-label="Usage detail" hidden><div class="detail-body"><div class="detail-quota"><div class="quota-root"></div><p class="detail-state"></p></div><div class="detail-settings" hidden><div class="settings-root"></div></div><p class="notch-error" role="status" hidden></p></div></section></div>`;
+  root.innerHTML = `<div class="notch-shell"><nav class="notch" aria-label="AI usage"></nav><section class="notch-detail" aria-label="Usage detail" hidden><div class="detail-body"><div class="detail-quota"><div class="quota-root"></div></div><div class="detail-settings" hidden><div class="settings-root"></div></div><p class="notch-error" role="status" hidden></p></div></section></div>`;
   const shell = root.querySelector<HTMLElement>(".notch-shell")!;
   const rail = root.querySelector<HTMLElement>(".notch")!;
   const detail = root.querySelector<HTMLElement>(".notch-detail")!;
@@ -235,22 +234,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       if (key !== lastQuota) {
         providers.setSnapshots(snap ? [snap] : []);
         lastQuota = key;
-      }
-      const status = root.querySelector<HTMLElement>(".detail-state")!;
-      status.title = snap?.message ?? "";
-      if (snap && snap.status !== "ok") {
-        status.textContent = formatProviderStatus(snap.status, snap.message);
-        // Empty rows already carry the summary; don't repeat it beneath the card.
-        status.hidden = snap.windows.length === 0;
-        status.classList.remove("is-running");
-      } else if (act === "running") {
-        status.innerHTML = `<span class="activity-pulse-dot" aria-hidden="true"></span>Working`;
-        status.hidden = false;
-        status.classList.add("is-running");
-      } else {
-        status.textContent = "";
-        status.hidden = true;
-        status.classList.remove("is-running");
       }
     }
     requestSurface();

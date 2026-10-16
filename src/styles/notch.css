@@ -631,34 +631,6 @@
   color: var(--critical);
   overflow-wrap: anywhere;
 }
-.detail-state {
-  font-size: 11px;
-  color: var(--warn);
-  margin-top: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.detail-state.is-running {
-  color: #4ade80;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
-}
-.activity-pulse-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #4ade80;
-  box-shadow: 0 0 6px #4ade80;
-  animation: dot-pulse 1.8s ease-in-out infinite;
-}
-@keyframes dot-pulse {
-  0%, 100% { opacity: 0.55; transform: scale(0.9); }
-  50% { opacity: 1; transform: scale(1.2); }
-}
 .notch-detail {
   scrollbar-width: thin;
   scrollbar-color: #404044 transparent;
