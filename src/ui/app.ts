@@ -190,13 +190,15 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       "--detail-radius",
       `${next.metrics.detail_radius}px`,
     );
+    shell.style.setProperty("--notch-scale", String(next.metrics.content_scale ?? 1));
     if (next.detail) position(detail, next.detail, next);
   }
   function requestSurface() {
     const expanded = !drag.dragging && (interaction.settings || interaction.provider !== null);
+    const scale = layout?.metrics.content_scale ?? 1;
     const height = interaction.settings
-      ? settings.getContentHeight()
-      : Math.ceil(Math.max(body.offsetHeight, body.scrollHeight) + SURFACE_PADDING);
+      ? settings.getContentHeight(scale)
+      : Math.ceil(Math.max(body.offsetHeight, body.scrollHeight) + SURFACE_PADDING * scale);
     let target: number | null = null;
     if (interaction.provider && !interaction.settings) {
       const cell = root.querySelector<HTMLElement>(

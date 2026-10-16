@@ -447,8 +447,8 @@ body {
 
 /* Settings sheet inside the inward notch detail */
 .settings {
-  --settings-control-height: 32px;
-  --settings-control-radius: 8px;
+  --settings-control-height: calc(32px * var(--notch-scale, 1));
+  --settings-control-radius: calc(8px * var(--notch-scale, 1));
   --muted-foreground: rgba(255, 255, 255, max(0.62, calc(0.75 * var(--fg-opacity))));
   display: none;
   flex: 1 1 auto;
@@ -458,12 +458,12 @@ body {
   overflow: hidden;
   border: none;
   border-radius: 0;
-  padding: 2px 2px 6px;
+  padding: calc(2px * var(--notch-scale, 1)) calc(2px * var(--notch-scale, 1)) calc(6px * var(--notch-scale, 1));
   margin: 0;
   background: transparent;
   color: var(--foreground);
   flex-direction: column;
-  gap: 8px;
+  gap: calc(8px * var(--notch-scale, 1));
   box-shadow: none;
 }
 
@@ -532,7 +532,7 @@ body {
 }
 
 .settings-title {
-  font-size: 13.5px;
+  font-size: max(12px, calc(13.5px * var(--notch-scale, 1)));
   font-weight: 600;
   letter-spacing: -0.01em;
   color: #ffffff;
@@ -590,20 +590,20 @@ body {
 .settings-tab-btn {
   position: relative;
   flex: 1 1 0;
-  height: 32px;
-  padding: 0 8px;
+  height: calc(32px * var(--notch-scale, 1));
+  padding: 0 calc(8px * var(--notch-scale, 1));
   border: 1px solid transparent;
   border-bottom: 2px solid transparent;
   border-radius: 8px 8px 0 0;
   background: transparent;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
+  font-size: max(11px, calc(12px * var(--notch-scale, 1)));
   font-weight: 500;
   font-family: inherit;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: calc(6px * var(--notch-scale, 1));
   white-space: nowrap;
   cursor: pointer;
   outline: none;
@@ -796,9 +796,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 13px;
-  height: 40px;
-  min-height: 40px;
+  padding: 0 calc(11px * var(--notch-scale, 1));
+  height: calc(40px * var(--notch-scale, 1));
+  min-height: calc(40px * var(--notch-scale, 1));
   box-sizing: border-box;
   cursor: pointer;
   user-select: none;
@@ -872,7 +872,7 @@ body {
 .provider-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: calc(8px * var(--notch-scale, 1));
 }
 
 .provider-card-btn {
@@ -880,8 +880,8 @@ body {
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch;
-  height: 56px;
-  padding: 8px 10px 7px;
+  height: calc(56px * var(--notch-scale, 1));
+  padding: calc(6px * var(--notch-scale, 1)) calc(8px * var(--notch-scale, 1)) calc(5px * var(--notch-scale, 1));
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.025);
@@ -1267,15 +1267,15 @@ body {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  height: 36px;
+  height: calc(36px * var(--notch-scale, 1));
   margin: 0;
-  padding: 0 12px;
+  padding: 0 calc(10px * var(--notch-scale, 1));
   border-radius: var(--radius-lg, 9px);
   border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.88);
   font: inherit;
-  font-size: 12px;
+  font-size: max(11px, calc(12px * var(--notch-scale, 1)));
   font-weight: 550;
   line-height: 1;
   cursor: pointer;

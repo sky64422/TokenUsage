@@ -64,7 +64,7 @@ export function mountSettingsPanel(
   isVisible: () => boolean;
   syncProviderEnabled: (st: AppSettings) => void;
   destroy: () => void;
-  getContentHeight: () => number;
+  getContentHeight: (scale?: number) => number;
 } {
   let visible = false;
   const versionStr = appVersion ? `v${appVersion.replace(/^v/i, "")}` : "";
@@ -643,8 +643,8 @@ export function mountSettingsPanel(
       updateBtn.removeEventListener("click", runUpdateAction);
       updater.destroy();
     },
-    getContentHeight(): number {
-      return SETTINGS_PANEL_HEIGHT;
+    getContentHeight(scale: number = 1): number {
+      return Math.round(SETTINGS_PANEL_HEIGHT * scale);
     },
   };
 }

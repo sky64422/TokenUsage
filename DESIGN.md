@@ -67,8 +67,11 @@ Sources: `src/styles/tokens.css`, `src/styles/notch.css`. Existing semantic fore
   size is the upper limit and smaller screens reduce continuously. This policy
   applies to every resolution rather than matching particular display names.
 - Scale the silhouette, cell spacing, rings, marks, folded target and native input
-  geometry together. Keep percentages at least 12 DIP. Detail/settings width,
-  fonts and column contracts keep their current size.
+  geometry together. Keep percentages at least 12 DIP.
+- Details and settings scale proportionally with `content_scale` (`260px * content_scale` width,
+  `560px * content_scale` max detail height, and `440px * content_scale` settings height),
+  with scaled padding, tabs, card heights, and corner radii. Fixed column grid contracts
+  and minimum readability font floors (11–13px) are strictly preserved across all resolutions.
 - `layout.scale` remains the actual Windows DPI factor; `metrics.content_scale`
   separately describes the compact notch. Monitor hints and normalized placement
   offsets retain their persistence/drag behavior.

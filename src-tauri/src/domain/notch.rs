@@ -297,10 +297,10 @@ pub fn calculate_layout_target(
         NotchEdge::Bottom => AnchorY::Bottom,
     };
     let detail = if expanded {
-        let dw = (DETAIL_WIDTH * s)
+        let dw = ((DETAIL_WIDTH * content_scale) * s)
             .ceil()
             .min(w.width - if edge.vertical() { depth + gap } else { 0. });
-        let dh = (detail_height.clamp(MIN_DETAIL_HEIGHT, DETAIL_HEIGHT) * s)
+        let dh = (detail_height.clamp(MIN_DETAIL_HEIGHT * content_scale, DETAIL_HEIGHT * content_scale) * s)
             .ceil()
             .min(w.height - if edge.vertical() { 0. } else { depth + gap });
         if dw <= 0. || dh <= 0. {
@@ -359,7 +359,7 @@ pub fn calculate_layout_target(
     };
     // A stable transparent canvas prevents HWND moves racing the WebView's local
     // notch offset when a taller provider card extends above the rail.
-    let window = surface_canvas(notch, w, edge, s);
+    let window = surface_canvas(notch, w, edge, s, content_scale);
     Ok(NotchLayout {
         edge,
         anchor_x,
@@ -376,7 +376,7 @@ pub fn calculate_layout_target(
             shoulder: SHOULDER * content_scale,
             inner_radius: INNER_RADIUS * content_scale,
             inset,
-            detail_radius: DETAIL_RADIUS,
+            detail_radius: DETAIL_RADIUS * content_scale,
             drag_threshold: DRAG_THRESHOLD * content_scale,
             rest_depth: super::reveal::REST_DEPTH * content_scale,
             rest_length: super::reveal::REST_LENGTH * content_scale,
@@ -384,11 +384,11 @@ pub fn calculate_layout_target(
     })
 }
 
-fn surface_canvas(notch: Rect, work: Rect, edge: NotchEdge, scale: f64) -> Rect {
+fn surface_canvas(notch: Rect, work: Rect, edge: NotchEdge, scale: f64, content_scale: f64) -> Rect {
     let gap = (GAP * scale).round();
-    let width = (DETAIL_WIDTH * scale).ceil()
+    let width = ((DETAIL_WIDTH * content_scale) * scale).ceil()
         .min(work.width - if edge.vertical() { notch.width + gap } else { 0. });
-    let height = (DETAIL_HEIGHT * scale).ceil()
+    let height = ((DETAIL_HEIGHT * content_scale) * scale).ceil()
         .min(work.height - if edge.vertical() { 0. } else { notch.height + gap });
     if width <= 0. || height <= 0. { return notch; }
     let reserve = if edge.vertical() {

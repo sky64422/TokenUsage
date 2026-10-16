@@ -22,7 +22,7 @@ fn monitor(scale: f64) -> MonitorArea {
 }
 
 #[test]
-fn smaller_logical_displays_shrink_only_the_rail() {
+fn smaller_logical_displays_shrink_rail_and_detail() {
     let large = drag_monitor(1.);
     let mut small = large.clone();
     small.bounds.width = 1024.;
@@ -35,7 +35,7 @@ fn smaller_logical_displays_shrink_only_the_rail() {
     assert_eq!(baseline.notch.height, CELL * 3. + END_PADDING * 2.);
     assert_eq!(compact.notch.width, (DEPTH * 0.85).round());
     assert_eq!(compact.notch.height, ((CELL * 3. + END_PADDING * 2.) * 0.85).round());
-    assert_eq!(compact.detail.unwrap().width, baseline.detail.unwrap().width);
+    assert_eq!(compact.detail.unwrap().width, ((DETAIL_WIDTH * 0.85) * 1.).ceil());
     assert_eq!(compact.detail.unwrap().height, baseline.detail.unwrap().height);
     assert_eq!(compact.scale, 1.);
 }
@@ -63,6 +63,7 @@ fn adaptive_scale_is_continuous_bounded_and_dpi_aware() {
                 assert_eq!(closed.metrics.inset, END_PADDING * expected);
                 assert_eq!(closed.metrics.rest_depth, REST_DEPTH * expected);
                 assert_eq!(closed.metrics.rest_length, REST_LENGTH * expected);
+                assert_eq!(closed.metrics.detail_radius, DETAIL_RADIUS * expected);
                 let (depth, length, cell) = if edge.vertical() {
                     (closed.notch.width, closed.notch.height, CELL)
                 } else {
@@ -70,7 +71,7 @@ fn adaptive_scale_is_continuous_bounded_and_dpi_aware() {
                 };
                 assert_eq!(depth, (DEPTH * expected * scale).round());
                 assert_eq!(length, ((cell * 3. + END_PADDING * 2.) * expected * scale).round());
-                assert_eq!(open.detail.unwrap().width, (DETAIL_WIDTH * scale).ceil());
+                assert_eq!(open.detail.unwrap().width, ((DETAIL_WIDTH * expected) * scale).ceil());
                 assert_eq!(open.detail.unwrap().height, (200. * scale).ceil());
                 assert_eq!(closed.window, open.window);
                 assert_eq!(closed.notch, open.notch);
@@ -603,4 +604,56 @@ fn horizontal_notch_detail_window_centers_on_target_cell() {
     assert!(d_first.x < d_last.x);
     assert!(l_first.hit(d_first.x + d_first.width / 2., l_first.notch.y + l_first.notch.height + 4.));
     assert!(l_last.hit(d_last.x + d_last.width / 2., l_last.notch.y + l_last.notch.height + 4.));
+}
+
+#[test]
+fn detail_dimensions_scale_smoothly_across_resolutions_and_respect_work_area() {
+    let resolutions = [
+        (1280., 720.),   // HD 720p
+        (1366., 768.),   // WXGA laptop
+        (1600., 900.),   // HD+
+        (1920., 1080.),  // FHD
+        (2560., 1440.),  // QHD
+        (3440., 1440.),  // UltraWide QHD
+        (3840., 2160.),  // 4K UHD
+        (1080., 1920.),  // Portrait monitor
+    ];
+    let scales = [1.0, 1.25, 1.5, 2.0];
+    let edges = [NotchEdge::Right, NotchEdge::Left, NotchEdge::Top, NotchEdge::Bottom];
+
+    for &(w, h) in &resolutions {
+        for &scale in &scales {
+            let mut m = drag_monitor(scale);
+            m.bounds.x = 0.;
+            m.bounds.y = 0.;
+            m.bounds.width = w * scale;
+            m.bounds.height = h * scale;
+            m.work = m.bounds;
+
+            let short_side = (m.bounds.width.min(m.bounds.height)) / scale;
+            let expected_scale = (short_side / 1440.).sqrt().clamp(0.85, 1.0);
+
+            for &edge in &edges {
+                for offset in [0.2, 0.5, 0.8] {
+                    let p = NotchPlacement { edge, offset, monitor_hint: Some(m.name.clone()) };
+                    let open = calculate_layout(&m, &p, 4, true, 440.).unwrap();
+                    let d = open.detail.expect("Detail must be present");
+                    let expected_width = ((DETAIL_WIDTH * expected_scale) * scale).ceil();
+
+                    assert_eq!(open.metrics.content_scale, expected_scale);
+                    assert_eq!(d.width, expected_width);
+                    // Detail must remain within monitor work area
+                    assert!(d.x >= m.work.x - 0.5, "d.x ({}) >= m.work.x ({})", d.x, m.work.x);
+                    assert!(d.y >= m.work.y - 0.5, "d.y ({}) >= m.work.y ({})", d.y, m.work.y);
+                    assert!(d.x + d.width <= m.work.x + m.work.width + 0.5);
+                    assert!(d.y + d.height <= m.work.y + m.work.height + 0.5);
+
+                    // Window surface canvas must reserve space enclosing both notch and detail
+                    assert!(d.x >= open.window.x && d.y >= open.window.y);
+                    assert!(d.x + d.width <= open.window.x + open.window.width);
+                    assert!(d.y + d.height <= open.window.y + open.window.height);
+                }
+            }
+        }
+    }
 }

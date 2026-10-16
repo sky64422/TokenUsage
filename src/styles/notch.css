@@ -495,7 +495,7 @@
 }
 .notch-detail {
   position: absolute;
-  width: 260px;
+  width: calc(260px * var(--notch-scale, 1));
   box-sizing: border-box;
   border-radius: var(--detail-radius);
   background: rgba(8, 8, 10, max(0.88, var(--panel-opacity)));
@@ -504,7 +504,7 @@
     0 16px 40px -4px rgba(0, 0, 0, 0.75),
     0 6px 16px rgba(0, 0, 0, 0.45),
     0 0 0 1px rgba(255, 255, 255, 0.05);
-  padding: 16px;
+  padding: calc(16px * var(--notch-scale, 1));
   overflow-x: hidden;
   overflow-y: auto;
   transform-origin: right center;
@@ -576,7 +576,7 @@
   min-height: 0;
 }
 .notch-detail h2 {
-  font-size: 15px;
+  font-size: max(13px, calc(15px * var(--notch-scale, 1)));
   margin: 0;
   font-weight: 600;
   color: var(--foreground);
@@ -585,7 +585,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 14px;
+  margin-bottom: calc(14px * var(--notch-scale, 1));
 }
 .detail-heading small {
   color: var(--muted-foreground);
@@ -596,7 +596,7 @@
   border: 0;
   padding: 0;
   box-shadow: none;
-  gap: var(--usage-row-gap, 8px);
+  gap: calc(var(--usage-row-gap, 8px) * var(--notch-scale, 1));
 }
 .notch-detail .usage-row {
   margin-bottom: 0;
@@ -605,10 +605,10 @@
   margin-bottom: 0;
 }
 .notch-detail .usage-row.is-group-start {
-  margin-top: 6px;
+  margin-top: calc(6px * var(--notch-scale, 1));
 }
 .notch-detail .provider-name {
-  font-size: 15px;
+  font-size: max(13px, calc(15px * var(--notch-scale, 1)));
   font-weight: 600;
   line-height: 1.25;
 }
