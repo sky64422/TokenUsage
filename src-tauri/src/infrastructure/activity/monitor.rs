@@ -180,9 +180,7 @@ impl ActivityMonitor {
             } else {
                 DateTime::from_timestamp(started_raw, 0)
             };
-            let Some(started_at) = started_time else {
-                return None;
-            };
+            let started_at = started_time?;
             // Guard against stale inProgress turns left behind after app crashes (older than 10 minutes)
             if now >= started_at && now - started_at <= Duration::minutes(10) {
                 return Some(ProviderActivity {

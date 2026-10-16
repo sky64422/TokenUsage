@@ -111,7 +111,7 @@ pub fn parse_auth_json(raw: &str, path: PathBuf) -> Result<GrokCredentials, Stri
 
     candidates.sort_by_key(|c| {
         let xai_priority = if is_xai(c) { 0 } else { 1 };
-        let expired = c.expires_at.map_or(false, |exp| exp <= now);
+        let expired = c.expires_at.is_some_and(|exp| exp <= now);
         let exp_priority = if !expired { 0 } else { 1 };
         let has_rt_priority = if c.refresh_token.is_some() { 0 } else { 1 };
         (xai_priority, exp_priority, has_rt_priority)

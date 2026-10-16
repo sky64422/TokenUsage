@@ -173,23 +173,6 @@ pub fn capture_liquid_backdrop(
     Err("Live Liquid backdrop requires Windows".into())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::valid_region;
-    #[test]
-    fn bounds_reject_zero_overflow_and_unbounded_pixel_allocations() {
-        assert_eq!(valid_region(268, 372, 56, 376, 324, 1120), Ok(true));
-        assert_eq!(valid_region(300, 0, 56, 1, 324, 1120), Ok(false));
-        for (x, y, w, h) in [
-            (0, 0, 0, 1),
-            (u32::MAX, 0, 1, 1),
-            (0, 0, 2048, 2048),
-        ] {
-            assert!(valid_region(x, y, w, h, 324, 1120).is_err());
-        }
-    }
-}
-
 #[cfg(windows)]
 unsafe fn capture(x: i32, y: i32, width: u32, height: u32) -> Result<Vec<u8>, String> {
     use windows::Win32::Graphics::Gdi::*;
@@ -290,4 +273,21 @@ unsafe fn capture(x: i32, y: i32, width: u32, height: u32) -> Result<Vec<u8>, St
     bytes[26..28].copy_from_slice(&1u16.to_le_bytes());
     bytes[28..30].copy_from_slice(&32u16.to_le_bytes());
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::valid_region;
+    #[test]
+    fn bounds_reject_zero_overflow_and_unbounded_pixel_allocations() {
+        assert_eq!(valid_region(268, 372, 56, 376, 324, 1120), Ok(true));
+        assert_eq!(valid_region(300, 0, 56, 1, 324, 1120), Ok(false));
+        for (x, y, w, h) in [
+            (0, 0, 0, 1),
+            (u32::MAX, 0, 1, 1),
+            (0, 0, 2048, 2048),
+        ] {
+            assert!(valid_region(x, y, w, h, 324, 1120).is_err());
+        }
+    }
 }
