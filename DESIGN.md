@@ -23,7 +23,7 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 - The provider whose detail is open stays highlighted while crossing into the panel; pinned state uses a stronger border. Grouped quotas show the service name above model groups so AGY's Gemini/Claude rows retain their source identity.
 - 180ms leave grace permits crossing into the detail. 160ms reveal; reduced-motion disables motion.
 - Detail cards use a near-black surface, 16px radius, thin quiet border, 16px padding. Native width 260 DIP, max native height 560 DIP, bounded to work area. Scroll only on actual overflow.
-- Settings request 440 DIP height so normal appearance controls, including the three-theme picker, fit without scrolling; smaller work areas retain body-only scrolling. Action buttons use 32 DIP targets and 8px corners. A pinned provider has a quiet rounded background and border distinct from hover.
+- **Settings height is shared across all three tabs (user-confirmed 2026-10-17).** Measure the tallest tab's intrinsic content plus actual surrounding chrome. Switching tabs on the same monitor must keep the panel height fixed; never resize from only the active tab. Recompute the shared height for monitor/DPI changes. Smaller work areas retain body-only scrolling with a fixed header and tabs. The 440 DIP value is only a fallback before measurement. Change this contract only at the user's explicit request. Action buttons use 32 DIP targets and 8px corners. A pinned provider has a quiet rounded background and border distinct from hover.
 - Existing detail rows keep name / period / refill and `1fr` bar / `2.9em` percentage columns, with 2px gutter. Dual and grouped rows use compact `--usage-row-gap: 8px`. Quiet Luxury 6px pill tracks remain.
 - Settings sheet uses a 3-tab layout (`모양`, `서비스`, `일반`) with fixed header and tab bar while the body scrolls. Standardized controls: `불투명도` (opacity meter), `노치 항상 표시` (always show), `마우스 올릴 때 상세 열기` (hover detail), `작업 중 강조 효과` (show_animation, unified activity animation toggle), `서비스` on/off grid (`표시`/`숨김`, minimum 1 locked). The General tab features docked footer actions (`로그 복사`, `종료` with precision power icon geometry and 100% symmetric margins). Tab panel heights are unified with `scrollbar-gutter: stable` to eliminate tab-switch scrollbar flashes. Edge and display placement is managed directly by dragging the notch.
 - Opacity slider remains neutral with off-white thumb. `applyPanelOpacity` and semantic `max(...)` floors preserve readability. Hovering over a provider cell reinforces clear visual identity and stable inward anchor geometry.
@@ -69,7 +69,7 @@ Sources: `src/styles/tokens.css`, `src/styles/notch.css`. Existing semantic fore
 - Scale the silhouette, cell spacing, rings, marks, folded target and native input
   geometry together. Keep percentages at least 12 DIP.
 - Details and settings scale proportionally with `content_scale` (`260px * content_scale` width,
-  `560px * content_scale` max detail height, and `440px * content_scale` settings height),
+  `560px * content_scale` max detail height, and a shared measured settings height),
   with scaled padding, tabs, card heights, and corner radii. Fixed column grid contracts
   and minimum readability font floors (11–13px) are strictly preserved across all resolutions.
 - `layout.scale` remains the actual Windows DPI factor; `metrics.content_scale`

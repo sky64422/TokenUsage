@@ -644,30 +644,41 @@ export function mountSettingsPanel(
       updater.destroy();
     },
     getContentHeight(scale: number = 1): number {
-      const activePanel = root.querySelector<HTMLElement>(".settings-tab-panel:not([hidden])");
+      const detail = root.closest<HTMLElement>(".notch-detail");
+      const scroll = root.querySelector<HTMLElement>(".settings-scroll");
       const header = root.querySelector<HTMLElement>(".settings-header");
       const tabs = root.querySelector<HTMLElement>(".settings-tabs");
-      const fallbackHeight = Math.round(SETTINGS_PANEL_HEIGHT * scale);
-      if (activePanel && header && tabs) {
-        let contentH = 0;
-        for (const child of Array.from(activePanel.children) as HTMLElement[]) {
-          if (!child.hidden) contentH += child.offsetHeight;
-        }
-        if (contentH > 0) {
-          const panelStyle = window.getComputedStyle(activePanel);
-          const gap = parseFloat(panelStyle.rowGap || panelStyle.gap || "0") || 6;
-          const visibleCount = Array.from(activePanel.children).filter(c => !(c as HTMLElement).hidden).length;
-          if (visibleCount > 1) contentH += gap * (visibleCount - 1);
-          contentH += (parseFloat(panelStyle.paddingTop || "0") || 0) + (parseFloat(panelStyle.paddingBottom || "0") || 0);
+      if (!detail?.offsetHeight || !scroll || !header || !tabs) return Math.round(SETTINGS_PANEL_HEIGHT * scale);
 
-          const headerH = header.offsetHeight || 28;
-          const tabsH = tabs.offsetHeight || 37;
-          // header + tabs + content + root gaps (8px * 2 * scale) + detail padding & border (34px * scale)
-          const measured = Math.ceil(headerH + tabsH + contentH + 16 * scale + 34 * scale);
-          return measured;
+      let tallest = 0;
+      for (const panel of root.querySelectorAll<HTMLElement>(".settings-tab-panel")) {
+        const hidden = panel.hidden;
+        const { flex, minHeight } = panel.style;
+        try {
+          // Measure intrinsic content, not the height stretched by the current tab.
+          // Restore synchronously so inactive tabs never paint or receive input.
+          panel.hidden = false;
+          panel.style.flex = "none";
+          panel.style.minHeight = "0";
+          tallest = Math.max(tallest, panel.offsetHeight);
+        } finally {
+          panel.hidden = hidden;
+          panel.style.flex = flex;
+          panel.style.minHeight = minHeight;
         }
       }
-      return fallbackHeight;
+      // A short previous quota card can squeeze the scroll viewport to zero.
+      // Measure chrome directly instead of subtracting that constrained viewport.
+      const chrome = [detail, sheet, scroll, header, tabs].reduce((total, element) => {
+        const style = getComputedStyle(element);
+        const margins = parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+        const height = element === header || element === tabs ? element.offsetHeight
+          : parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+            + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+        return total + height + margins;
+      }, 0);
+      const gaps = (parseFloat(getComputedStyle(sheet).rowGap) || 0) * (sheet.children.length - 1);
+      return Math.ceil(tallest + chrome + gaps);
     },
   };
 }

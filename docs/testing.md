@@ -66,6 +66,15 @@ the script retains its read-only preference behavior against the selected CDP po
 With Vite running (`npm run dev`), optional Edge/Playwright browser checks:
 `python scripts/settings-smoke.py` verifies fixed settings navigation with body scrolling,
 save failure rollback/retry, pending controls, the last-provider lock and updater states.
+It applies the production `getContentHeight()` result rather than a fixed fixture height.
+At full/compact size and after returning to full size, all three tabs must have the same
+height, repeated measurements must remain stable, and unconstrained content must fit
+without scrolling. A 200px constrained panel must keep its header fixed while the body
+scrolls. This is a user-required regression: do not restore active-tab-only sizing.
+Also start from short 78px/108px quota-card heights and assert the very first measured
+settings height already matches the shared height. Native checks must include opening
+settings after quota details before switching from appearance to services; a warmed-up
+tab loop alone misses the initial undersized panel.
 `python scripts/grok-usage-smoke.py` verifies unknown/zero/nonzero quota rendering.
 Both use simulated data and do not change persisted settings or install updates.
 `python scripts/detail-layout-smoke.py` reproduces the Grok status-margin overflow and

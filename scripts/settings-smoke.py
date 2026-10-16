@@ -7,10 +7,10 @@ with sync_playwright() as p:
     browser = p.chromium.launch(channel="msedge", headless=True)
     page = browser.new_page(viewport={"width": 340, "height": 460}, reduced_motion="reduce")
     page.route("**/settings-smoke", lambda r: r.fulfill(content_type="text/html", body='''
-        <html><body style="background:#303030"><section class="notch-detail is-settings"
+        <html><body style="background:#303030"><div class="notch-shell"><section class="notch-detail is-settings"
         style="--detail-radius:16px;left:24px;top:24px;width:260px;height:356px">
         <div class="detail-body"><div class="detail-settings"><div id="root" class="settings-root">
-        </div></div></div></section></body></html>'''))
+        </div></div></div></section></div></body></html>'''))
     page.goto("http://localhost:1420/settings-smoke")
     page.evaluate("""async () => {
         window.events = {}; window.callbacks = {}; window.callbackId = 0;
@@ -28,23 +28,80 @@ with sync_playwright() as p:
         };
         await import('/src/styles/fonts.css'); await import('/src/styles/tokens.css');
         await import('/src/styles/app.css'); await import('/src/styles/notch.css');
-        const {mountSettingsPanel, SETTINGS_PANEL_HEIGHT} = await import('/src/ui/settings-panel.ts');
-        window.settingsHeight = SETTINGS_PANEL_HEIGHT;
-        document.querySelector('.notch-detail').style.height = SETTINGS_PANEL_HEIGHT+'px';
+        const {mountSettingsPanel} = await import('/src/ui/settings-panel.ts');
+        window.settingsScale = 1;
+        window.fitSettings = () => {
+            const height = window.settingsPanel.getContentHeight(window.settingsScale);
+            document.querySelector('.notch-detail').style.height = height+'px';
+            return height;
+        };
         window.saves=0;
         const save=()=>{window.saves++;return new Promise((resolve,reject)=>{window.saveResolve=resolve;window.saveReject=reject;});};
         const st={theme:'dark',opacity:0.675,autostart:false,hover_detail:false,always_show_notch:false,
             show_orbit:true,show_icon_glow:true,
             claude:{enabled:true},codex:{enabled:true},grok:{enabled:true},agy:{enabled:true}};
         const noop=()=>{};
-        mountSettingsPanel(document.querySelector('#root'),st,{
+        window.settingsPanel = mountSettingsPanel(document.querySelector('#root'),st,{
             onTheme:save,onAutostart:save,onHoverDetail:save,onAlwaysShowNotch:save,onShowAnimation:save,
             onOpacityChange:noop,
             onProviderEnabled:save,onDiagnostics:()=>new Promise((resolve,reject)=>{
                 window.diagResolve=resolve;window.diagReject=reject;
-            }),onQuit:()=>{window.quitCalled=true;}},'0.3.3').show();
+            }),onQuit:()=>{window.quitCalled=true;},
+            onTabChange:()=>{if(window.settingsPanel) window.fitSettings();}},'0.3.3');
+        window.settingsPanel.show();
         await document.fonts.ready;
     }""")
+
+    # Use the same measured height as the app, including after tab/monitor changes.
+    # Missing scroll padding or tab margins must fail even when 440px would fit.
+    monitor_heights = []
+    for scale in [1, 0.92, 1]:
+        page.evaluate('''scale => {
+            window.settingsScale = scale;
+            document.querySelector('.notch-shell').style.setProperty('--notch-scale',scale);
+            document.querySelector('.notch-detail').style.width=Math.ceil(260*scale)+'px';
+        }''', scale)
+        tab_heights = []
+        tab_metrics = []
+        for tab in ['appearance','models','general','appearance']:
+            page.locator('#tab-btn-'+tab).click()
+            heights = [page.evaluate('window.fitSettings()') for _ in range(3)]
+            assert len(set(heights)) == 1, (scale, tab, heights)
+            tab_heights.append(heights[0])
+            metrics = page.locator('.settings-scroll').evaluate('(e)=>({content:e.scrollHeight,available:e.clientHeight})')
+            tab_metrics.append((tab, metrics))
+            assert page.locator('.notch-detail').evaluate('(e)=>e.scrollWidth<=e.clientWidth')
+        assert len(set(tab_heights)) == 1, (scale, tab_heights)
+        monitor_heights.append(tab_heights[0])
+        for tab, metrics in tab_metrics:
+            assert metrics['content'] <= metrics['available'], (scale, tab, metrics)
+    assert monitor_heights[1] < monitor_heights[0], monitor_heights
+    assert monitor_heights[0] == monitor_heights[2], monitor_heights
+
+    # Opening settings after a short quota card must not under-measure its chrome.
+    # Check the very first request; later tab changes can otherwise repair it silently.
+    for previous_height in [78, 108]:
+        page.locator('.notch-detail').evaluate('(e,h)=>e.style.height=h+"px"', previous_height)
+        first_height = page.evaluate('window.fitSettings()')
+        assert first_height == monitor_heights[0], (previous_height, first_height, monitor_heights[0])
+        page.locator('#tab-btn-models').click()
+        assert page.evaluate('window.fitSettings()') == first_height
+        page.locator('#tab-btn-appearance').click()
+
+    # A newly taller inactive tab must determine the shared height too.
+    page.evaluate('''() => {
+        const extra=document.createElement('div');
+        extra.id='test-tall-tab';extra.style.cssText='height:180px;flex:none';
+        document.querySelector('#tab-panel-general').append(extra);
+    }''')
+    taller_height = page.evaluate('window.fitSettings()')
+    assert taller_height > monitor_heights[0]
+    for tab in ['models','general','appearance']:
+        page.locator('#tab-btn-'+tab).click()
+        assert page.evaluate('window.fitSettings()') == taller_height
+        assert page.locator('.settings-scroll').evaluate('(e)=>e.scrollHeight<=e.clientHeight')
+    page.evaluate('document.querySelector("#test-tall-tab").remove()')
+    assert page.evaluate('window.fitSettings()') == monitor_heights[0]
 
     # Theme saves lock the picker and restore the previous choice on write failure.
     dark_theme = page.locator('[data-theme-option="dark"]')
@@ -99,7 +156,7 @@ with sync_playwright() as p:
     page.locator('label[for="show-animation"]').evaluate('(e)=>e.scrollIntoView({block:"nearest"})')
     assert page.locator('.settings-header').bounding_box()['y'] == header_y
     assert page.locator('.settings-scroll').evaluate('(e)=>e.scrollTop') > 0
-    page.locator('.notch-detail').evaluate('(e)=>e.style.height=window.settingsHeight+"px"')
+    page.evaluate('window.fitSettings()')
     page.locator('.settings-scroll').evaluate('(e)=>e.scrollTop=0')
     page.locator('#tab-btn-appearance').focus()
     page.keyboard.press('ArrowRight')
