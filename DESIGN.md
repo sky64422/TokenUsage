@@ -63,8 +63,8 @@ Sources: `src/styles/tokens.css`, `src/styles/notch.css`. Existing semantic fore
 ### Monitor-aware notch size
 
 - Resolve the monitor's logical short side as `min(width, height) / DPI scale`.
-  Scale the notch by `clamp(sqrt(shortSide / 1440), 0.85, 1)`; current QHD
-  size is the upper limit and smaller screens reduce continuously. This policy
+  Scale the notch by `clamp(1.0 - (1.0 - sqrt(shortSide / 1440)) * 0.5, 0.92, 1)`; current QHD
+  size is the upper limit and smaller screens reduce gently with an attenuated ratio gap. This policy
   applies to every resolution rather than matching particular display names.
 - Scale the silhouette, cell spacing, rings, marks, folded target and native input
   geometry together. Keep percentages at least 12 DIP.

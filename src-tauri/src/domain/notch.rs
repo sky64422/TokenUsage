@@ -14,7 +14,12 @@ pub const DETAIL_HEIGHT: f64 = 560.;
 pub const MIN_DETAIL_HEIGHT: f64 = 48.;
 pub const GAP: f64 = 8.;
 const CONTENT_REFERENCE_SHORT_SIDE: f64 = 1440.;
-const MIN_CONTENT_SCALE: f64 = 0.85;
+pub const MIN_CONTENT_SCALE: f64 = 0.92;
+
+pub fn calculate_content_scale(short_side: f64) -> f64 {
+    let raw = (short_side / CONTENT_REFERENCE_SHORT_SIDE).sqrt();
+    (1.0 - (1.0 - raw.min(1.0)) * 0.5).clamp(MIN_CONTENT_SCALE, 1.0)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
@@ -225,9 +230,7 @@ pub fn calculate_layout_target(
     let b = m.bounds;
     let w = m.work;
     let s = m.scale;
-    let content_scale = ((b.width.min(b.height) / s) / CONTENT_REFERENCE_SHORT_SIDE)
-        .sqrt()
-        .clamp(MIN_CONTENT_SCALE, 1.);
+    let content_scale = calculate_content_scale(b.width.min(b.height) / s);
     let available = |e| match e {
         NotchEdge::Right => w.x + w.width >= b.x + b.width,
         NotchEdge::Left => w.x <= b.x,

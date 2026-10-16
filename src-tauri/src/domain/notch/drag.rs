@@ -156,20 +156,21 @@ fn edge_distance(m: &MonitorArea, edge: NotchEdge, x: f64, y: f64) -> f64 {
 }
 
 fn entered_monitor(from: &MonitorArea, to: &MonitorArea, x: f64, y: f64) -> bool {
+    const EPSILON: f64 = 1e-9;
     let a = from.bounds;
     let b = to.bounds;
     let inset = MONITOR_ENTRY * to.scale;
     // Only the crossed seam needs hysteresis; the pointer may hug an outer edge.
-    if b.x + b.width <= a.x && b.x + b.width - x < inset {
+    if b.x + b.width <= a.x && b.x + b.width - x + EPSILON < inset {
         return false;
     }
-    if b.x >= a.x + a.width && x - b.x < inset {
+    if b.x >= a.x + a.width && x - b.x + EPSILON < inset {
         return false;
     }
-    if b.y + b.height <= a.y && b.y + b.height - y < inset {
+    if b.y + b.height <= a.y && b.y + b.height - y + EPSILON < inset {
         return false;
     }
-    if b.y >= a.y + a.height && y - b.y < inset {
+    if b.y >= a.y + a.height && y - b.y + EPSILON < inset {
         return false;
     }
     true

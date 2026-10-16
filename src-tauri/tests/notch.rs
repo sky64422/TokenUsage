@@ -31,11 +31,12 @@ fn smaller_logical_displays_shrink_rail_and_detail() {
     let placement = NotchPlacement::default();
     let baseline = calculate_layout(&large, &placement, 3, true, 200.).unwrap();
     let compact = calculate_layout(&small, &placement, 3, true, 200.).unwrap();
+    let expected = calculate_content_scale(1024.);
     assert_eq!(baseline.notch.width, DEPTH);
     assert_eq!(baseline.notch.height, CELL * 3. + END_PADDING * 2.);
-    assert_eq!(compact.notch.width, (DEPTH * 0.85).round());
-    assert_eq!(compact.notch.height, ((CELL * 3. + END_PADDING * 2.) * 0.85).round());
-    assert_eq!(compact.detail.unwrap().width, ((DETAIL_WIDTH * 0.85) * 1.).ceil());
+    assert_eq!(compact.notch.width, (DEPTH * expected).round());
+    assert_eq!(compact.notch.height, ((CELL * 3. + END_PADDING * 2.) * expected).round());
+    assert_eq!(compact.detail.unwrap().width, ((DETAIL_WIDTH * expected) * 1.).ceil());
     assert_eq!(compact.detail.unwrap().height, baseline.detail.unwrap().height);
     assert_eq!(compact.scale, 1.);
 }
@@ -43,12 +44,13 @@ fn smaller_logical_displays_shrink_rail_and_detail() {
 #[test]
 fn adaptive_scale_is_continuous_bounded_and_dpi_aware() {
     for scale in [1., 1.25, 1.5, 2.] {
-        for (width, height, expected) in [
-            (2560., 1440., 1.),
-            (1920., 1080., (1080_f64 / 1440.).sqrt()),
-            (1024., 1280., 0.85),
-            (3840., 2160., 1.),
+        for (width, height) in [
+            (2560_f64, 1440_f64),
+            (1920_f64, 1080_f64),
+            (1024_f64, 1280_f64),
+            (3840_f64, 2160_f64),
         ] {
+            let expected = calculate_content_scale(width.min(height));
             let mut m = drag_monitor(scale);
             m.bounds.width = width * scale;
             m.bounds.height = height * scale;
@@ -195,7 +197,7 @@ fn all_four_edges_and_open_corridors_work_without_taskbar() {
 fn insufficient_detail_space_is_an_error_not_a_negative_rectangle() {
     let mut m = monitor(1.);
     // This width reaches the minimum adaptive scale and leaves no detail space.
-    m.bounds.width = (DEPTH * 0.85).round() + GAP;
+    m.bounds.width = (DEPTH * MIN_CONTENT_SCALE).round() + GAP;
     m.work = m.bounds;
     assert!(calculate_layout(&m, &NotchPlacement::default(), 1, true, 200.).is_err());
 }
@@ -340,7 +342,8 @@ fn drag_keeps_grab_ratio_and_handles_zero_travel() {
     d.update(&[m.clone()], 1000., 1.).unwrap();
     let moved = calculate_layout(&m, &d.placement, 1, false, 200.).unwrap();
     assert!((moved.notch.x + moved.notch.width / 4. - 1000.).abs() <= 1.);
-    m.bounds.width = ((CELL_HORIZONTAL + END_PADDING * 2.) * 0.85).round();
+    let s = calculate_content_scale(CELL_HORIZONTAL + END_PADDING * 2.);
+    m.bounds.width = ((CELL_HORIZONTAL + END_PADDING * 2.) * s).round();
     m.work.width = m.bounds.width;
     d.update(&[m], 100., 1.).unwrap();
     assert_eq!(d.placement.offset, 0.);
@@ -412,9 +415,10 @@ fn dragging_between_logical_sizes_preserves_grab_ratio_and_scaled_threshold() {
         drag.update(&monitors, start.0 - threshold * 1.01, start.1).unwrap();
         assert!(drag.active);
         let pointer_y = 700. * scale;
+        let small_scale = calculate_content_scale(1024.);
         for (x, target, edge, expected_scale) in [
             (180. * scale, &large, NotchEdge::Left, 1.),
-            (-180. * scale, &small, NotchEdge::Right, 0.85),
+            (-180. * scale, &small, NotchEdge::Right, small_scale),
         ] {
             drag.update(&monitors, x, pointer_y).unwrap();
             assert_eq!(drag.placement.monitor_hint.as_deref(), Some(target.name.as_str()));
@@ -631,7 +635,7 @@ fn detail_dimensions_scale_smoothly_across_resolutions_and_respect_work_area() {
             m.work = m.bounds;
 
             let short_side = (m.bounds.width.min(m.bounds.height)) / scale;
-            let expected_scale = (short_side / 1440.).sqrt().clamp(0.85, 1.0);
+            let expected_scale = calculate_content_scale(short_side);
 
             for &edge in &edges {
                 for offset in [0.2, 0.5, 0.8] {
