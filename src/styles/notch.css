@@ -220,8 +220,8 @@
   display: inline;
   fill: none;
   stroke: url(#notch-liquid-rim);
-  stroke-width: 4;
-  opacity: .6;
+  stroke-width: 1.4;
+  opacity: .7;
   clip-path: url(#notch-finish-clip);
   vector-effect: non-scaling-stroke;
 }
@@ -229,8 +229,8 @@
 .notch-shell[data-theme="liquid"] .notch-liquid-edge {
   display: inline;
   fill: none;
-  stroke: rgba(232, 241, 249, .42);
-  stroke-width: .8;
+  stroke: rgba(232, 241, 249, .38);
+  stroke-width: .5;
   vector-effect: non-scaling-stroke;
 }
 .notch-shell[data-theme="liquid"] .notch-cells { z-index: 2; }
