@@ -120,9 +120,11 @@ with sync_playwright() as p:
     expect(page.locator('#tab-btn-models')).to_contain_text('서비스')
     expect(page.locator('[data-provider="grok"]')).to_contain_text('표시')
     page.locator('[data-provider="grok"]').click()
-    expect(page.locator('[data-provider="codex"]')).to_be_disabled()
+    for provider in ['claude','codex','grok','agy']:
+        expect(page.locator(f'[data-provider="{provider}"]')).to_be_disabled()
     page.evaluate('window.saveReject(new Error("simulated write failure"))')
     expect(page.locator('[data-provider="grok"]')).to_have_attribute('aria-pressed','true')
+    expect(page.locator('[data-provider="codex"]')).to_be_enabled()
     for provider in ['claude','codex','grok']:
         page.locator(f'[data-provider="{provider}"]').click()
         page.evaluate('window.saveResolve()')

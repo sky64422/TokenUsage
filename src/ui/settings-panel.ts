@@ -514,7 +514,7 @@ export function mountSettingsPanel(
       const label = btn.querySelector(".provider-card-name")?.textContent?.trim() ?? id;
       const locked = onlyOne && isProviderOn(id);
       btn.classList.toggle("is-locked", locked);
-      btn.disabled = locked;
+      btn.disabled = providerSaving || locked;
       const badge = btn.querySelector<HTMLElement>(".provider-status-badge");
       if (locked) {
         btn.title = `${label}: ${PROVIDER_MINIMUM}`;
