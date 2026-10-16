@@ -73,10 +73,8 @@ export function mountNotch(
       inner_radius: INNER,
     } = layout.metrics;
     const currentScale = layout.metrics.content_scale ?? 1;
-    const rimScale = Math.max(0.55, 1 + (currentScale - 1) * 5);
     root.style.setProperty("--notch-depth", `${layout.metrics.depth}px`);
     root.style.setProperty("--notch-scale", String(currentScale));
-    root.style.setProperty("--notch-rim-scale", rimScale.toFixed(3));
     root.style.setProperty("--notch-cell", `${layout.metrics.cell}px`);
     root.style.setProperty("--notch-inset", `${layout.metrics.inset}px`);
     root.style.setProperty("--rest-depth", `${layout.metrics.rest_depth}px`);
