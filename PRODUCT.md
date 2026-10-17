@@ -1,12 +1,12 @@
 # PRODUCT.md — TokenUsage
 
-**Updated:** 2026-10-17 · **Ship:** v0.4.0
+**Updated:** 2026-10-17 · **Ship:** v0.4.2
 **Platform:** desktop (Tauri 2 / Windows primary; WebView UI)
 **Mode (Impeccable):** **Operate** — scan and act quickly; brand lives in precise details, not persuasion.
 
 ## Approved notch interaction (2026-09-30)
 
-Default right-centred notch; left/right vertical and top/bottom horizontal. Click on a model icon opens quota details inward (click again or press Escape to close); hover preview is an option in settings (default off). Right-click the notch for settings; drag anywhere on the notch to move along an edge or dock at another screen edge/display. Escape cancels a drag; arrow keys do not reposition the widget. Quota polling remains 5 seconds. Bottom docking overlays the taskbar; other taskbar-blocked edges fall back visibly.
+Default right-centred notch; left/right vertical and top/bottom horizontal. Click on a model icon opens quota details inward (click again to close); hover preview is an option in settings (default off). Right-click the notch for settings; drag anywhere on the notch to move along an edge or dock at another screen edge/display. App-specific keyboard controls are removed; release the mouse to finish a drag. Quota polling remains 5 seconds. Bottom docking overlays the taskbar; other taskbar-blocked edges fall back visibly.
 
 ## Users
 

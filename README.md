@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/sky64422/TokenUsage/releases/latest">
-    <img src="https://img.shields.io/badge/Download-Windows%20Installer%20(v0.4.0)-blue?style=for-the-badge&logo=windows" alt="Download TokenUsage" />
+    <img src="https://img.shields.io/badge/Download-Windows%20Installer%20(v0.4.2)-blue?style=for-the-badge&logo=windows" alt="Download TokenUsage" />
   </a>
 </p>
 
@@ -40,7 +40,7 @@
 우클릭 또는 `Shift+F10`으로 불투명도, 서비스 켜기/끄기, 자동 실행을 설정합니다.
 
 `모양`에서 다크·글라스·리퀴드 테마를 선택할 수 있습니다. 노치와 패널은 모니터 크기에 맞게 조절되며, 설정창은 탭을 바꿔도 높이를 유지합니다.
-Windows 리퀴드 테마는 실제 바탕화면을 굴절시킵니다. 재귀 캡처를 막기 위해 이 테마에서는 노치가 OS 화면 캡처·화면 공유에 포함되지 않습니다.
+글라스는 차분한 반투명 유리와 거울 같은 테두리를, 리퀴드는 배경 굴절 없이 블러와 반사 테두리를 사용합니다. Windows에서 두 테마는 실제 바탕화면을 읽어 배경에 표현합니다. 재귀 캡처를 막기 위해 이 테마에서는 노치가 OS 화면 캡처·화면 공유에 포함되지 않습니다.
 
 | 모양 (Appearance) | 서비스 (Services) | 일반 (General) |
 |:---:|:---:|:---:|
@@ -57,7 +57,7 @@ Windows 리퀴드 테마는 실제 바탕화면을 굴절시킵니다. 재귀 �
 | ✋ **드래그** | 화면 4면 모서리(상·하·좌·우) 및 다른 모니터로 이동 |
 | ⚙️ **우클릭** | 설정창 열기 (`Shift+F10`) |
 | ⎋ **Esc** | 열린 창 닫기 / 드래그 취소 |
-| 📌 **트레이 아이콘** | 작업표시줄 시스템 트레이에서 보이기 / 숨기기 / 종료 |
+| 📌 **트레이 아이콘** | 작업표시줄 시스템 트레이에서 보이기 / 종료 |
 
 ---
 

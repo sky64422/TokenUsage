@@ -1,6 +1,6 @@
 # TokenUsage visual system — edge notch
 
-Updated: 2026-10-17 (v0.4.0). Implements the user-approved [edge notch design](docs/superpowers/specs/2026-09-30-edge-notch-design.md). Windows is the native validation target.
+Updated: 2026-10-17 (v0.4.2). Implements the user-approved [edge notch design](docs/superpowers/specs/2026-09-30-edge-notch-design.md). Windows is the native validation target.
 
 ## Purpose
 
@@ -13,13 +13,13 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 - The notch shows percentage only; periods are available in quota details. There is no period-display preference. Backend primary percentage is retained; do not silently relabel it as session usage.
 - Missing/auth-required values show a dash with explicit status, never a zero. Overage preserves the number while only the arc is clamped.
 - Provider icons identify Claude, Codex, Grok, and Antigravity. Source/license notices live in `src/assets/marks`.
-- Three themes: `다크` retains the original surface, `글라스` keeps the selected glass/foil finish, `리퀴드` adds a brighter cool glass surface and live background refraction. Pretendard, tabular numbers; no continuous decorative ring motion.
+- Three themes: Dark retains the original surface; Glass uses a neutral translucent surface with a mirrored rim; Liquid uses an undistorted live backdrop, blur and colored edge reflections. Pretendard and tabular numbers remain.
 
 ## Details and settings
 
-- Drag any part of the notch (including rings) to move or dock on another edge/display. A 5 DIP two-dimensional threshold preserves ring clicks. New edges engage within 64 DIP with 16 DIP hysteresis; monitor seams use 24 DIP entry depth. There are no move/settings buttons; right-click the notch or press Shift+F10/Context Menu to open settings. Arrow keys do not move the widget. Escape cancels a held drag; release commits once.
+- Drag any part of the notch (including rings) to move or dock on another edge/display. A 5 DIP two-dimensional threshold preserves ring clicks. New edges engage within 64 DIP with 16 DIP hysteresis; monitor seams use 24 DIP entry depth. There are no move/settings buttons; right-click the notch to open settings. App-specific keyboard controls are removed; mouse release commits once.
 
-- Hover/focus opens inward; click keeps a provider open. Escape closes settings first, then pinned details, and restores focus without reopening them.
+- Hover/focus opens inward; click keeps a provider open. Click the selected icon again to close a pinned detail; use the settings close button to close settings.
 - The provider whose detail is open stays highlighted while crossing into the panel; pinned state uses a stronger border. Grouped quotas show the service name above model groups so AGY's Gemini/Claude rows retain their source identity.
 - 180ms leave grace permits crossing into the detail. 160ms reveal; reduced-motion disables motion.
 - Detail cards use a near-black surface, 16px radius, thin quiet border, 16px padding. Native width 260 DIP, max native height 560 DIP, bounded to work area. Scroll only on actual overflow.
@@ -41,24 +41,16 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 
 Sources: `src/styles/tokens.css`, `src/styles/notch.css`. Existing semantic foreground/muted/primary/border/ring and opacity floors remain. Safe/warning/critical colors come from existing quota risk helpers. Settings chrome stays neutral; color communicates usage and state.
 
-### Glass and holographic finish (001 / 052 preview)
+### Glass and Liquid materials
 
-- Select `다크` / `글라스` under `모양` > `테마`; selection persists as `settings.theme`. Existing settings, including retired `system` / `light` values, default to `dark` without losing other preferences. Only the glass theme mounts the visible material layers and enables reflection tracking.
-- User-selected references: [Lucian 001](https://lucianlabs.dev/uxui-prompt/#001) glass reflection and [052](https://lucianlabs.dev/uxui-prompt/#052) holographic sheen.
-- Keep the black concave notch, with a silver reflective rim and low-chroma pearl sheen beneath its content. Cool tints remain faint; details and settings share the layered glass surface, while controls retain neutral chrome and semantic status colors.
-- Pointer movement changes the light position and foil angle, never the surface transform, native geometry, or hit regions. Dragging and touch do not steer reflections.
-- Reduced motion keeps the material static. Reflection tracking schedules work only on pointer movement and is disposed with the app.
-- The reference's card flip and simulated loading/success logic are not part of this material treatment.
-
-### Liquid theme
-
-- `리퀴드` is a separate persisted choice. Existing `다크` and `글라스` surfaces do not capture or refract the desktop.
-- Follow [dynamic-island's](https://github.com/molian313/dynamic-island) capture/background/foreground separation, with an independent SVG displacement renderer and raw BMP IPC (no added image/React packages).
-- Refract only the background; provider marks, rings, percentages and controls stay sharp. Use a 28 DIP lens band, retain background color, and keep a dark translucent body with cyan/lilac/rose/gold edge reflections. Slightly separate RGB refraction near the rim for prism-like dispersion. Local dark scrims preserve percentage and detail text readability.
-- Preserve native silhouette, placement, hit regions and fixed detail columns. The existing opacity slider adjusts tint while text scrims retain floors.
-- Capture only visible surface rectangles into memory, with one request batch in flight. Aim for 30 fps at rest and 60 fps while dragging; reduced motion uses 4 fps without decorative motion. Hidden/folded surfaces stop capture. Performance depends on Windows/WebView2.
-- Windows excludes this HWND from capture to avoid recursive foreground copies. Consequently the Liquid widget itself is absent from OS screen captures/screen sharing while active. Restore the previous affinity on theme exit, renderer reload, or an expired capture lease.
-- Unsupported/failed capture keeps a tinted fallback and reports the failure; this is not native Apple Liquid Glass.
+- Dark, Glass and Liquid are separate persisted choices. Old system/light values migrate to Dark without losing preferences.
+- Glass replaces the previous painted foil finish with the supplied lock-screen reference: neutral smoked translucency, a narrow white reflective edge, restrained refraction and no stacked label scrims. Adaptive neutral shading keeps bright backdrops legible.
+- Liquid uses an undistorted live backdrop with its existing blur, colored reflections and dark text scrims. Displacement is fixed at 0: skip the SVG refraction filter and distance/displacement-map generation. Glass retains its lens and neutral 3px reflective rim with a 0.7px specular edge.
+- Both capture only visible desktop rectangles in memory; foreground marks, rings, percentages and controls remain sharp. Native silhouette, hit regions and settings sizing are unchanged.
+- One serialized renderer batch uses a dedicated GDI worker with two reusable DIB surfaces. Raw RGBA packets replace per-frame BMP/image decoding. Identical pixels for the same region and generation skip IPC image payloads and painting. Legacy diagnostics may still request BMP.
+- Target intervals remain 30 Hz at rest, 60 Hz while dragging and 4 Hz with reduced motion. These intervals are not proof of presented FPS. Fold stops capture; explicit hide also releases frontend backing stores. Theme changes/reload/expired leases restore capture affinity after pending reads finish.
+- Windows excludes the HWND from OS capture/sharing while either live material is active to avoid recursion. Dark does not capture. Capture failures report an error and retain the tint fallback.
+- The tray contains Show and Quit. App-specific keyboard controls are removed; automatic mouse fold/reveal remains.
 
 ### Monitor-aware notch size
 
