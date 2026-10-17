@@ -19,9 +19,13 @@ def prepare_preview(page, *, always_show=True):
 
 
 def reset_notch(page):
-    # Escape closes settings first, then pinned detail. The old close button was removed.
-    page.keyboard.press('Escape')
-    page.keyboard.press('Escape')
+    # Mouse controls remain available after application keyboard controls were removed.
+    close = page.locator('#btn-close-settings')
+    if close.is_visible(): close.dispatch_event('click')
+    selected = page.locator('.notch-cell[data-detail-open="true"]:visible')
+    if selected.count():
+        if selected.first.get_attribute('aria-pressed') != 'true': selected.first.dispatch_event('click')
+        selected.first.dispatch_event('click')
     page.evaluate('()=>document.activeElement?.blur()')
 
 

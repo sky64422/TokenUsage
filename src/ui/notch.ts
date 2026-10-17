@@ -10,8 +10,7 @@ export function mountNotch(
     pin: (id: ProviderId) => void;
   },
 ) {
-  root.tabIndex = 0;
-  root.setAttribute("aria-label", "AI usage. Drag to move; right-click or Shift+F10 for settings.");
+  root.setAttribute("aria-label", "AI usage. Drag to move; right-click for settings.");
   root.innerHTML = `<span class="notch-rest" aria-hidden="true"></span>
     <div class="notch-surface">
       <svg class="notch-shape" aria-hidden="true">
@@ -19,10 +18,13 @@ export function mountNotch(
         <defs>
           <clipPath id="notch-finish-clip"><use href="#notch-outline"/></clipPath>
           <linearGradient id="notch-glass-rim" x1="0" y1="0" x2="1" y2="1">
-            <stop stop-color="#e3e5e9" stop-opacity=".48"/>
-            <stop offset=".3" stop-color="#bdc2cc" stop-opacity=".08"/>
-            <stop offset=".62" stop-color="#c4c1ca" stop-opacity=".2"/>
-            <stop offset="1" stop-color="#b9c7c9" stop-opacity=".13"/>
+            <stop stop-color="#eef6ff" stop-opacity=".9"/>
+            <stop offset=".18" stop-color="#f9fcff" stop-opacity=".22"/>
+            <stop offset=".36" stop-color="#212a33" stop-opacity=".55"/>
+            <stop offset=".48" stop-color="#f4f8ff" stop-opacity=".88"/>
+            <stop offset=".61" stop-color="#8393a2" stop-opacity=".28"/>
+            <stop offset=".79" stop-color="#eff8ff" stop-opacity=".72"/>
+            <stop offset="1" stop-color="#d2e3eb" stop-opacity=".5"/>
           </linearGradient>
           <linearGradient id="notch-liquid-rim" x1="0" y1="0" x2="1" y2="1">
             <stop stop-color="#b4e5ee" stop-opacity=".82"/>
@@ -40,7 +42,6 @@ export function mountNotch(
     </div>`;
   const cells = root.querySelector<HTMLElement>(".notch-cells")!;
   const buttons = new Map<ProviderId, HTMLButtonElement>();
-  let restoringFocus = false;
   for (const id of PROVIDER_IDS) {
     const b = document.createElement("button");
     b.className = "notch-cell";
@@ -51,9 +52,6 @@ export function mountNotch(
     orbit.className = "activity-orbit";
     orbit.setAttribute("aria-hidden", "true");
     b.querySelector(".ring-wrap")!.append(orbit);
-    b.addEventListener("focus", () => {
-      if (!restoringFocus) callbacks.hover(id);
-    });
     b.addEventListener("click", () => callbacks.pin(id));
     cells.append(b);
     buttons.set(id, b);
@@ -118,25 +116,30 @@ export function mountNotch(
     },
     update(snaps: ProviderSnapshot[], enabled: ProviderId[]) {
       for (const [id, b] of buttons) {
-        b.hidden = !enabled.includes(id);
+        const hidden = !enabled.includes(id);
+        if (b.hidden !== hidden) b.hidden = hidden;
         const s = snaps.find((v) => v.provider_id === id);
         if (!s) {
-          b.setAttribute("aria-label", `${id}: waiting for usage`);
+          const label = `${id}: waiting for usage`;
+          if (b.getAttribute("aria-label") !== label) b.setAttribute("aria-label", label);
           continue;
         }
         const h = headline(s);
-        b.className = `notch-cell ${h.level}`;
-        b.querySelector(".ring-pct")!.textContent = h.text;
-        b.querySelector<SVGElement>(".ring-fill")!.style.strokeDasharray =
-          `${h.fill} 100`;
-        b.querySelector<HTMLElement>(".ring-status")!.hidden = !h.degraded;
-        b.querySelector<HTMLElement>(".ring-status")!.title = h.degraded
+        const className = `notch-cell ${h.level}`;
+        if (b.className !== className) b.className = className;
+        const percent = b.querySelector(".ring-pct")!;
+        if (percent.textContent !== h.text) percent.textContent = h.text;
+        const fill = b.querySelector<SVGElement>(".ring-fill")!;
+        const dasharray = `${h.fill} 100`;
+        if (fill.style.strokeDasharray !== dasharray) fill.style.strokeDasharray = dasharray;
+        const status = b.querySelector<HTMLElement>(".ring-status")!;
+        if (status.hidden !== !h.degraded) status.hidden = !h.degraded;
+        const title = h.degraded
           ? (s.message || s.status.replaceAll("_", " "))
           : "";
-        b.setAttribute(
-          "aria-label",
-          `${s.display_name}: ${h.label}, ${h.text} used${h.degraded ? `, ${s.status.replaceAll("_", " ")}` : ""}${h.secondaryRisk ? `, other limits: ${h.secondaryRisk}` : ""}. Click to keep open.`,
-        );
+        if (status.title !== title) status.title = title;
+        const label = `${s.display_name}: ${h.label}, ${h.text} used${h.degraded ? `, ${s.status.replaceAll("_", " ")}` : ""}${h.secondaryRisk ? `, other limits: ${h.secondaryRisk}` : ""}. Click to keep open.`;
+        if (b.getAttribute("aria-label") !== label) b.setAttribute("aria-label", label);
       }
     },
     layout(l: NotchLayout) {
@@ -149,12 +152,6 @@ export function mountNotch(
         b.dataset.detailOpen = String(key === id);
         b.setAttribute("aria-pressed", String(pinned && key === id));
       }
-    },
-    focus(id: ProviderId | null) {
-      restoringFocus = true;
-      if (id) buttons.get(id)?.focus();
-      else root.focus();
-      restoringFocus = false;
     },
   };
 }

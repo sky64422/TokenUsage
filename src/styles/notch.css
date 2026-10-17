@@ -152,57 +152,8 @@
   fill: rgba(0, 0, 0, var(--panel-opacity));
   pointer-events: none;
 }
-/* Lucian UX/UI 001 + 052, MIT © Seokwoooo: glass highlights and holographic foil.
-   Adapted material only; the native silhouette and pointer geometry stay fixed. */
-.notch-shell[data-theme="glass"] .notch,
-.notch-shell[data-theme="glass"] .notch-detail {
-  --finish-x: 50%;
-  --finish-y: 28%;
-  --finish-angle: calc(115deg + var(--finish-rotation, 0deg));
-  --finish-shift: 0%;
-  --finish-fade: 350ms;
-  --finish-foil: linear-gradient(var(--finish-angle),
-    transparent 15%, rgba(150, 155, 168, .095) 32%,
-    rgba(184, 181, 189, .11) 41%, rgba(213, 221, 227, .16) 48%,
-    rgba(162, 182, 182, .09) 55%, transparent 72%);
-  --finish-light: radial-gradient(ellipse at var(--finish-x) var(--finish-y),
-    rgba(236, 239, 243, .18), rgba(190, 198, 209, .035) 35%, transparent 66%);
-}
-.notch-glass-rim,
-.notch-finish {
-  display: none;
-}
-.notch-shell[data-theme="glass"] .notch-glass-rim {
-  display: inline;
-  fill: none;
-  stroke: url(#notch-glass-rim);
-  stroke-width: calc(1.2px * var(--notch-rim-scale, 1));
-  vector-effect: non-scaling-stroke;
-  opacity: var(--chrome-opacity);
-}
-.notch-shell[data-theme="glass"] .notch-finish {
-  display: block;
-  position: absolute;
-  inset: 0;
-  clip-path: url(#notch-finish-clip);
-  pointer-events: none;
-  background:
-    var(--finish-light),
-    var(--finish-foil),
-    linear-gradient(100deg, rgba(255, 255, 255, .13), transparent 26%,
-      rgba(255, 255, 255, .025) 66%, rgba(211, 216, 224, .07));
-  background-size: 100% 100%, 220% 180%, 100% 100%;
-  background-position: center, calc(50% + var(--finish-shift)) 50%, center;
-  opacity: calc(.72 * var(--chrome-opacity));
-  transition: opacity var(--finish-fade) ease;
-}
-.notch-shell[data-theme="glass"] .notch[data-finish-active] .notch-finish { opacity: var(--chrome-opacity); }
-.notch-shell[data-theme="glass"] .notch-rest {
-  background:
-    linear-gradient(110deg, rgba(215, 218, 225, .16), rgba(255, 255, 255, .025) 42%, rgba(183, 198, 202, .08)),
-    rgba(0, 0, 0, var(--panel-opacity));
-  box-shadow: inset 1px 0 rgba(255, 255, 255, .15);
-}
+/* Lucian UX/UI 001 + 052 (MIT, Seokwoooo). */
+.notch-glass-rim, .notch-finish { display:none; }
 /* Liquid alone samples the desktop. Glass keeps its original painted finish. */
 .liquid-filter-defs { position: absolute; width: 0; height: 0; pointer-events: none; }
 .liquid-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; isolation: isolate; }
@@ -242,15 +193,6 @@
   background: linear-gradient(145deg, rgba(186, 215, 236, .38), rgba(51, 72, 91, .8));
   border-width: calc(1px * var(--notch-rim-scale, 1));
   border-color: rgba(225, 241, 255, .45);
-}
-.notch-shell[data-theme="liquid"] .ring-pct { position: relative; isolation: isolate; }
-.notch-shell[data-theme="liquid"] .ring-pct::before {
-  content: "";
-  position: absolute;
-  inset: 0 calc(-4px * var(--notch-scale, 1));
-  z-index: -1;
-  border-radius: calc(4px * var(--notch-scale, 1));
-  background: rgba(4, 8, 14, max(.76, var(--panel-opacity)));
 }
 .notch-shell[data-theme="liquid"] .notch-detail {
   isolation: isolate;
@@ -517,54 +459,7 @@
   animation: liquid-detail-drop-right 280ms cubic-bezier(0.34, 1.32, 0.64, 1);
   will-change: transform, opacity;
 }
-.notch-shell[data-theme="glass"] .notch-detail {
-  background:
-    radial-gradient(ellipse at 15% 0, rgba(146, 151, 160, .055), transparent 68%),
-    rgba(9, 10, 12, max(0.88, var(--panel-opacity)));
-  border-width: calc(1px * var(--notch-scale, 1));
-  border-color: rgba(211, 216, 224, .19);
-  box-shadow:
-    0 16px 40px -4px rgba(0, 0, 0, .75),
-    0 6px 16px rgba(0, 0, 0, .45),
-    0 0 0 1px rgba(255, 255, 255, .05),
-    inset 0 1px 0 rgba(242, 244, 247, .18),
-    inset 0 -1px 0 rgba(177, 187, 198, .08);
-  isolation: isolate;
-}
-.notch-shell[data-theme="glass"] .notch-detail::before,
-.notch-shell[data-theme="glass"] .notch-detail::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-}
-.notch-shell[data-theme="glass"] .notch-detail::before {
-  z-index: -1;
-  background:
-    radial-gradient(ellipse 120% 65% at 28% -18%, rgba(245, 247, 250, .26), transparent 78%),
-    var(--finish-light),
-    var(--finish-foil),
-    linear-gradient(165deg, rgba(255, 255, 255, .14), transparent 28%, transparent 70%, rgba(205, 212, 221, .035));
-  background-size: 100% 100%, 100% 100%, 180% 150%, 100% 100%;
-  background-position: center, center, calc(50% + var(--finish-shift)) 50%, center;
-  opacity: calc(.65 * var(--chrome-opacity));
-  transition: opacity var(--finish-fade) ease;
-}
-.notch-shell[data-theme="glass"] .notch-detail[data-finish-active]::before { opacity: var(--chrome-opacity); }
-.notch-shell[data-theme="glass"] .notch-detail::after {
-  padding: calc(1px * var(--notch-scale, 1));
-  background: linear-gradient(var(--finish-angle), rgba(242, 244, 247, .5),
-    rgba(178, 185, 196, .035) 28%, rgba(200, 195, 205, .14) 55%, rgba(177, 199, 201, .12) 78%, transparent);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-}
-.notch-shell[data-theme="glass"] .notch-detail .settings-pill-action,
-.notch-shell[data-theme="glass"] .notch-detail .settings-row-btn,
-.notch-shell[data-theme="glass"] .notch-detail .settings-update-btn {
-  background-image: linear-gradient(170deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .025) 48%, rgba(188, 198, 210, .045));
-  box-shadow: inset 0 1px rgba(255, 255, 255, .13), inset 0 -1px rgba(0, 0, 0, .22);
-}
+
 .detail-body {
   /* Include trailing status/error margins in the height sent to native layout. */
   display: flow-root;
@@ -749,3 +644,54 @@ body:has(.notch[data-edge="bottom"]) .notch-detail {
     transition: none;
   }
 }
+
+/* Reference-photo Glass replaces painted Glass. */
+/* Liquid samples the desktop; one neutral smoked layer keeps the background visible. */
+.liquid-filter-defs { position:absolute;width:0;height:0;pointer-events:none; }
+.liquid-layer { position:absolute;inset:0;pointer-events:none;overflow:hidden;isolation:isolate; }
+.liquid-layer canvas { display:block;width:100%;height:100%; }
+.notch-shell[data-theme="glass"] .liquid-layer::after {
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(150deg,rgba(255,255,255,.055),transparent 42%,rgba(0,0,0,.045)),
+    rgba(12,12,14,max(var(--liquid-wash,.46),calc(var(--panel-opacity) * .45)));
+}
+.notch .liquid-layer { clip-path:url(#notch-finish-clip); }
+.notch-shell[data-theme="glass"] .notch-shape {
+  fill:rgba(20,20,23,max(.66,var(--panel-opacity)));
+}
+.notch-shell[data-theme="glass"][data-liquid-status="ready"] .notch-shape { fill:none;z-index:1; }
+.notch-shell[data-theme="glass"] .notch-glass-rim {
+  display:inline;fill:none;stroke:url(#notch-glass-rim);opacity:.85;
+  stroke-width:calc(3px * var(--notch-rim-scale,1));
+  clip-path:url(#notch-finish-clip);vector-effect:non-scaling-stroke;
+}
+.notch-liquid-edge { display:none; }
+.notch-shell[data-theme="glass"] .notch-liquid-edge {
+  display:inline;fill:none;stroke:rgba(235,244,252,.45);
+  stroke-width:calc(.7px * var(--notch-rim-scale,1));vector-effect:non-scaling-stroke;
+}
+.notch-shell[data-theme="glass"] .notch-cells { z-index:2; }
+.notch-shell[data-theme="glass"] .notch-rest {
+  background:linear-gradient(145deg,rgba(255,255,255,.2),rgba(20,20,23,.7));
+  border-width:calc(.5px * var(--notch-rim-scale,1));border-color:rgba(255,255,255,.25);
+}
+.notch-shell[data-theme="glass"] .ring-pct { text-shadow:0 1px 3px rgba(0,0,0,.6); }
+.notch-shell[data-theme="glass"] .notch-detail {
+  isolation:isolate;background:rgba(20,20,23,max(.66,var(--panel-opacity)));
+  border-width:calc(.5px * var(--notch-scale,1));border-color:rgba(255,255,255,.22);
+  box-shadow:0 12px 30px -8px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.09);
+}
+.notch-shell[data-theme="glass"] .notch-detail::after {
+  content:"";position:absolute;inset:0;padding:calc(.5px * var(--notch-rim-scale,1));
+  border-radius:inherit;pointer-events:none;
+  background:linear-gradient(145deg,rgba(255,255,255,.43),rgba(255,255,255,.04) 34%,
+    rgba(255,255,255,.08) 67%,rgba(255,255,255,.26));
+  mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;
+}
+.notch-detail > .liquid-layer { border-radius:inherit;z-index:-1; }
+.notch-shell[data-theme="glass"] .detail-body {
+  background:transparent;box-shadow:none;text-shadow:0 1px 2px rgba(0,0,0,.45);
+}
+
+.notch-shell[data-theme="glass"] .notch-finish,
+.notch-shell[data-theme="glass"] .notch-detail::before { display:none; }

@@ -1,21 +1,29 @@
 import { invoke } from "@tauri-apps/api/core";
-import { createLiquidLoop } from "./liquid-loop";
+import { createLiquidLoop } from "./liquid-loop.ts";
+import { decodeLiquidFrame, liquidWash } from "./liquid-frame.ts";
 
 // Capture -> separate optical background follows dynamic-island's approach:
 // https://github.com/molian313/dynamic-island. Independent renderer; no source copied.
 const NS = "http://www.w3.org/2000/svg";
-const BEZEL = 28;
-const DISPLACEMENT = 28;
+const MATERIALS = {
+  glass: {bezel:20,displacement:18,dispersion:[.985,1,1.015],blur:[4,10],saturation:1.04,brightness:1.02},
+  liquid: {bezel:28,displacement:0,dispersion:[.93,1,1.07],blur:[.55,8],saturation:1.1,brightness:1.04},
+};
 const IDLE_FRAME_MS = 1000 / 30;
 const DRAG_FRAME_MS = 1000 / 60;
 const REDUCED_FRAME_MS = 250;
+const SETTLING_FRAME_MS = 100;
+const SETTLING_AFTER_MS = 500;
+const STATIC_AFTER_MS = 2000;
 interface SurfaceLayer {
   surface: HTMLElement; layer: HTMLDivElement; canvas: HTMLCanvasElement;
-  filter: SVGFilterElement; key: string;
+  filter: SVGFilterElement; key: string; slot: number; generation: number; effect: string; scratch: HTMLCanvasElement | null;
 }
-interface CapturedFrame { entry: SurfaceLayer; bitmap: ImageBitmap; key: string }
+interface CapturedFrame { entry: SurfaceLayer; pixels: Uint8ClampedArray; width: number; height: number; key: string; generation: number }
 
 export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: HTMLElement) {
+  let material = MATERIALS.glass;
+  let materialTheme: "glass" | "liquid" | null = null;
   const defs = document.createElementNS(NS, "svg");
   defs.classList.add("liquid-filter-defs");
   defs.setAttribute("aria-hidden", "true");
@@ -34,58 +42,96 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
     filter.setAttribute("x", "0"); filter.setAttribute("y", "0");
     filter.setAttribute("width", "100%"); filter.setAttribute("height", "100%");
     filter.innerHTML = `<feImage result="map" preserveAspectRatio="none"/>
-      <feDisplacementMap in="SourceGraphic" in2="map" scale="${DISPLACEMENT * .93}" xChannelSelector="R" yChannelSelector="G" result="r"/>
+      <feDisplacementMap in="SourceGraphic" in2="map" scale="${material.displacement * material.dispersion[0]}" xChannelSelector="R" yChannelSelector="G" result="r"/>
       <feColorMatrix in="r" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="red"/>
-      <feDisplacementMap in="SourceGraphic" in2="map" scale="${DISPLACEMENT}" xChannelSelector="R" yChannelSelector="G" result="g"/>
+      <feDisplacementMap in="SourceGraphic" in2="map" scale="${material.displacement}" xChannelSelector="R" yChannelSelector="G" result="g"/>
       <feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="green"/>
-      <feDisplacementMap in="SourceGraphic" in2="map" scale="${DISPLACEMENT * 1.07}" xChannelSelector="R" yChannelSelector="G" result="b"/>
+      <feDisplacementMap in="SourceGraphic" in2="map" scale="${material.displacement * material.dispersion[2]}" xChannelSelector="R" yChannelSelector="G" result="b"/>
       <feColorMatrix in="b" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="blue"/>
       <feBlend in="red" in2="green" mode="screen" result="rg"/><feBlend in="rg" in2="blue" mode="screen"/>`;
     defs.firstElementChild!.append(filter);
-    canvas.style.filter = `url(#${filter.id}) blur(${index === 0 ? .55 : 8}px) saturate(1.1) brightness(1.04)`;
-    return {surface,layer,canvas,filter,key:""};
+    const effect = "";
+    canvas.style.filter = effect;
+    return {surface,layer,canvas,filter,key:"",slot:index,generation:0,effect,scratch:null};
   });
-  let enabled = false, destroyed = false;
-  const clear = () => entries.forEach(entry => { entry.layer.hidden = true; });
+  let enabled = false, destroyed = false, nativeVisible = true;
+  let lastChangedAt = performance.now(), lastVisible = false;
+  let lastDetailHidden = detail.hidden, lastDragging = false;
+  const clear = (releaseBuffers = false) => entries.forEach(entry => {
+    entry.layer.hidden = true; entry.generation++;
+    if (!releaseBuffers) return;
+    entry.key = "";
+    entry.canvas.width = entry.canvas.height = 0;
+    entry.canvas.style.filter = "";
+    entry.filter.querySelector("feImage")!.removeAttribute("href");
+    if (entry.scratch) { entry.scratch.width = entry.scratch.height = 0; entry.scratch = null; }
+  });
   const loop = createLiquidLoop<CapturedFrame[]>({
     request: cb => requestAnimationFrame(cb), cancel: id => cancelAnimationFrame(id),
-    interval: () => motion.matches ? REDUCED_FRAME_MS
-      : rail.classList.contains("is-dragging") ? DRAG_FRAME_MS : IDLE_FRAME_MS,
-    capture, paint: frames => {
+    interval: now => {
+      if (motion.matches) return REDUCED_FRAME_MS;
+      if (rail.classList.contains("is-dragging")) return DRAG_FRAME_MS;
+      const unchangedFor = now - lastChangedAt;
+      return unchangedFor >= STATIC_AFTER_MS ? REDUCED_FRAME_MS
+        : unchangedFor >= SETTLING_AFTER_MS ? SETTLING_FRAME_MS : IDLE_FRAME_MS;
+    },
+    capture, paint: (frames, now) => {
       let painted = false;
-      frames.forEach(({entry,bitmap,key}) => {
-        if (entry.key !== key || entry.surface.hidden) return;
-        entry.canvas.getContext("2d")!.drawImage(bitmap,0,0,entry.canvas.width,entry.canvas.height);
+      frames.forEach(({entry,pixels,width,height,key,generation}) => {
+        if (entry.key !== key || entry.generation !== generation || entry.surface.hidden) return;
+        const ctx = entry.canvas.getContext("2d", {alpha:false})!;
+        const image = new ImageData(pixels,width,height);
+        if (materialTheme === "glass") entry.layer.style.setProperty("--liquid-wash",liquidWash(pixels).toFixed(3));
+        if (width === entry.canvas.width && height === entry.canvas.height) ctx.putImageData(image,0,0);
+        else {
+          const scratch = entry.scratch ?? (entry.scratch = document.createElement("canvas"));
+          if (scratch.width !== width || scratch.height !== height) { scratch.width=width; scratch.height=height; }
+          scratch.getContext("2d", {alpha:false})!.putImageData(image,0,0);
+          ctx.drawImage(scratch,0,0,entry.canvas.width,entry.canvas.height);
+        }
         entry.layer.hidden = false;
         painted = true;
       });
-      if (painted) shell.dataset.liquidStatus = "ready";
+      if (painted) { lastChangedAt = now; shell.dataset.liquidStatus = "ready"; }
     },
-    dispose: frames => frames.forEach(({bitmap}) => bitmap.close()),
+    dispose: frames => { frames.length = 0; },
     release: async () => { await invoke("release_liquid_backdrop"); },
     fail: error => {
-      clear();
+      clear(true);
       shell.dataset.liquidStatus = "unavailable";
       console.error("Liquid backdrop:",error);
     },
   });
   function sync() {
-    const visible = enabled && !document.hidden && (!rail.classList.contains("is-folded") || !detail.hidden);
-    if (!visible) clear();
+    const visible = nativeVisible && enabled && !document.hidden && (!rail.classList.contains("is-folded") || !detail.hidden);
+    const dragging = rail.classList.contains("is-dragging");
+    if (visible && (!lastVisible || detail.hidden !== lastDetailHidden || dragging !== lastDragging)) {
+      lastChangedAt = performance.now(); loop.refresh();
+    }
+    lastVisible = visible; lastDetailHidden = detail.hidden; lastDragging = dragging;
+    if (!visible) clear(!enabled || !nativeVisible || document.hidden);
     loop.setEnabled(visible);
   }
   const events = new AbortController();
   document.addEventListener("visibilitychange",sync,{signal:events.signal});
-  const observer = new MutationObserver(sync);
+  const observer = new MutationObserver(records => {
+    // A hidden surface must not acknowledge pixels that its painter discarded.
+    for (const record of records) if (record.target === detail && record.attributeName === "hidden") entries[1].generation++;
+    sync();
+  });
   observer.observe(rail,{attributes:true,attributeFilter:["class"]});
   observer.observe(detail,{attributes:true,attributeFilter:["hidden"]});
 
   function mapFor(entry: SurfaceLayer, width: number, height: number) {
+    entry.canvas.style.filter = entry.effect;
+    entry.canvas.width=width;entry.canvas.height=height;
+    // Liquid keeps the smoked surface and blur without allocating a lens map.
+    if (material.displacement === 0) return;
     const contentScale = Number(getComputedStyle(entry.surface).getPropertyValue("--notch-scale")) || 1;
-    const bezel = BEZEL * contentScale;
+    const bezel = material.bezel * contentScale;
     entry.filter.querySelectorAll("feDisplacementMap").forEach((node, index) => {
-      const dispersion = [.93, 1, 1.07][index];
-      node.setAttribute("scale", String(DISPLACEMENT * contentScale * dispersion));
+      const dispersion = material.dispersion[index];
+      node.setAttribute("scale", String(material.displacement * contentScale * dispersion));
     });
     const mask = document.createElement('canvas'); mask.width=width; mask.height=height;
     const ctx = mask.getContext('2d', {willReadFrequently:true})!;
@@ -121,7 +167,6 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
     }
     ctx.putImageData(map,0,0);
     entry.filter.querySelector('feImage')!.setAttribute('href',mask.toDataURL());
-    entry.canvas.width=width;entry.canvas.height=height;
   }
 
   async function capture(): Promise<CapturedFrame[]> {
@@ -132,31 +177,40 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
         const rect = entry.surface.getBoundingClientRect();
         const width = Math.round(rect.width), height = Math.round(rect.height);
         if (!width || !height) continue;
-        const key = `${width}:${height}:${rail.dataset.edge}`;
-        if (key !== entry.key) { mapFor(entry,width,height); entry.key=key; }
         const ratio = devicePixelRatio;
+        const key = `${width}:${height}:${rail.dataset.edge}:${ratio}:${shell.style.getPropertyValue('--notch-scale')}`;
+        if (key !== entry.key) { mapFor(entry,width,height); entry.key=key; entry.generation++; }
+        const generation = entry.generation;
         const x=Math.max(0,Math.round(rect.x*ratio)), y=Math.max(0,Math.round(rect.y*ratio));
         const w=Math.min(Math.round(width*ratio),Math.round(innerWidth*ratio)-x);
         const h=Math.min(Math.round(height*ratio),Math.round(innerHeight*ratio)-y);
         // During a native canvas transition wait for a valid local rectangle.
         if (w<=0 || h<=0) continue;
-        const data = await invoke<ArrayBuffer>("capture_liquid_backdrop",{x,y,width:w,height:h});
-        if (!data.byteLength) continue; // Native geometry changed before the DOM caught up.
-        const bitmap = await createImageBitmap(new Blob([data],{type:"image/bmp"}));
-        frames.push({entry,bitmap,key});
+        const data = await invoke<ArrayBuffer>("capture_liquid_backdrop",{x,y,width:w,height:h,surface:entry.slot,generation});
+        if (!data.byteLength) continue; // Unchanged pixels, or native geometry changed before DOM layout.
+        if (entry.key !== key || entry.generation !== generation) continue;
+        const pixels = decodeLiquidFrame(data,w,h);
+        frames.push({entry,pixels,width:w,height:h,key,generation});
       }
       return frames;
-    } catch(error) { frames.forEach(({bitmap})=>bitmap.close()); throw error; }
+    } catch(error) { frames.length = 0; throw error; }
   }
   return {
+    setVisible(value: boolean) { nativeVisible = value; sync(); },
     setEnabled(value: boolean) {
-      if (destroyed || enabled === value) return;
+      const nextTheme = shell.dataset.theme === "liquid" ? "liquid" : "glass";
+      if (destroyed || (enabled === value && materialTheme === nextTheme)) return;
+      if (materialTheme !== nextTheme) {
+        loop.setEnabled(false); clear(true);
+        materialTheme = nextTheme; material = MATERIALS[nextTheme];
+        for (const entry of entries) entry.effect = `${material.displacement === 0 ? "" : `url(#${entry.filter.id}) `}blur(${material.blur[entry.slot]}px) saturate(${material.saturation}) brightness(${material.brightness})`;
+      }
       enabled=value;
       delete shell.dataset.liquidStatus;
       sync();
     },
     destroy() {
-      destroyed=true; loop.destroy(); observer.disconnect(); events.abort();
+      destroyed=true; loop.destroy(); observer.disconnect(); events.abort(); clear(true);
       entries.forEach(entry=>entry.layer.remove()); defs.remove();
     },
   };

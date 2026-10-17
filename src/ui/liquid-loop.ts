@@ -2,9 +2,9 @@
 export function createLiquidLoop<T>(io: {
   request: (tick: (time: number) => void) => number;
   cancel: (id: number) => void;
-  interval: () => number;
+  interval: (time: number) => number;
   capture: () => Promise<T>;
-  paint: (frame: T) => void;
+  paint: (frame: T, time: number) => void;
   dispose: (frame: T) => void;
   release: () => Promise<void>;
   fail: (error: unknown) => void;
@@ -23,7 +23,7 @@ export function createLiquidLoop<T>(io: {
     frame = 0;
     if (!enabled || destroyed) return;
     schedule();
-    const interval = io.interval();
+    const interval = io.interval(now);
     if (interval !== previousInterval) { due = now; previousInterval = interval; }
     if (busy || now < due) return;
     // Preserve fractional frame time; missed refreshes must not accumulate queued reads.
@@ -33,7 +33,7 @@ export function createLiquidLoop<T>(io: {
     void (async () => {
       try {
         const result = await io.capture();
-        try { if (enabled && !destroyed && epoch === generation) io.paint(result); }
+        try { if (enabled && !destroyed && epoch === generation) io.paint(result, now); }
         finally { io.dispose(result); }
       } catch (error) {
         if (generation === epoch) {
@@ -61,6 +61,7 @@ export function createLiquidLoop<T>(io: {
   }
   return {
     setEnabled,
+    refresh() { due = -Infinity; },
     destroy() { setEnabled(false); destroyed = true; io.cancel(frame); frame = 0; },
   };
 }

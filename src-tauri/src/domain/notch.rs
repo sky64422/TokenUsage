@@ -113,19 +113,16 @@ impl MonitorArea {
         let is_primary = self.bounds.x == 0. && self.bounds.y == 0.;
 
         // If hint hints at primary / main display:
-        if trimmed.eq_ignore_ascii_case("main") || trimmed.contains("DISPLAY1") {
-            if is_primary {
-                return 70;
-            }
+        if (trimmed.eq_ignore_ascii_case("main") || trimmed.contains("DISPLAY1")) && is_primary {
+            return 70;
         }
 
         // If hint hints at a secondary display (e.g. "other", "DISPLAY2", "DISPLAY3"):
-        if trimmed.eq_ignore_ascii_case("other")
-            || (!trimmed.contains("DISPLAY1") && (trimmed.contains("DISPLAY") || trimmed.starts_with(r"\\.\")))
+        if (trimmed.eq_ignore_ascii_case("other")
+            || (!trimmed.contains("DISPLAY1") && (trimmed.contains("DISPLAY") || trimmed.starts_with(r"\\.\"))))
+            && !is_primary
         {
-            if !is_primary {
-                return 70;
-            }
+            return 70;
         }
 
         0

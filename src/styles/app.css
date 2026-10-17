@@ -490,22 +490,12 @@ body {
   height: 0;
 }
 
-.settings-description,
-.settings-save-status {
+.settings-description {
   margin: 0;
   font-size: 11px;
   line-height: 1.5;
   color: var(--muted-foreground);
   overflow-wrap: anywhere;
-}
-
-.settings-save-status[hidden],
-.settings-save-status:empty:not(.is-visible) {
-  display: none !important;
-}
-
-.settings-group > .settings-save-status {
-  padding: 4px 12px 8px;
 }
 
 .settings-group-row:has(input:disabled) {

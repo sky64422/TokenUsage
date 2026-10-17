@@ -17,8 +17,15 @@ export function mountProviders(root: HTMLElement): {
 } {
   let snaps: ProviderSnapshot[] = [];
   const activities = new Map<ProviderId, string>();
+  let lastDisplay = "";
 
   function render(): void {
+    // Freshness timestamps are retained in snapshots, but do not alter this card.
+    // Countdown text has its own timer and running-state changes remain visible.
+    const display = JSON.stringify(snaps.map(({as_of: _asOf, ...snapshot}) =>
+      [snapshot, activities.get(snapshot.provider_id) === "running"]));
+    if (display === lastDisplay) return;
+    lastDisplay = display;
     if (snaps.length === 0) {
       root.innerHTML = `<div class="empty-state">Waiting for usage…</div>`;
       return;

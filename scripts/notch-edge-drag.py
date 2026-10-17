@@ -57,19 +57,16 @@ with sync_playwright() as p:
     finally:pyautogui.mouseUp()
     finished();assert invoke('get_state')['settings']['notch']['edge']=='top'
     expect(page.locator('[data-id=claude]')).to_have_attribute('aria-pressed','false')
-    # Escape cancellation after transition, with mouse still down.
+    # Escape and arrows do not change or cancel an active mouse gesture.
     l=reset();before=invoke('get_state')['settings']['notch'];start(l)
     try:
         pyautogui.moveTo(2400,8,duration=.5);edge('top')
-        page.keyboard.press('ArrowRight')
-        assert invoke('get_state')['settings']['notch']==before, 'keyboard persisted during drag'
-        pyautogui.keyDown('esc')
-        try:
-            finished()
-            page.wait_for_function('()=>!window.lastCapture.element.hasPointerCapture(window.lastCapture.id)')
-        finally:pyautogui.keyUp('esc')
+        page.keyboard.press('ArrowRight');page.keyboard.press('Escape')
+        assert invoke('get_state')['settings']['notch']==before, 'saved before mouse release'
+        edge('top')
+        assert page.evaluate('()=>window.lastCapture.element.hasPointerCapture(window.lastCapture.id)')
     finally:pyautogui.mouseUp()
-    assert invoke('get_state')['settings']['notch']==before;edge('right')
+    finished();assert invoke('get_state')['settings']['notch']['edge']=='top'
     # A stale completion must not affect a later session.
     old_id=page.evaluate('()=>window.dragEvents.at(-1).id')
     l=reset();start(l)
@@ -111,4 +108,4 @@ with sync_playwright() as p:
         page.wait_for_function('()=>!window.lastCapture.element.hasPointerCapture(window.lastCapture.id)')
     finally:state.rmdir();backup.rename(state)
     reset()
-    print(json.dumps({'cancel_releases_capture':True,'no_keyboard_save_mid_drag':True,'outer_edge_monitor_crossing':True,'failed_drag_save_rollback':True,'right_top_left_right':True,'corner_retention':True,'bottom_overlays_taskbar':True,'release_outside':True,'escape_rollback':True,'stale_end_ignored':True,'negative_monitor_drag':True}))
+    print(json.dumps({'cancel_releases_capture':True,'no_keyboard_save_mid_drag':True,'outer_edge_monitor_crossing':True,'failed_drag_save_rollback':True,'right_top_left_right':True,'corner_retention':True,'bottom_overlays_taskbar':True,'release_outside':True,'escape_inactive':True,'stale_end_ignored':True,'negative_monitor_drag':True}))

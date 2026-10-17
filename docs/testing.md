@@ -1,5 +1,39 @@
 # Testing & coverage
 
+## Theme-switch geometry regression (2026-10-17)
+
+Run `python scripts/theme-transition-smoke.py --port 1524 --token` with Vite on 1524. It opens a short detail then settings, records all directed theme changes (including the first), holds saves pending, then rejects a save and immediately switches all settings tabs. The virtual-clock cases cover DPR 1/2 and content scale 1/0.92; they assert fixed notch/icon/card/tab/scroll rectangles, rollback selection and the absence of save notices.
+
+Normal Windows theme changes were already geometrically stable. A failed save's inline error did increase the shared height after a tab switch (440→460 px at full scale). That status now shares the existing theme-label row, keeping idle height unchanged and preserving full status text for assistive technology. Both this test and `scripts/settings-smoke.py` pass. Six native Windows theme changes also preserve the HWND, notch/icons and settings tabs; cross-project evidence is at `C:/dev/EconomyWarRoom/tmp/native-theme-jitter.json`. Only the isolated preview was used for TokenUsage native writes; the installed app was left alone.
+
+## Adaptive backdrop and unchanged displays (2026-10-17)
+
+Glass and Liquid capture at 30 Hz while changing, 10 Hz after 500 ms unchanged, and 4 Hz after 2 s unchanged. Dragging retains 60 Hz; reduced motion retains 4 Hz. Detail/reveal/drag transitions reset the cadence. Provider polling remains fixed at 5 s. Equal notch values/attributes skip DOM writes, and equal quota display data plus running state preserve the card DOM while retaining incoming snapshot timestamps. The independent countdown timer still updates reset text and urgency. The small black background behind notch percentages has been removed; text sizing and spacing are preserved.
+
+With Vite on 1524, run `python scripts/display-update-smoke.py --port 1524 --token`, `python scripts/liquid-cadence-smoke.py --port 1524` and again with `--theme glass`, plus `python scripts/liquid-renderer-smoke.py --port 1524`. Virtual-clock checks cover three worst-phase stop/resume cycles (first new pixels within 240 ms), 4/30/60 Hz capture, detail reopening, fold/reveal and countdown becoming urgent while timestamp-only snapshots preserve the card. Both full `npm test` and `npm run build` pass.
+
+Windows Liquid was also tested in the separate `com.tokenusage.notch-preview` profile with a small temporary striped window and three stop/resume cycles: first changes appeared in 79–121 ms, subsequent detail paints were about 30 Hz, settling to 8 total reads/s for two surfaces. No JS long task was observed in those short cycles. Pattern windows were closed and the separate preview was stopped; the installed app was left alone. Evidence: `C:/dev/EconomyWarRoom/tmp/adaptive-native-results.json`, local `tmp/liquid-cadence-liquid-results.json` and `tmp/liquid-cadence-glass-results.json`. These are short debug/renderer measurements, not presented-FPS, power or long-term leak claims. Wait for asynchronous detail placement before positioning a native test backdrop and keep process enumeration outside the sampling window.
+
+## Glass/Liquid update (2026-10-17)
+
+Zero refraction is now the permanent Liquid material. The renderer skips the SVG filter URL and distance/displacement-map allocation, while retaining capture, blur, saturation, brightness and the existing reflected rim. Glass still uses its own refraction. Both real-renderer lifecycle fixtures enforce no map builds/no SVG filter for Liquid and restore the Glass lens when switching. Both full suites and production builds pass; native debug inspection confirms a blur-only filter with no lens-image references.
+
+A short headless Edge A/B (baseline zero-strength SVG versus bypass, ABBA order, two six-second samples per 30/60 Hz workload, synthetic changing pixels, two surfaces) measured whole-machine-normalized browser-group CPU 2.12% -> 1.52% at 30 Hz and 2.87% -> 1.63% at 60 Hz. These are renderer-only workload reductions, not native whole-app CPU/power savings; desktop capture is not part of this fixture. A separate static screenshot comparison with animations disabled differs by at most 2/255 per channel (mean 0.0146/255), consistent with SVG color rounding. Evidence: `C:/dev/EconomyWarRoom/tmp/liquid-zero-benchmark.json` and `liquid-zero-pixels.json`.
+
+Latest visual adjustment: Glass notch rims now use Liquid's layered 3px reflective band plus a 0.7px specular edge, with a neutral high-contrast mirror gradient. Liquid's displacement is fixed at 0: SVG refraction and displacement-map generation are bypassed; blur and the colored rim remain. Both renderer smokes and production builds pass after the change; native notch screenshots were inspected (`tmp/final-glass-mirror-notch.png`).
+
+The final cache also keeps a reusable original BGRA buffer: an exact key/source match skips per-pixel conversion as well as IPC and painting. Reserved-alpha changes still use the alpha-insensitive RGBA comparison. Complete suites and coverage were rerun successfully. Fresh Liquid samples after this refinement are in `C:/dev/EconomyWarRoom/tmp/liquid-fast-cache-performance.json`; prior tables are earlier snapshots.
+
+Current verification: EconomyWarRoom 195 tests, TokenUsage 166 tests (one live vendor test ignored), both production frontend builds pass. EconomyWarRoom business coverage is 94.23%. Native first-open settings heights are 434/440 DIP respectively; raw RGBA and legacy BMP work, four-edge card changes keep the canvas fixed, automatic fold restores capture affinity, and Dark theme exit releases it. Native reference-material screenshots were visually inspected.
+
+Eight-second static samples on the existing desktop: Liquid CPU 1.95/3.01/4.41% for EconomyWarRoom rail/detail/settings and 1.82/2.42/3.22% for TokenUsage. Private commit was approximately 265-339 MiB for the live materials. Actual high-rate drag produced about 50-54 changed background paints/sec and 10-11% total-machine CPU in debug builds. rAF p99 was 7.1 ms at 144 Hz; this is not compositor-presented FPS. Earlier CPU/memory runs are not a controlled A/B comparison. Full samples, limitations and transient harness observations: `C:/dev/EconomyWarRoom/tmp/liquid-final-review.md` with `liquid-final-performance.json` / `liquid-final-drag.json`.
+
+Glass now uses the supplied neutral lock-screen reference. Liquid keeps its original material CSS and optics; both share the optimized capture worker. The tray has Show/Quit only; application keyboard handlers (including Escape drag cancellation and custom tab navigation) are removed. Native smoke reset helpers now use mouse controls. Earlier keyboard and painted-Glass evidence is historical.
+
+`npm test` includes raw RGBA/cache regressions. `python scripts/liquid-renderer-smoke.py --port PORT` with Vite on that port checks unchanged-frame suppression, a deliberately delayed detail frame across close/reopen, enabled Glass/Liquid switching, explicit visibility buffer release/resume and destroy. The delayed-frame case failed before detail-generation invalidation and passes after the fix. Both projects pass this real-renderer fixture without page errors. It mocks native pixels and does not prove desktop capture by itself.
+
+Windows validation uses isolated app profiles, existing desktop pixels and no fullscreen test backdrop. Raw RGBA avoids per-frame Blob/BMP/image decode; the dedicated worker reuses two DIB buffers and returns empty packets for unchanged pixels. The legacy BMP command remains available to diagnostics. Capture affinity stays excluded during pending reads and restores on leaving both live materials, reload or stop.
+
 ## Refactor verification (2026-10-04)
 
 - `npm test`: 148 passed (54 frontend, 57 Rust unit, 16 risk, 21 notch), one live AGY opt-in test ignored.
@@ -51,13 +85,13 @@ in the isolated preview; neither theme may change notch placement or input regio
 Liquid tests cover theme persistence, bounded capture regions, and the deferred-frame
 race when switching away and back before capture finishes. Native verification must
 use an external patterned window (a DOM backdrop cannot prove desktop refraction),
-check absence of foreground in the captured source, Dark/Glass capture rejection,
+check absence of foreground in the captured source, Dark capture rejection,
 reload restoration, and actual drag cadence. Do not infer 60 fps from the configured
 frame interval alone.
 
 Native smoke scripts share `scripts/notch_test_support.py`: they assert the preview
 identifier before setting fixture preferences, enable all four providers and hover,
-and reset details using Escape. They cover the current provider cards and right-click
+and reset details using mouse controls. They cover the current provider cards and right-click
 toggle behavior. The auto-hide smoke deliberately turns always-show off.
 `python scripts/notch-hover-stability.py --port 9223 --fixture` prepares two synthetic
 quota cards of different heights in that same isolated preview. Without `--fixture`,
@@ -133,7 +167,7 @@ npm run build
 `npm test` also runs `src-tauri/tests/notch.rs`: physical edge anchoring,
 100/125/150/200% scaling math, negative origins, taskbar fallback, transparent
 corners and bridges, settings migration and failed persistence rollback.
-`src/ui/notch-state.test.ts` covers pin/settings/Escape, provider removal,
+`src/ui/notch-state.test.ts` covers pin/settings/close transitions, provider removal,
 fake-clock close cancellation, missing/zero/overage,
 and secondary quota warnings.
 

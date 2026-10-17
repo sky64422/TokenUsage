@@ -31,8 +31,6 @@ export const SETTINGS_PANEL_HEIGHT = 440;
 const PROVIDER_VISIBLE = "표시";
 const PROVIDER_HIDDEN = "숨김";
 const PROVIDER_MINIMUM = "최소 1개 서비스를 표시해야 합니다";
-const SAVE_FAILED = "저장하지 못했습니다. 다시 시도해 주세요.";
-const SAVE_RESTORED = "저장 실패 · 이전 설정으로 복원됨";
 const UPDATE_CHECK = "업데이트 확인";
 const UPDATE_RESTART = "재시작하여 적용";
 const DIAG_IDLE = "로그 복사";
@@ -126,7 +124,6 @@ export function mountSettingsPanel(
               <span class="theme-swatch theme-swatch-liquid" aria-hidden="true"></span>리퀴드
             </button>
           </div>
-          <p class="settings-save-status" id="theme-save-status" role="status" hidden></p>
         </div>
         <div class="settings-section">
           <span class="settings-label">불투명도</span>
@@ -182,7 +179,6 @@ export function mountSettingsPanel(
             ${providerCard("agy", settings.agy.enabled !== false)}
           </div>
         </div>
-        <p class="settings-save-status" id="provider-save-status" role="status" aria-live="polite"></p>
       </div>
 
       <div class="settings-tab-panel" id="tab-panel-general" role="tabpanel" aria-labelledby="tab-btn-general" hidden>
@@ -290,26 +286,12 @@ export function mountSettingsPanel(
   tabAppearance.addEventListener("click", () => switchTab("appearance"));
   tabModels.addEventListener("click", () => switchTab("models"));
   tabGeneral.addEventListener("click", () => switchTab("general"));
-  const tabs = [tabAppearance, tabModels, tabGeneral];
-  const tabKeys: TabKey[] = ["appearance", "models", "general"];
-  tabs.forEach((tab, index) => tab.addEventListener("keydown", (event) => {
-    let next: number;
-    if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
-    else if (event.key === "ArrowLeft") next = (index + tabs.length - 1) % tabs.length;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = tabs.length - 1;
-    else return;
-    event.preventDefault();
-    switchTab(tabKeys[next]);
-    tabs[next].focus();
-  }));
   switchTab("appearance");
 
   let activeTheme: AppTheme = settings.theme ?? "dark";
   let themeSaving = false;
   const themePicker = root.querySelector<HTMLElement>(".settings-theme-picker")!;
   const themeButtons = root.querySelectorAll<HTMLButtonElement>("[data-theme-option]");
-  const themeStatus = root.querySelector<HTMLElement>("#theme-save-status")!;
   function paintTheme() {
     themePicker.setAttribute("aria-busy", String(themeSaving));
     themeButtons.forEach(button => {
@@ -323,14 +305,12 @@ export function mountSettingsPanel(
     const previous = activeTheme;
     activeTheme = next;
     themeSaving = true;
-    themeStatus.hidden = true;
     paintTheme();
     try {
       await handlers.onTheme(next);
-    } catch {
+    } catch (error) {
       activeTheme = previous;
-      themeStatus.textContent = SAVE_RESTORED;
-      themeStatus.hidden = false;
+      console.error("Theme save failed", error);
     } finally {
       themeSaving = false;
       paintTheme();
@@ -375,13 +355,6 @@ export function mountSettingsPanel(
     const input = root.querySelector<HTMLInputElement>(`#${id}`)!;
     input.checked = initial;
     const row = input.closest<HTMLElement>(".settings-group-row")!;
-    const status = document.createElement("p");
-    status.className = "settings-save-status";
-    status.id = `${id}-status`;
-    status.setAttribute("role", "status");
-    status.hidden = true;
-    row.after(status);
-    input.setAttribute("aria-describedby", status.id);
     input.disabled = !save;
     input.addEventListener("change", async () => {
       const previous = !input.checked;
@@ -391,13 +364,10 @@ export function mountSettingsPanel(
       try {
         await save!(input.checked);
         row.dataset.saveState = "saved";
-        status.hidden = true;
-        status.textContent = "";
-      } catch {
+      } catch (error) {
         input.checked = previous;
         row.dataset.saveState = "restored";
-        status.hidden = false;
-        status.textContent = SAVE_RESTORED;
+        console.error(`${id} save failed`, error);
       } finally {
         input.disabled = false;
         row.setAttribute("aria-busy", "false");
@@ -536,16 +506,12 @@ export function mountSettingsPanel(
         return;
       }
       providerSaving = true;
-      const status = root.querySelector<HTMLElement>("#provider-save-status")!;
-      status.textContent = "";
-      status.classList.remove("is-visible");
       setProviderOn(id, next);
       try {
         await handlers.onProviderEnabled(id, next);
-      } catch {
+      } catch (error) {
         setProviderOn(id, !next);
-        status.textContent = SAVE_FAILED;
-        status.classList.add("is-visible");
+        console.error("Provider settings save failed", error);
       } finally {
         providerSaving = false;
         syncProviderLocks();

@@ -23,14 +23,15 @@ with sync_playwright() as p:
   page.locator('[data-id=claude]').dispatch_event('pointerenter')
   expect(page.locator('.notch-detail')).to_be_visible()
   reset();expect(page.locator('.notch-detail')).to_be_hidden()
- # Keyboard: Escape from settings retains pinned provider, next Escape closes it.
+ # Removed shortcuts must leave settings open; mouse close restores the pinned card.
  page.locator('[data-id=claude]').evaluate('(e)=>e.click()')
  page.locator('.notch').dispatch_event('contextmenu')
  page.keyboard.press('Escape')
+ expect(page.locator('.detail-settings')).to_be_visible()
+ page.locator('#btn-close-settings').dispatch_event('click')
  expect(page.locator('.detail-settings')).to_be_hidden()
  expect(page.locator('.notch-detail')).to_be_visible()
- page.keyboard.press('Escape')
- expect(page.locator('.notch-detail')).to_be_hidden()
+ reset();expect(page.locator('.notch-detail')).to_be_hidden()
  # Disabling the selected provider must leave Settings open.
  page.locator('[data-id=claude]').evaluate('(e)=>e.click()')
  page.locator('.notch').dispatch_event('contextmenu')
@@ -74,9 +75,9 @@ with sync_playwright() as p:
  expect(page.locator('.detail-settings')).to_be_visible()
  pyautogui.click(button='right')
  expect(page.locator('.detail-settings')).to_be_hidden()
- page.keyboard.press('Escape')
- page.locator('.notch').focus();page.keyboard.press('Shift+F10')
- expect(page.locator('.detail-settings')).to_be_visible()
+ reset()
+ page.keyboard.press('Shift+F10')
+ expect(page.locator('.detail-settings')).to_be_hidden()
  reset()
  # Move to real negative-coordinate display, then recover a missing monitor hint.
  areas=invoke('get_notch_monitors');negative=next(m for m in areas if m['bounds']['x']<0)
@@ -111,4 +112,4 @@ with sync_playwright() as p:
  page.locator('[data-id=claude]').dispatch_event('pointerenter')
  assert page.locator('.notch-detail').evaluate('(e)=>getComputedStyle(e).animationName')=='none'
  page.emulate_media(reduced_motion='no-preference');reset()
- print(json.dumps({'whole_notch_drag_both_axes':True,'ring_click_threshold':True,'native_right_click_settings':True,'keyboard_settings':True,'repeat_open_close':20,'pin_escape':True,'provider_disable_keeps_settings':True,'one_provider_lock':True,'negative_monitor':True,'missing_monitor_fallback':True,'failed_drag_save_recovers':True,'reduced_motion':True}))
+ print(json.dumps({'whole_notch_drag_both_axes':True,'ring_click_threshold':True,'native_right_click_settings':True,'keyboard_shortcuts_inactive':True,'repeat_open_close':20,'mouse_close':True,'provider_disable_keeps_settings':True,'one_provider_lock':True,'negative_monitor':True,'missing_monitor_fallback':True,'failed_drag_save_recovers':True,'reduced_motion':True}))

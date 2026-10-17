@@ -8,7 +8,6 @@ import { mountSettingsPanel } from "./settings-panel";
 import { mountNotch, position } from "./notch";
 import { createNotchSurface } from "./notch-surface";
 import { mountNotchDrag } from "./notch-drag";
-import { mountSurfaceFinish } from "./surface-finish";
 import { mountLiquidGlass } from "./liquid-glass";
 import type { DragNotice } from "./notch-drag";
 import {
@@ -77,7 +76,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     fail,
   });
   const closeDelay = createCloseDelay(() => {
-    if (drag.sessionId === null && !document.activeElement?.matches(":focus-visible"))
+    if (drag.sessionId === null)
       dispatch({ type: "leave" });
   });
   const notch = mountNotch(rail, {
@@ -97,12 +96,12 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   const providers = mountProviders(
     root.querySelector<HTMLElement>(".quota-root")!,
   );
-  const surfaceFinish = mountSurfaceFinish([rail, detail]);
   const liquidGlass = mountLiquidGlass(shell, rail, detail);
+  unlisteners.push(await listen<boolean>("widget-visibility", ({payload}) => liquidGlass.setVisible(payload)));
   function applyAppearanceClasses(st: AppSettings) {
     shell.dataset.theme = st.theme ?? "dark";
-    surfaceFinish.setEnabled(st.theme === "glass");
-    liquidGlass.setEnabled(st.theme === "liquid");
+
+    liquidGlass.setEnabled(st.theme === "glass" || st.theme === "liquid");
     const showAnim = st.show_orbit !== false || st.show_icon_glow !== false;
     rail.classList.toggle("hide-orbit", !showAnim);
     rail.classList.toggle("hide-icon-glow", !showAnim);
@@ -139,7 +138,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       },
       onOpacityChange: (opacity) => {
         applyPanelOpacity(shell, opacity);
-        void invoke("set_opacity", { opacity }).catch(fail);
+        void invoke("set_opacity", { opacity }).catch(error => console.error("Opacity save failed", error));
       },
       onProviderEnabled: async (provider, isEnabled) => {
         try {
@@ -155,7 +154,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         } catch (e) {
           persisted = await invoke<PersistedState>("get_state").catch(() => persisted);
           refreshView();
-          fail(e);
           throw e;
         }
       },
@@ -267,18 +265,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     el.addEventListener("pointerleave", () => {
       if (!drag.dragging) closeDelay.schedule();
     }, eventOptions);
-    el.addEventListener("focusin", closeDelay.cancel, eventOptions);
-    el.addEventListener("focusout", closeDelay.schedule, eventOptions);
   }
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    e.preventDefault();
-    if (drag.sessionId !== null) { drag.finish(true); return; }
-    const id = interaction.provider;
-    dispatch({ type: "escape" });
-    // Focus recovery must not reopen a detail via the focus handler.
-    notch.focus(id);
-  }, eventOptions);
   unlisteners.push(await listen<DragNotice>("notch-drag", ({ payload }) => drag.notice(payload)));
   function openSettings() {
     if (drag.sessionId !== null) return;
@@ -296,18 +283,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   detail.addEventListener("contextmenu", (e) => {
     e.preventDefault();
   }, eventOptions);
-  rail.addEventListener("keydown", (e) => {
-    if (e.key === "Tab" && rail.classList.contains("is-folded")) {
-      e.preventDefault();
-      void invoke<boolean>("set_notch_focus", { focused: true }).then(notch.reveal).catch(fail);
-      return;
-    }
-    if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
-      e.preventDefault();
-      openSettings();
-      return;
-    }
-  }, eventOptions);
   unlisteners.push(await listen<NotchLayout>("notch-layout", (ev) => paintLayout(ev.payload)));
   unlisteners.push(await listen<boolean>("notch-reveal", (ev) => notch.reveal(ev.payload)));
   function updateActivities(acts: ProviderActivity[]) {
@@ -317,14 +292,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     if (interaction.provider) render();
   }
   unlisteners.push(await listen<ProviderActivity[]>("provider-activity", (ev) => updateActivities(ev.payload)));
-  rail.addEventListener("focusin", () => {
-    if (document.activeElement?.matches(":focus-visible"))
-      void invoke<boolean>("set_notch_focus", { focused: true }).then(notch.reveal).catch(fail);
-  }, eventOptions);
-  rail.addEventListener("focusout", () => {
-    if (!rail.contains(document.activeElement))
-      void invoke<boolean>("set_notch_focus", { focused: false }).then(notch.reveal).catch(fail);
-  }, eventOptions);
   unlisteners.push(await listen<ProviderSnapshot[]>("snapshots-updated", (ev) => {
     snaps = ev.payload;
     refreshView();
@@ -351,7 +318,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     events.abort();
     surface.destroy();
     drag.destroy();
-    surfaceFinish.destroy();
     liquidGlass.destroy();
     settings.destroy();
     for (const unlisten of unlisteners) unlisten();

@@ -74,14 +74,8 @@ with sync_playwright() as p:
         reset_notch(page)
         folded(True)
 
-    page.locator('.notch').focus()
-    page.keyboard.press('Tab')
-    folded(False)
     page.keyboard.press('Shift+F10')
-    expect(page.locator('.detail-settings')).to_be_visible()
-    page.keyboard.press('Escape')
-    page.evaluate('()=>document.activeElement?.blur()')
-    invoke('set_notch_focus', {'focused': False})
+    expect(page.locator('.detail-settings')).to_be_hidden()
     hover_rest(layout)
     page.evaluate('async()=>window.__TAURI__.event.emit("provider-activity",[{provider_id:"codex",state:"running",observed_at:null},{provider_id:"claude",state:"recent",observed_at:null}])')
     orbit = page.locator('[data-id=codex] .activity-orbit')
@@ -96,4 +90,4 @@ with sync_playwright() as p:
     page.evaluate('async()=>window.__TAURI__.event.emit("provider-activity",[{provider_id:"codex",state:"idle",observed_at:null}])')
     expect(orbit).not_to_be_visible()
     assert not errors, errors
-    print(json.dumps({'four_edges': True, 'hover_cycles': 12, 'stable_native_geometry': True, 'settings_hold': True, 'keyboard': True, 'activity_and_reduced_motion': True, 'page_errors': errors}))
+    print(json.dumps({'four_edges': True, 'hover_cycles': 12, 'stable_native_geometry': True, 'settings_hold': True, 'keyboard_shortcuts_inactive': True, 'activity_and_reduced_motion': True, 'page_errors': errors}))

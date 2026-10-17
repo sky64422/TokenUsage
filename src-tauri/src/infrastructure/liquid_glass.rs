@@ -1,8 +1,9 @@
-//! In-memory Windows backdrop capture, enabled only by the Liquid theme.
+//! In-memory Windows backdrop capture, enabled by the Glass and Liquid themes.
 //! Capture -> web lens follows https://github.com/molian313/dynamic-island;
-//! this probe uses raw BMP IPC instead of its JPEG/base64 dependencies.
+//! raw RGBA IPC avoids per-frame decoding; legacy probes can still request BMP.
 
 use crate::domain::types::AppTheme;
+use super::liquid_capture::{CaptureWorker, FrameKey};
 use crate::state::AppHandleState;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -13,12 +14,14 @@ const CAPTURE_LEASE: Duration = Duration::from_millis(750);
 const LEASE_CHECK: Duration = Duration::from_millis(250);
 
 #[derive(Default)]
-pub struct LiquidBackdrop(Mutex<BackdropState>);
+pub struct LiquidBackdrop(Mutex<BackdropState>, CaptureWorker);
 
 #[derive(Default)]
 struct BackdropState {
     lease: Option<Lease>,
     watching: bool,
+    in_flight: usize,
+    release_pending: bool,
 }
 struct Lease {
     hwnd: usize,
@@ -39,12 +42,32 @@ pub fn reset_on_load(view: &tauri::Webview) {
 pub fn release_liquid_backdrop(window: WebviewWindow) -> Result<(), String> {
     if let Some(state) = window.try_state::<LiquidBackdrop>() {
         let mut guard = state.0.lock().map_err(|e| e.to_string())?;
+        if guard.in_flight > 0 { guard.release_pending = true; return Ok(()); }
         if let Some(lease) = &guard.lease {
             set_affinity(lease.hwnd, lease.original)?;
             guard.lease = None;
         }
+        guard.release_pending = false;
+        state.1.reset()?;
     }
     Ok(())
+}
+
+// A stop/reload cannot restore capture affinity halfway through an in-flight read.
+#[cfg(windows)]
+struct InFlight(WebviewWindow);
+#[cfg(windows)]
+impl Drop for InFlight {
+    fn drop(&mut self) {
+        let state = self.0.state::<LiquidBackdrop>();
+        let pending = match state.0.lock() {
+            Ok(mut guard) => { guard.in_flight = guard.in_flight.saturating_sub(1); guard.release_pending && guard.in_flight == 0 }
+            Err(error) => { eprintln!("Liquid completion: {error}"); false }
+        };
+        if pending {
+            if let Err(error) = release_liquid_backdrop(self.0.clone()) { eprintln!("Liquid deferred release: {error}"); }
+        }
+    }
 }
 
 #[cfg(windows)]
@@ -74,6 +97,7 @@ fn watch_lease(window: WebviewWindow) {
         std::thread::sleep(LEASE_CHECK);
         let state = window.state::<LiquidBackdrop>();
         let mut guard = state.0.lock().unwrap_or_else(|p| p.into_inner());
+        if guard.in_flight > 0 { continue; }
         if guard
             .lease
             .as_ref()
@@ -90,6 +114,7 @@ fn watch_lease(window: WebviewWindow) {
             }
             guard.lease = None;
         }
+        if let Err(error) = state.1.reset() { eprintln!("Liquid reset: {error}"); }
         guard.watching = false;
         break;
     });
@@ -113,16 +138,22 @@ fn valid_region(
 }
 
 #[tauri::command]
-pub fn capture_liquid_backdrop(
+#[allow(clippy::too_many_arguments)] // Preserve the existing flat Tauri capture IPC contract.
+pub async fn capture_liquid_backdrop(
     window: WebviewWindow,
     state: State<'_, AppHandleState>,
     x: u32,
     y: u32,
     width: u32,
     height: u32,
+    surface: Option<u8>,
+    generation: Option<u64>,
 ) -> Result<tauri::ipc::Response, String> {
-    if state.core.get_state().settings.theme != AppTheme::Liquid {
-        return Err("Desktop capture requires the Liquid theme".into());
+    if !state.core.is_visible() || !matches!(state.core.get_state().settings.theme, AppTheme::Glass | AppTheme::Liquid) {
+        return Err("Desktop capture requires a live glass theme".into());
+    }
+    if surface.is_some_and(|s| s > 1) || (surface.is_some() && generation.is_none()) {
+        return Err("Invalid Liquid surface generation".into());
     }
     let size = window.inner_size().map_err(|e| e.to_string())?;
     if !valid_region(x, y, width, height, size.width, size.height)? {
@@ -141,6 +172,7 @@ pub fn capture_liquid_backdrop(
         let pos = window.inner_position().map_err(|e| e.to_string())?;
         // Resolve Tauri getters before the mutex: getters can marshal to the UI thread.
         let backdrop = window.state::<LiquidBackdrop>();
+        {
         let mut guard = backdrop.0.lock().map_err(|e| e.to_string())?;
         if guard.lease.is_none() {
             let mut original = 0;
@@ -164,115 +196,19 @@ pub fn capture_liquid_backdrop(
             }
         }
         guard.lease.as_mut().unwrap().renewed = Instant::now();
-        // Capture coordinates remain signed for displays left/above the primary.
-        let bytes = unsafe { capture(pos.x + x as i32, pos.y + y as i32, width, height) }
+        guard.in_flight += 1;
+        }
+        let _flight = InFlight(window.clone());
+        // The worker owns its GDI buffers. No UI-thread capture or mutex across await.
+        let bytes = backdrop.1.frame(FrameKey {
+            x: pos.x + x as i32, y: pos.y + y as i32, width, height,
+            generation: generation.unwrap_or(0),
+        }, surface).await
             .inspect_err(|e| state.core.note_diag(e.clone()))?;
         Ok(tauri::ipc::Response::new(bytes))
     }
     #[cfg(not(windows))]
     Err("Live Liquid backdrop requires Windows".into())
-}
-
-#[cfg(windows)]
-unsafe fn capture(x: i32, y: i32, width: u32, height: u32) -> Result<Vec<u8>, String> {
-    use windows::Win32::Graphics::Gdi::*;
-
-    // Always release GDI resources, including on a failed blit/read.
-    struct CaptureResources {
-        desktop: HDC,
-        memory: HDC,
-        bitmap: HBITMAP,
-        previous: HGDIOBJ,
-    }
-    impl Drop for CaptureResources {
-        fn drop(&mut self) {
-            unsafe {
-                if !self.previous.0.is_null() {
-                    SelectObject(self.memory, self.previous);
-                }
-                if !self.bitmap.0.is_null() {
-                    let _ = DeleteObject(self.bitmap.into());
-                }
-                if !self.memory.0.is_null() {
-                    let _ = DeleteDC(self.memory);
-                }
-                if !self.desktop.0.is_null() {
-                    ReleaseDC(None, self.desktop);
-                }
-            }
-        }
-    }
-    let mut resources = CaptureResources {
-        desktop: GetDC(None),
-        memory: HDC::default(),
-        bitmap: HBITMAP::default(),
-        previous: HGDIOBJ::default(),
-    };
-    if resources.desktop.0.is_null() {
-        return Err("Glass GetDC failed".into());
-    }
-    resources.memory = CreateCompatibleDC(Some(resources.desktop));
-    if resources.memory.0.is_null() {
-        return Err("Glass CreateCompatibleDC failed".into());
-    }
-    resources.bitmap = CreateCompatibleBitmap(resources.desktop, width as i32, height as i32);
-    if resources.bitmap.0.is_null() {
-        return Err("Glass CreateCompatibleBitmap failed".into());
-    }
-    resources.previous = SelectObject(resources.memory, resources.bitmap.into());
-    if resources.previous.0.is_null() || resources.previous.0 as isize == -1 {
-        resources.previous = HGDIOBJ::default();
-        return Err("Glass SelectObject failed".into());
-    }
-    BitBlt(
-        resources.memory,
-        0,
-        0,
-        width as i32,
-        height as i32,
-        Some(resources.desktop),
-        x,
-        y,
-        SRCCOPY,
-    )
-    .map_err(|e| format!("Glass BitBlt: {e}"))?;
-    SelectObject(resources.memory, resources.previous);
-    resources.previous = HGDIOBJ::default();
-    let mut info = BITMAPINFO {
-        bmiHeader: BITMAPINFOHEADER {
-            biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
-            biWidth: width as i32,
-            biHeight: -(height as i32),
-            biPlanes: 1,
-            biBitCount: 32,
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    const BMP_HEADER_SIZE: usize = 54;
-    let pixel_bytes = (width * height * 4) as usize;
-    let mut bytes = vec![0u8; BMP_HEADER_SIZE + pixel_bytes];
-    if GetDIBits(
-        resources.desktop,
-        resources.bitmap,
-        0,
-        height,
-        Some(bytes[BMP_HEADER_SIZE..].as_mut_ptr().cast()),
-        &mut info,
-        DIB_RGB_COLORS,
-    ) != height as i32
-    {
-        return Err("Glass GetDIBits failed".into());
-    }
-    bytes[0..2].copy_from_slice(b"BM");
-    bytes[2..6].copy_from_slice(&((BMP_HEADER_SIZE + pixel_bytes) as u32).to_le_bytes());
-    bytes[10..14].copy_from_slice(&(BMP_HEADER_SIZE as u32).to_le_bytes());
-    bytes[14..18].copy_from_slice(&40u32.to_le_bytes());
-    bytes[18..22].copy_from_slice(&(width as i32).to_le_bytes());
-    bytes[22..26].copy_from_slice(&(-(height as i32)).to_le_bytes());
-    bytes[26..28].copy_from_slice(&1u16.to_le_bytes());
-    bytes[28..30].copy_from_slice(&32u16.to_le_bytes());
-    Ok(bytes)
 }
 
 #[cfg(test)]

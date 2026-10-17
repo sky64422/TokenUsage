@@ -504,11 +504,8 @@ fn pump_drag(app: &AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     {
         use windows::Win32::UI::Input::KeyboardAndMouse::{
-            GetAsyncKeyState, VK_ESCAPE, VK_LBUTTON,
+            GetAsyncKeyState, VK_LBUTTON,
         };
-        if unsafe { GetAsyncKeyState(VK_ESCAPE.0 as i32) } < 0 {
-            return complete_drag(app, id, true, None);
-        }
         if unsafe { GetAsyncKeyState(VK_LBUTTON.0 as i32) } >= 0 {
             return complete_drag(app, id, false, None);
         }

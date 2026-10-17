@@ -166,20 +166,16 @@ pub async fn check_for_updates(app: AppHandle) -> Result<bool, String> {
     crate::infrastructure::updater::check_and_install_update(&app).await
 }
 
-pub fn toggle_visibility_from_handle(app: &AppHandle) {
+pub fn show_from_handle(app: &AppHandle) {
     let Some(state) = app.try_state::<AppHandleState>() else {
         return;
     };
     let Ok(window) = window_ctl::main_window(app) else {
         return;
     };
-    if state.core.is_visible() {
-        let _ = window_ctl::hide_window(&window);
-        state.core.set_visible(false);
-        return;
-    }
     let _ = window_ctl::show_window(&window);
     state.core.set_visible(true);
+    let _ = app.emit("widget-visibility", true);
     let app = app.clone();
     let core = Arc::clone(&state.core);
     tauri::async_runtime::spawn(async move {
