@@ -231,6 +231,7 @@
   flex-direction: column;
 }
 .notch-cell {
+  --ring-label-gap: 3px;
   position: relative;
   flex: none;
   width: var(--notch-depth);
@@ -243,7 +244,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: var(--ring-label-gap);
   cursor: pointer;
 }
 .notch-cell[hidden],
@@ -263,15 +264,26 @@
   transition: transform 0.08s ease-out;
 }
 .ring-wrap svg {
+  --ring-stroke-width: 3.5;
   display: block;
   width: 100%;
   height: 100%;
   overflow: visible;
 }
 .ring-track,
-.ring-fill {
+.ring-fill,
+.ring-segments {
   fill: none;
-  stroke-width: 3.5;
+  stroke-width: var(--ring-stroke-width);
+}
+.ring-segments {
+  stroke: #fff;
+  stroke-linecap: round;
+  /* Account for both round caps, leaving about 1px of transparent space. */
+  stroke-dasharray: calc(var(--ring-quarter-length) - var(--ring-quarter-gap)) var(--ring-quarter-gap);
+  stroke-dashoffset: calc(var(--ring-quarter-gap) / -2);
+  transform: rotate(-90deg);
+  transform-origin: center;
 }
 .ring-track {
   stroke: rgba(255, 255, 255, 0.17);
@@ -279,7 +291,7 @@
 .ring-fill {
   stroke: currentColor;
   stroke-linecap: round;
-  transform: rotate(-90deg);
+  stroke-dashoffset: calc(var(--ring-quarter-gap) / -2);
   transform-origin: center;
   stroke-dasharray: 0 100;
   /* Bencho physics: Delicate spring mass tension (Quiet Luxury ease) */
@@ -308,7 +320,9 @@
   gap: 1px;
 }
 .ring-pct {
-  font-size: max(12px, calc(13px * var(--notch-scale, 1)));
+  --ring-pct-font-min: 11.5px;
+  --ring-pct-font-base: 12.5px;
+  font-size: max(var(--ring-pct-font-min), calc(var(--ring-pct-font-base) * var(--notch-scale, 1)));
   font-weight: 600;
   line-height: max(14px, calc(16px * var(--notch-scale, 1)));
   font-variant-numeric: tabular-nums;
@@ -321,6 +335,9 @@
 }
 .level-ok {
   color: var(--ok);
+}
+.level-caution {
+  color: var(--caution);
 }
 .level-warn {
   color: var(--warn);

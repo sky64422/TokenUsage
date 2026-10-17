@@ -173,6 +173,9 @@ body {
 .provider-pct.level-ok {
   color: var(--ok);
 }
+.provider-pct.level-caution {
+  color: var(--caution);
+}
 .provider-pct.level-warn {
   color: var(--warn);
 }
@@ -306,7 +309,10 @@ body {
     0 0 0 0.5px rgba(255, 255, 255, calc(0.16 * var(--accent-opacity))) inset,
     0 0 9px rgba(var(--ok-rgb), calc(0.22 * var(--accent-opacity)));
 }
+.track-fill.level-caution,
 .track-fill.level-warn {
+  --usage-fill-rgb: var(--warn-rgb);
+  --usage-fill-bright-rgb: var(--warn-bright-rgb);
   color: var(--warn);
   background: linear-gradient(
       180deg,
@@ -315,13 +321,18 @@ body {
     ),
     linear-gradient(
       90deg,
-      rgba(var(--warn-rgb), calc(0.85 * var(--accent-opacity))) 0%,
-      rgba(var(--warn-bright-rgb), var(--accent-opacity)) 55%,
-      rgba(var(--warn-rgb), var(--accent-opacity)) 100%
+      rgba(var(--usage-fill-rgb), calc(0.85 * var(--accent-opacity))) 0%,
+      rgba(var(--usage-fill-bright-rgb), var(--accent-opacity)) 55%,
+      rgba(var(--usage-fill-rgb), var(--accent-opacity)) 100%
     );
   box-shadow:
     0 0 0 0.5px rgba(255, 255, 255, calc(0.14 * var(--accent-opacity))) inset,
-    0 0 11px rgba(var(--warn-rgb), calc(0.32 * var(--accent-opacity)));
+    0 0 11px rgba(var(--usage-fill-rgb), calc(0.32 * var(--accent-opacity)));
+}
+.track-fill.level-caution {
+  --usage-fill-rgb: var(--caution-rgb);
+  --usage-fill-bright-rgb: var(--caution-bright-rgb);
+  color: var(--caution);
 }
 .track-fill.level-critical,
 .track-fill.level-over {

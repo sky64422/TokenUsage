@@ -2,6 +2,19 @@ import { headline } from "./notch-state";
 import { PROVIDER_IDS } from "./types";
 import type { ProviderId, ProviderSnapshot, ProviderActivity, NotchLayout, Rect } from "./types";
 import { PROVIDER_CATALOG } from "./provider-catalog";
+import { clampPct } from "./format";
+
+const RING_SEGMENT_COUNT = 4;
+const RING_QUARTER_LENGTH = 100 / RING_SEGMENT_COUNT;
+const RING_QUARTER_GAP = 4;
+const RING_ARC_LENGTH = RING_QUARTER_LENGTH - RING_QUARTER_GAP;
+
+export function ringSegmentFills(percent: number): number[] {
+  const used = clampPct(percent) ?? 0;
+  return Array.from({ length: RING_SEGMENT_COUNT }, (_, index) =>
+    Math.max(0, Math.min(1, (used - index * RING_QUARTER_LENGTH) / RING_QUARTER_LENGTH)) * RING_ARC_LENGTH,
+  );
+}
 
 export function mountNotch(
   root: HTMLElement,
@@ -42,11 +55,17 @@ export function mountNotch(
     </div>`;
   const cells = root.querySelector<HTMLElement>(".notch-cells")!;
   const buttons = new Map<ProviderId, HTMLButtonElement>();
+  const fillArcs = Array.from({ length: RING_SEGMENT_COUNT }, (_, index) =>
+    `<circle class="ring-fill" cx="22" cy="22" r="19" pathLength="100" visibility="hidden" style="transform:rotate(${-90 + index * 360 / RING_SEGMENT_COUNT}deg)"/>`,
+  ).join("");
   for (const id of PROVIDER_IDS) {
     const b = document.createElement("button");
     b.className = "notch-cell";
     b.dataset.id = id;
-    b.innerHTML = `<span class="ring-wrap"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="ring-track" cx="22" cy="22" r="19"/><circle class="ring-fill" cx="22" cy="22" r="19" pathLength="100"/></svg><img src="${PROVIDER_CATALOG[id].mark}" alt="" draggable="false"/><span class="ring-status" hidden>!</span></span><span class="ring-meta"><span class="ring-pct">—</span></span>`;
+    b.innerHTML = `<span class="ring-wrap"><svg viewBox="0 0 44 44" aria-hidden="true" style="--ring-quarter-length:${RING_QUARTER_LENGTH};--ring-quarter-gap:${RING_QUARTER_GAP}">
+      <defs><mask id="ring-segments-${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="44" height="44"><circle class="ring-segments" cx="22" cy="22" r="19" pathLength="100"/></mask></defs>
+      <g mask="url(#ring-segments-${id})"><circle class="ring-track" cx="22" cy="22" r="19"/>${fillArcs}</g>
+      </svg><img src="${PROVIDER_CATALOG[id].mark}" alt="" draggable="false"/><span class="ring-status" hidden>!</span></span><span class="ring-meta"><span class="ring-pct">—</span></span>`;
     b.addEventListener("pointerenter", () => callbacks.hover(id));
     const orbit = document.createElement("span");
     orbit.className = "activity-orbit";
@@ -129,9 +148,14 @@ export function mountNotch(
         if (b.className !== className) b.className = className;
         const percent = b.querySelector(".ring-pct")!;
         if (percent.textContent !== h.text) percent.textContent = h.text;
-        const fill = b.querySelector<SVGElement>(".ring-fill")!;
-        const dasharray = `${h.fill} 100`;
-        if (fill.style.strokeDasharray !== dasharray) fill.style.strokeDasharray = dasharray;
+        const segments = ringSegmentFills(h.fill);
+        b.querySelectorAll<SVGElement>(".ring-fill").forEach((fill, index) => {
+          const dasharray = `${segments[index]} 100`;
+          if (fill.style.strokeDasharray !== dasharray) fill.style.strokeDasharray = dasharray;
+          // Empty rounded arcs otherwise paint dots at unused quarter boundaries.
+          const visibility = segments[index] > 0 ? "visible" : "hidden";
+          if (fill.getAttribute("visibility") !== visibility) fill.setAttribute("visibility", visibility);
+        });
         const status = b.querySelector<HTMLElement>(".ring-status")!;
         if (status.hidden !== !h.degraded) status.hidden = !h.degraded;
         const title = h.degraded

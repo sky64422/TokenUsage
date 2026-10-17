@@ -16,6 +16,8 @@
   --ok-bright-rgb: 100, 213, 129;
   --warn-rgb: 255, 159, 10;
   --warn-bright-rgb: 255, 214, 10;
+  --caution-rgb: var(--warn-bright-rgb);
+  --caution-bright-rgb: 255, 229, 102;
   --critical-rgb: 255, 99, 89;
   --critical-bright-rgb: 255, 132, 124;
   /* Warm coral for reset countdown — readable without full alarm red */
@@ -69,6 +71,7 @@
   --text-tertiary: var(--subtle-foreground);
   /* Srgb baseline fallback */
   --ok: var(--success);
+  --caution: rgba(var(--caution-rgb), var(--accent-opacity));
   --warn: var(--warning);
   --critical: var(--destructive);
   --reset: rgba(
@@ -81,6 +84,7 @@
      flare while critical reds sink into dark background. */
   @supports (color: color-mix(in oklch, white, black)) {
     --ok: color-mix(in oklch, oklch(0.78 0.165 142.5) calc(100% * var(--accent-opacity)), transparent);
+    --caution: color-mix(in oklch, oklch(0.84 0.16 95) calc(100% * var(--accent-opacity)), transparent);
     --warn: color-mix(in oklch, oklch(0.77 0.175 67.5) calc(100% * var(--accent-opacity)), transparent);
     --critical: color-mix(in oklch, oklch(0.74 0.20 25.4) calc(100% * var(--accent-opacity)), transparent);
     --reset: color-mix(in oklch, oklch(0.75 0.185 24.8) calc(100% * max(0.36, calc(0.88 * var(--accent-opacity)))), transparent);

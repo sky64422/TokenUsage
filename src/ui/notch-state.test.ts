@@ -106,6 +106,22 @@ describe("quota headline", () => {
   });
 });
 
+describe("rounded quota rings", () => {
+  it("fills rounded quarters without spilling across exact quarter boundaries", async () => {
+    const { ringSegmentFills } = await import("./notch");
+    expect(ringSegmentFills(0)).toEqual([0, 0, 0, 0]);
+    expect(ringSegmentFills(25).filter(v => v > 0)).toHaveLength(1);
+    expect(ringSegmentFills(50).filter(v => v > 0)).toHaveLength(2);
+    expect(ringSegmentFills(75).filter(v => v > 0)).toHaveLength(3);
+    const full = ringSegmentFills(100);
+    const partial = ringSegmentFills(63);
+    expect(partial.slice(0, 2)).toEqual(full.slice(0, 2));
+    expect(partial[2] / full[2]).toBeCloseTo(0.52);
+    expect(partial[3]).toBe(0);
+    expect(ringSegmentFills(125)).toEqual(full);
+  });
+});
+
 describe("positionNotch anchoring", () => {
   it("anchors left and bottom when anchor_x=left and anchor_y=bottom", async () => {
     const { positionNotch } = await import("./notch");

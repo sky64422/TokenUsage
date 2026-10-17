@@ -97,6 +97,8 @@ export function formatWindowReset(opts: {
   return opts.over ? `Over · ${body}` : body;
 }
 
+const QUOTA_LEVEL_MAX = { ok: 50, caution: 75, warn: 90 };
+
 export function levelClass(
   pct: number | null | undefined,
   over = false,
@@ -106,9 +108,9 @@ export function levelClass(
   if (over) return "level-over";
   if (pct == null || Number.isNaN(pct)) return "level-na";
   const c = clampPct(pct) ?? 0;
-  if (c >= 90) return "level-critical";
-  if (c >= 70) return "level-warn";
-  if (c <= 0) return "level-idle";
+  if (c > QUOTA_LEVEL_MAX.warn) return "level-critical";
+  if (c > QUOTA_LEVEL_MAX.caution) return "level-warn";
+  if (c > QUOTA_LEVEL_MAX.ok) return "level-caution";
   return "level-ok";
 }
 

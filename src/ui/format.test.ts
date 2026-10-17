@@ -50,12 +50,19 @@ describe("isOver", () => {
 });
 
 describe("levelClass", () => {
-  it("maps idle / over / warn / critical", () => {
+  it("maps usage colors at the inclusive 50 / 75 / 90 percent boundaries", () => {
     expect(levelClass(0, false, true)).toBe("level-idle");
     expect(levelClass(50, true, false)).toBe("level-over");
-    expect(levelClass(70, false, false)).toBe("level-warn");
-    expect(levelClass(90, false, false)).toBe("level-critical");
-    expect(levelClass(20, false, false)).toBe("level-ok");
+    expect(levelClass(null)).toBe("level-na");
+    expect(levelClass(0)).toBe("level-ok");
+    expect(levelClass(50)).toBe("level-ok");
+    expect(levelClass(50.01)).toBe("level-caution");
+    expect(levelClass(75)).toBe("level-caution");
+    expect(levelClass(75.01)).toBe("level-warn");
+    expect(levelClass(90)).toBe("level-warn");
+    expect(levelClass(90.01)).toBe("level-critical");
+    expect(levelClass(100)).toBe("level-critical");
+    expect(levelClass(125)).toBe("level-critical");
   });
 });
 

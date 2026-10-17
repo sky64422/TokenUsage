@@ -11,6 +11,7 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 - Right edge, centred by default. Four edge choices; left/right are vertical and top/bottom horizontal.
 - 64 DIP depth, 72 DIP provider cells, two tangent 32 DIP circular arcs at each end, with no flat ledge between them: **44 DIP content inset at both ends**. Content sits within the curved end region with breathing room around the first ring and last label. Rings are 40 DIP (12 DIP lateral margins); quiet grey track, colored usage arc, monochrome provider logo.
 - The notch shows percentage only; periods are available in quota details. There is no period-display preference. Backend primary percentage is retained; do not silently relabel it as session usage.
+- Summary rings have four equal segments with rounded ends and approximately 1px transparent gaps at each 25% boundary. Both track and usage follow the rounded segments. Usage fills continuously within them; the displayed number retains the actual percentage. Zero/missing usage has no colored dot.
 - Missing/auth-required values show a dash with explicit status, never a zero. Overage preserves the number while only the arc is clamped.
 - Provider icons identify Claude, Codex, Grok, and Antigravity. Source/license notices live in `src/assets/marks`.
 - Three themes: Dark retains the original surface; Glass uses a neutral translucent surface with a mirrored rim; Liquid uses an undistorted live backdrop, blur and colored edge reflections. Pretendard and tabular numbers remain.
@@ -41,6 +42,8 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 
 Sources: `src/styles/tokens.css`, `src/styles/notch.css`. Existing semantic foreground/muted/primary/border/ring and opacity floors remain. Safe/warning/critical colors come from existing quota risk helpers. Settings chrome stays neutral; color communicates usage and state.
 
+Quota rings, percentage text and detail bars share inclusive upper bounds: 0–50% green, >50–75% yellow, >75–90% orange, >90% red (including overage). Missing values and explicit idle states retain neutral styling.
+
 ### Glass and Liquid materials
 
 - Dark, Glass and Liquid are separate persisted choices. Old system/light values migrate to Dark without losing preferences.
@@ -59,7 +62,7 @@ Sources: `src/styles/tokens.css`, `src/styles/notch.css`. Existing semantic fore
   size is the upper limit and smaller screens reduce gently with an attenuated ratio gap. This policy
   applies to every resolution rather than matching particular display names.
 - Scale the silhouette, cell spacing, rings, marks, folded target and native input
-  geometry together. Keep percentages at least 12 DIP.
+  geometry together. Summary percentages use a 12.5 DIP base and an 11.5 DIP minimum.
 - Details and settings scale proportionally with `content_scale` (`260px * content_scale` width,
   `560px * content_scale` max detail height, and a shared measured settings height),
   with scaled padding, tabs, card heights, and corner radii. Fixed column grid contracts
