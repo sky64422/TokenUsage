@@ -1,7 +1,7 @@
 # Release & in-app updates
 
 **Updated:** 2026-10-17
-**Current public tag:** v0.4.0
+**Current public tag:** v0.4.1
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,7 +12,8 @@
 
 | Tag | Highlights |
 |-----|------------|
-| **v0.4.0** | Dark/Glass/Liquid themes with live desktop refraction on Windows; monitor-aware notch and panel sizing; fixed settings height across tabs, including first opening; provider save locks |
+| **v0.4.1** | Notch: robust multi-monitor placement persistence across restarts and Windows display renumbering; lenient completion validation preserves drag destination |
+| v0.4.0 | Dark/Glass/Liquid themes with live desktop refraction on Windows; monitor-aware notch and panel sizing; fixed settings height across tabs, including first opening; provider save locks |
 | v0.3.8 | UI: fluid liquid motion & spring animations across fold/unfold, drag-snap, detail drop, and settings tabs/controls; Settings: eliminate position jitter and toggle flicker; Detail: fix scrollbar flash |
 | v0.3.7 | Grok: xAI credential session prioritization & CLI renewal fallback; Notch: Windows topmost band watchdog & automatic z-order reassertion; Codex: real-time SQLite turn activity tracking |
 | v0.3.6 | Settings: unified activity animation toggle ('작업 중 강조 효과'), docked footer actions ('로그 복사', '종료') with precision power icon geometry, elimination of tab-reveal scrollbar flash, and 100% symmetric margins |

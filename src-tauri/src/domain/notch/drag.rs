@@ -1,4 +1,4 @@
-use super::{calculate_layout, MonitorArea, NotchEdge, NotchLayout, NotchPlacement};
+use super::{calculate_layout, find_monitor, MonitorArea, NotchEdge, NotchLayout, NotchPlacement};
 
 pub(super) const DRAG_THRESHOLD: f64 = 5.;
 const EDGE_ENTRY: f64 = 64.;
@@ -54,9 +54,7 @@ impl NotchDrag {
             }
             self.active = true;
         }
-        let current = monitors
-            .iter()
-            .find(|m| Some(&m.name) == self.placement.monitor_hint.as_ref())
+        let current = find_monitor(monitors, self.placement.monitor_hint.as_deref())
             .ok_or("Drag display disappeared")?;
         let mut target = current;
         let mut edge = self.placement.edge;

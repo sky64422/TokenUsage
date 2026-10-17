@@ -661,3 +661,74 @@ fn detail_dimensions_scale_smoothly_across_resolutions_and_respect_work_area() {
         }
     }
 }
+
+#[test]
+fn monitor_hint_resolves_accurately_across_renumbering_and_naming_variants() {
+    let primary = MonitorArea {
+        name: r"\\.\DISPLAY1".into(),
+        bounds: Rect { x: 0., y: 0., width: 2560., height: 1440. },
+        work: Rect { x: 0., y: 0., width: 2560., height: 1400. },
+        scale: 1.0,
+    };
+    let secondary = MonitorArea {
+        name: r"\\.\DISPLAY2".into(),
+        bounds: Rect { x: -1024., y: 0., width: 1024., height: 1280. },
+        work: Rect { x: -1024., y: 0., width: 1024., height: 1280. },
+        scale: 1.0,
+    };
+    let monitors = [primary.clone(), secondary.clone()];
+
+    // 1. Exact name match
+    assert_eq!(
+        find_monitor(&monitors, Some(r"\\.\DISPLAY2")).unwrap().name,
+        r"\\.\DISPLAY2"
+    );
+    assert_eq!(
+        find_monitor(&monitors, Some(r"\\.\DISPLAY1")).unwrap().name,
+        r"\\.\DISPLAY1"
+    );
+
+    // 2. Coordinate fallback ("-1024,0")
+    assert_eq!(
+        find_monitor(&monitors, Some("-1024,0")).unwrap().name,
+        r"\\.\DISPLAY2"
+    );
+    assert_eq!(
+        find_monitor(&monitors, Some("0,0")).unwrap().name,
+        r"\\.\DISPLAY1"
+    );
+
+    // 3. Renumbered displays fallback:
+    // If the hint referenced "DISPLAY2" but Windows re-enumerated it under a different name,
+    // e.g. monitors are now named DISPLAY_A and DISPLAY_B
+    let renumbered_primary = MonitorArea {
+        name: r"\\.\DISPLAY_A".into(),
+        bounds: Rect { x: 0., y: 0., width: 2560., height: 1440. },
+        work: Rect { x: 0., y: 0., width: 2560., height: 1400. },
+        scale: 1.0,
+    };
+    let renumbered_secondary = MonitorArea {
+        name: r"\\.\DISPLAY_B".into(),
+        bounds: Rect { x: -1024., y: 0., width: 1024., height: 1280. },
+        work: Rect { x: -1024., y: 0., width: 1024., height: 1280. },
+        scale: 1.0,
+    };
+    let renumbered = [renumbered_primary.clone(), renumbered_secondary.clone()];
+
+    // Hint was "DISPLAY2" (secondary) -> should pick renumbered_secondary, NOT primary!
+    assert_eq!(
+        find_monitor(&renumbered, Some(r"\\.\DISPLAY2")).unwrap().name,
+        r"\\.\DISPLAY_B"
+    );
+
+    // Hint was "DISPLAY1" (primary) -> should pick renumbered_primary!
+    assert_eq!(
+        find_monitor(&renumbered, Some(r"\\.\DISPLAY1")).unwrap().name,
+        r"\\.\DISPLAY_A"
+    );
+
+    // 4. Missing or None hint -> falls back to primary/first
+    assert_eq!(find_monitor(&monitors, None).unwrap().name, r"\\.\DISPLAY1");
+    assert_eq!(find_monitor(&monitors, Some("")).unwrap().name, r"\\.\DISPLAY1");
+}
+

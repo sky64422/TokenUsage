@@ -88,6 +88,75 @@ pub struct MonitorArea {
     pub work: Rect,
     pub scale: f64,
 }
+impl MonitorArea {
+    pub fn matches_hint(&self, hint: &str) -> u32 {
+        let trimmed = hint.trim();
+        if trimmed.is_empty() {
+            return 0;
+        }
+
+        // 1. Direct name match (highest score)
+        if self.name == trimmed {
+            return 100;
+        }
+
+        // 2. Exact coordinate match if hint is formatted as "X,Y"
+        if let Some((x_str, y_str)) = trimmed.split_once(',') {
+            if let (Ok(x), Ok(y)) = (x_str.trim().parse::<f64>(), y_str.trim().parse::<f64>()) {
+                if (self.bounds.x - x).abs() < 1.0 && (self.bounds.y - y).abs() < 1.0 {
+                    return 90;
+                }
+            }
+        }
+
+        // 3. Fallback for Windows display renumbering:
+        let is_primary = self.bounds.x == 0. && self.bounds.y == 0.;
+
+        // If hint hints at primary / main display:
+        if trimmed.eq_ignore_ascii_case("main") || trimmed.contains("DISPLAY1") {
+            if is_primary {
+                return 70;
+            }
+        }
+
+        // If hint hints at a secondary display (e.g. "other", "DISPLAY2", "DISPLAY3"):
+        if trimmed.eq_ignore_ascii_case("other")
+            || (!trimmed.contains("DISPLAY1") && (trimmed.contains("DISPLAY") || trimmed.starts_with(r"\\.\")))
+        {
+            if !is_primary {
+                return 70;
+            }
+        }
+
+        0
+    }
+}
+
+pub fn find_monitor<'a>(
+    areas: &'a [MonitorArea],
+    hint: Option<&str>,
+) -> Option<&'a MonitorArea> {
+    let hint = match hint {
+        Some(h) if !h.trim().is_empty() => h.trim(),
+        _ => return areas.first(),
+    };
+
+    let mut best: Option<(&'a MonitorArea, u32)> = None;
+    for area in areas {
+        let score = area.matches_hint(hint);
+        if score > 0 {
+            match best {
+                None => best = Some((area, score)),
+                Some((_, best_score)) if score > best_score => {
+                    best = Some((area, score));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    best.map(|(m, _)| m).or_else(|| areas.first())
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AnchorX {

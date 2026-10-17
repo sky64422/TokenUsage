@@ -171,10 +171,7 @@ pub fn apply(
         Some(drag) => drag.monitors.clone(),
         None => monitors(app)?,
     };
-    let monitor = areas
-        .iter()
-        .find(|m| Some(&m.name) == placement.monitor_hint.as_ref())
-        .or(areas.first())
+    let monitor = crate::domain::notch::find_monitor(&areas, placement.monitor_hint.as_deref())
         .ok_or("No monitor available")?;
     let count = settings.enabled_provider_ids().len();
     let layout = calculate_layout_target(
@@ -388,6 +385,9 @@ pub fn begin_drag(app: &AppHandle, id: u64) -> Result<(), String> {
     let mut motion = NotchDrag::new(layout, pos.x, pos.y, count);
     // Keep the actual starting offset even if no movement crosses the threshold.
     motion.placement.offset = settings.notch.offset;
+    if motion.placement.monitor_hint.is_none() {
+        motion.placement.monitor_hint = settings.notch.monitor_hint.clone();
+    }
     rt.last_drag_id = id;
     #[cfg(windows)]
     rt.start_timer_period();
@@ -462,8 +462,9 @@ fn complete_drag(
     let core = &app.state::<AppHandleState>().core;
     if !cancel && error.is_none() && session.motion.active {
         if let Ok(current_areas) = monitors(app) {
-            if current_areas != session.monitors {
-                error = Some("Display configuration changed; drag cancelled".into());
+            let target_hint = session.motion.placement.monitor_hint.as_deref();
+            if crate::domain::notch::find_monitor(&current_areas, target_hint).is_none() {
+                error = Some("Target display is no longer available".into());
             }
         }
         if error.is_none() {
