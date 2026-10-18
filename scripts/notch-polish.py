@@ -78,16 +78,15 @@ with sync_playwright() as p:
     expect(page.locator('.detail-settings')).to_be_hidden()
     hover_rest(layout)
     page.evaluate('async()=>window.__TAURI__.event.emit("provider-activity",[{provider_id:"codex",state:"running",observed_at:null},{provider_id:"claude",state:"recent",observed_at:null}])')
-    orbit = page.locator('[data-id=codex] .activity-orbit')
-    expect(orbit).to_be_visible()
-    assert orbit.evaluate('(e)=>getComputedStyle(e).animationName') == 'activity-turn'
+    assert page.locator('.activity-orbit').count() == 0
+    expect(page.locator('[data-id=codex]')).to_have_attribute('data-activity', 'running')
+    assert 'drop-shadow' in page.locator('[data-id=codex] .ring-wrap img').evaluate('(e)=>getComputedStyle(e).filter')
     expect(page.locator('[data-id=claude]')).to_have_attribute('data-activity', 'recent')
-    expect(page.locator('[data-id=claude] .activity-orbit')).not_to_be_visible()
     page.emulate_media(reduced_motion='reduce')
-    assert orbit.evaluate('(e)=>getComputedStyle(e).animationName') == 'none'
+    assert page.locator('.activity-orbit').count() == 0
     page.emulate_media(reduced_motion='no-preference')
     page.screenshot(path='tmp/polish-activity.png', omit_background=True)
     page.evaluate('async()=>window.__TAURI__.event.emit("provider-activity",[{provider_id:"codex",state:"idle",observed_at:null}])')
-    expect(orbit).not_to_be_visible()
+    expect(page.locator('[data-id=codex]')).to_have_attribute('data-activity', 'idle')
     assert not errors, errors
     print(json.dumps({'four_edges': True, 'hover_cycles': 12, 'stable_native_geometry': True, 'settings_hold': True, 'keyboard_shortcuts_inactive': True, 'activity_and_reduced_motion': True, 'page_errors': errors}))
