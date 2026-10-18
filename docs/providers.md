@@ -19,7 +19,7 @@ This guide explains how personal AI vendor quotas and live activities are integr
 3. **Two Distinct Dimensions**:
    - **Quota (`ProviderSnapshot`)**: How much of the rolling/weekly limit has been used (capacity).
    - **Activity (`ProviderActivity`)**: Whether the AI model/agent is actively computing right now (working state).
-   - Activity controls visual affordances (rotating orbit, pulsing mark glow); it does **not** modify or fake quota percentages.
+   - Activity controls icon emphasis and sheen inside filled detail bars; it does **not** modify or fake quota percentages. The notch uses one continuous usage ring, without a secondary activity ring (user request 2026-10-18).
 
 ---
 
@@ -70,7 +70,7 @@ All quota adapters live in `src-tauri/src/infrastructure/providers/quota/` and a
 The user-authorized `infrastructure/token_usage/` reader indexes only Codex session
 usage/model metadata on a bounded background worker. It attaches optional
 `token_usage` to Codex snapshots after vendor fetching, including quota failures.
-Today and seven-local-date summaries are labeled `이 기기의 기록`; cumulative
+Today, current Monday-based week and calendar-month summaries are labeled `이 기기의 기록`; cumulative
 reports and copied sessions are deduplicated. Cache and reasoning are subsets,
 never extra quota or token totals. Partial scans/unknown fields remain explicit.
 No prompt, tool arguments, thinking or account identity is retained or emitted.

@@ -69,6 +69,30 @@ Windows validation uses isolated app profiles, existing desktop pixels and no fu
 
 ## Commands
 
+### Codex token details and quota-track regression (2026-10-18)
+
+With Vite running, `python scripts/token-details-smoke.py` checks Today / This
+week / This month, model metadata, persistent expansion/selection/focus, provider marks,
+zero/missing/partial/error states, escaping, three themes and scaled widths.
+It also checks model-share shades and matching dots/abbreviations on one legend
+line, including legend focus while numeric data changes, tab keyboard navigation
+and the shared settings selection indicator under reduced motion. `python
+scripts/notch-ring-smoke.py` checks one continuous ring with no secondary ring,
+including unknown/zero/full/overage and running activity.
+`python scripts/usage-track-smoke.py` compares empty-track pixels across zero,
+partial and running usage: sheen and fill light must stay inside actual usage.
+All three accept `TOKENUSAGE_TEST_URL` for an isolated Vite port and use synthetic
+metadata, never live transcripts or OS preferences.
+
+Rust token tests cover cumulative increments, copied/forked histories, replacement,
+partial writes, Monday/week/month boundaries, oversized lines, resumable discovery and fairness.
+Limits per background pass: 512 discovery entries, 8 MiB total reads, 1 MiB per
+file, 64 file attempts; at most 4096 files and 100000 retained metadata records.
+Retention includes the current month plus any preceding dates in the current week.
+Excluded or uncertain coverage is partial; ongoing scans are loading. Large logs
+may take multiple passes. Preview mode disables real Codex token reads as well
+as direct quota reads.
+
 Controller regressions in `src/ui/notch-surface.test.ts`, `notch-drag.test.ts` and
 `update-controller.test.ts` exercise deferred native replies, failed begin/retry,
 stale drag notices, capture disposal, updater ordering and asynchronous subscription
@@ -174,7 +198,7 @@ and secondary quota warnings.
 Hover stability is a required regression when changing notch/detail geometry.
 `changing_detail_preserves_native_canvas_and_notch_position` checks all four edges,
 100/125/150/200% scales, start/middle/end placements, one through four providers,
-first/last targets, settings, and 78/150/234/400/560 DIP detail heights. The native
+first/last targets, settings, and 78/150/234/400/560/900/2400 DIP requested detail heights. The native
 canvas and notch must stay identical when opening or changing detail; every detail
 must fit and reserved pixels must remain noninteractive when closed.
 

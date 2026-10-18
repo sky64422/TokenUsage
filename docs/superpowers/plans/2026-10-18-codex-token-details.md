@@ -13,11 +13,11 @@
 ## Global Constraints
 
 - Codex only for token collection. Do not add AGY/Claude/Grok token readers or modify CLI settings.
-- Use `이 기기의 기록`, `오늘 / 최근 7일`; seven days means local midnight six dates ago through now.
+- Use `이 기기의 기록`, `오늘 / 이번 주 / 이번 달`; week starts Monday at local midnight, month starts on the first date of the current month.
 - Read actual usage metadata only. No conversation/tool/thinking content in retained state, emitted snapshots, fixtures or diagnostics.
 - Quota source, ring percentage, fixed 5-second refresh, activity and auth semantics remain independent.
 - `TOKENUSAGE_SKIP_DIRECT_QUOTA=1` disables real token reads.
-- Preserve 260 DIP width / 560 DIP height limit, scaled content, fixed quota columns, native canvas, click-through and settings first-open shared height.
+- Preserve 260 DIP width / intrinsic height bounded by work area, scaled content, fixed quota columns, native canvas, click-through and settings first-open shared height.
 - Reuse `PROVIDER_CATALOG` marks before Provider names, including missing-quota cards. Grouped quotas show the icon only in the service header.
 - User authorized proceeding with the approved design and narrowed implementation to Codex. Execute inline in an isolated feature worktree; leave release/install for a separate request.
 
@@ -31,9 +31,9 @@
 
 ## Data contract
 
-`domain/token_usage.rs` defines serializable `TokenUsageSnapshot { source, as_of, status, today, week }`, `TokenPeriod { models, totals }`, `ModelTokenUsage { model, counts }` and `TokenCounts` with optional input/cache_read/cache_write/output/reasoning counts. Status is `loading | ready | partial | unavailable`; source is `local_records`. Missing counts remain null. `model` is nullable. Totals use input+output; cache and reasoning remain subsets. CacheWrite is a separate reported value, not an extra total bucket. Period fields contain metadata totals only, with no file/session identifiers.
+`domain/token_usage.rs` defines serializable `TokenUsageSnapshot { source, as_of, status, today, week, month }`, `TokenPeriod { models, totals }`, `ModelTokenUsage { model, counts }` and `TokenCounts` with optional input/cache_read/cache_write/output/reasoning counts. Status is `loading | ready | partial | unavailable`; source is `local_records`. Missing counts remain null. `model` is nullable. Totals use input+output; cache and reasoning remain subsets. CacheWrite is a separate reported value, not an extra total bucket. Period fields contain metadata totals only, with no file/session identifiers.
 
-`TokenLedger` ingests per-session structural metadata and cumulative token events, retains validated contributions keyed for replacement/deduplication, and provides `summarize(now: DateTime<Local>, status: TokenUsageStatus) -> TokenUsageSnapshot`. Include future timestamps neither in today nor in week; flag invalid numeric contributions partial without fabricating zeros.
+`TokenLedger` ingests per-session structural metadata and cumulative token events, retains validated contributions keyed for replacement/deduplication, and provides `summarize(now: DateTime<Local>, status: TokenUsageStatus) -> TokenUsageSnapshot`. Include future timestamps neither in today nor in month; flag invalid numeric contributions partial without fabricating zeros.
 
 `infrastructure/token_usage::snapshot() -> TokenUsageSnapshot` returns cached/loading data immediately and schedules bounded work when due. `TokenReader::new(root: PathBuf)` and `TokenReader::scan(now: DateTime<Local>)` enable filesystem fixture tests without env races. An internal ledger is owned by the reader. Preview detection happens before path discovery. No second IPC command/event is introduced.
 
@@ -46,7 +46,7 @@
 **Interfaces:** Produces the contract above; consumes typed Codex metadata/counter observations, without filesystem calls.
 
 - [ ] Add failing tests for two cumulative reports (input 100/output 20 then input 250/output 40) plus a duplicate: total 290, never 410 or 700. Verify model switch allocates the increment to the observed model; unknown model stays null.
-- [ ] Add tests for repeated event identities, resumed/forked baselines, counter reset, missing fields vs explicit zero, negative/inconsistent/subset overflow, local midnight, last-seven-date boundaries, future timestamps and checked addition overflow. Ambiguous baseline contributes no guessed counts and marks partial.
+- [ ] Add tests for repeated event identities, resumed/forked baselines, counter reset, missing fields vs explicit zero, negative/inconsistent/subset overflow, local midnight, calendar-month boundaries, future timestamps and checked addition overflow. Ambiguous baseline contributes no guessed counts and marks partial.
 - [ ] Run `cargo test --lib domain::token_usage` in `src-tauri`; observe the missing-accounting behavior fail before implementing it.
 - [ ] Implement pure typed parsing/accounting/summary policy and run the same tests to pass. Validate cache<=input, reasoning<=output; never add subsets to input+output.
 - [ ] Commit only Task 1 files after green tests.
@@ -82,7 +82,7 @@
 **Interfaces:** `mountTokenDetails(root: HTMLElement, onResize: () => void)` returns `update(snapshot: TokenUsageSnapshot | null): void`; `mountProviders(root, onResize?)` preserves its existing public methods and calls the callback after user expansion/period changes. App passes its existing `requestSurface` callback.
 
 - [ ] Add failing pure formatting/ratio tests for input 1000/cache 750/output 200/reasoning 50 => total 1200, 75% cached, and missing vs zero. Verify weighted ratios and untrusted model label escaping through the browser test.
-- [ ] Add a Playwright smoke using existing Vite fixture style: open detail, choose week, focus the button, update snapshots, switch provider and return; assert expansion/selection/focus persist. Cover missing/zero/partial/error, long model label, many models and overflow, three themes and scale 0.92/1.
+- [ ] Add a Playwright smoke using existing Vite fixture style: open detail, choose month, focus the button, update snapshots, switch provider and return; assert expansion/selection/focus persist. Cover missing/zero/partial/error, long model label, many models and overflow, three themes and scale 0.92/1.
 - [ ] Include Provider icon assertions for Codex, grouped AGY, Claude/Grok and missing-quota rows. Icons use `alt=""`, `aria-hidden="true"`, fixed 14px scaled size and neutral existing marks; no model-family icon duplication or changes to quota column layout.
 - [ ] Run `npx vitest run src/ui/token-details.test.ts` and `python scripts/token-details-smoke.py`; observe failing behavior before implementing.
 - [ ] Render token metadata below quota with native disclosure/button controls, provider-specific state, period tabs, model amounts/shares, input/output split, CacheRead ratio and separate CacheWrite/reasoning numbers. Patch stable DOM elements rather than replace focused controls on every snapshot. Present `이 기기의 기록`, updated time and partial/loading/error states.
@@ -98,3 +98,25 @@
 - [ ] Run `python scripts/settings-smoke.py`, `python scripts/detail-layout-smoke.py` and `python scripts/token-details-smoke.py` against Vite; expect no page errors, first-open resize or horizontal overflow.
 - [ ] Launch an isolated Windows preview with synthetic fixtures for geometry; run `python scripts/notch-hover-stability.py --port 9223 --fixture` and inspect all four edges plus token expansion, pointer travel and click-through. Then restart that preview without fixtures to compare real Codex metadata; do not install or publish.
 - [ ] Review the full diff against the spec, verify no AGY reader/dependency/secret/unrelated benchmark file was introduced, and record actual test evidence and remaining native limits. Commit only requested changes; provide a usable preview path and supported-data limitations for user feedback.
+
+## Execution result — 2026-10-18
+
+Tasks 1–5 are complete in `feat/codex-token-details`; the checklists above preserve
+the original execution sequence. Later user requests added calendar periods,
+sliding tabs, ranked model shades/legend, a single notch ring and intrinsic detail
+height. Collection remains Codex-only.
+
+- `npm test`: 189 passed; one opt-in live AGY test ignored.
+- `npm run build` and `cargo clippy --all-targets -- -D warnings`: passed.
+- Settings, detail layout, token details, empty-track pixels and single-ring
+  browser smoke: passed on isolated Vite port 1421.
+- Latest Windows WebView2 preview: all four edges expanded from 161 to 702px
+  without quota scrolling or canvas/notch movement; first settings tab heights
+  440/440px; native click-through and nonactivating hover passed.
+- Native unequal-provider hover: 260 stable frames. Independent code review
+  found no remaining Critical or Important issues after accounting corrections.
+
+Live Codex records populate model/cache data independently of official quota.
+Initial indexing is loading; excluded or uncertain records are partial. No
+release or installation was performed. Local screenshots and measurements stay
+in ignored `tmp/`.
