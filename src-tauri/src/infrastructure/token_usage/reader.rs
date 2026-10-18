@@ -1,11 +1,12 @@
 use crate::domain::token_usage::{
     retention_start, TokenCounts, TokenLedger, TokenUsageSnapshot, TokenUsageStatus,
 };
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, NaiveDate};
 use serde::Deserialize;
 use std::{
-    collections::{BTreeMap, VecDeque},
+    collections::{hash_map::DefaultHasher, BTreeMap, VecDeque},
     fs::{self, ReadDir},
+    hash::{Hash, Hasher},
     io::{Read, Seek, SeekFrom},
     path::PathBuf,
     time::SystemTime,
@@ -13,6 +14,9 @@ use std::{
 
 const DISCOVERY_ENTRIES: usize = 512;
 const READ_BUDGET: usize = 8 * 1024 * 1024;
+const HOT_READ_BUDGET: usize = 2 * 1024 * 1024;
+const HOT_FILES_PER_PASS: usize = 8;
+const MAX_PENDING_BYTES: usize = READ_BUDGET;
 const FILE_READ_BUDGET: usize = 1024 * 1024;
 const MAX_LINE: usize = 1024 * 1024;
 const MAX_FILES: usize = 4096;
@@ -93,8 +97,8 @@ struct Cursor {
     offset: u64,
     pending: Vec<u8>,
     discarding: bool,
-    prefix: Vec<u8>,
-    boundary: Vec<u8>,
+    prefix: Option<(usize, u64)>,
+    boundary: Option<(usize, u64)>,
     created: Option<SystemTime>,
     modified: Option<SystemTime>,
     priority: Option<SystemTime>,
@@ -123,6 +127,7 @@ pub struct TokenReader {
     discovery_error: bool,
     last_discovery: DateTime<Local>,
     file_turn: usize,
+    coverage_gap: Option<NaiveDate>,
 }
 
 impl TokenReader {
@@ -138,6 +143,7 @@ impl TokenReader {
             discovery_error: false,
             last_discovery: Local::now(),
             file_turn: 0,
+            coverage_gap: None,
         }
     }
 
@@ -146,47 +152,102 @@ impl TokenReader {
             self.queue.push_back(self.root.clone());
             self.discovered = false;
             self.discovery_error = false;
+            self.limited = false;
         }
         self.discover(now);
-        let mut paths: Vec<_> = self.files.keys().cloned().collect();
-        paths.sort_by(|a, b| {
+        // Keep rotation independent of mtimes so active files cannot reorder and
+        // repeatedly skip older files. The recent lane also bootstraps unread
+        // sessions so current usage appears before the historical backlog drains.
+        let paths: Vec<_> = self.files.keys().cloned().collect();
+        let mut hot = paths.clone();
+        hot.sort_by(|a, b| {
             self.files[b]
                 .priority
                 .cmp(&self.files[a].priority)
                 .then(a.cmp(b))
         });
-        let mut budget = READ_BUDGET;
-        let count = paths.len().min(FILES_PER_PASS);
+        hot.truncate(HOT_FILES_PER_PASS);
+        let mut pending_bytes = self.files.values().map(|c| c.pending.capacity()).sum();
+        let mut hot_budget = HOT_READ_BUDGET;
+        let mut hot_attempted = 0;
+        for path in &hot {
+            if hot_budget == 0 {
+                break;
+            }
+            self.visit(path, &mut hot_budget, &mut pending_bytes, now);
+            hot_attempted += 1;
+        }
+        // A candidate whose reserved budget ran out still needs its background turn.
+        hot.truncate(hot_attempted);
+        let mut budget = READ_BUDGET - HOT_READ_BUDGET;
+        let count = paths.len().min(FILES_PER_PASS - hot.len());
         let mut attempted = 0;
         for index in 0..count {
             if budget == 0 {
                 break;
             }
             let path = &paths[(self.file_turn + index) % paths.len()];
-            let owner = path.to_string_lossy();
-            let cursor = self.files.get_mut(path).expect("discovered file");
-            let allowance = budget.min(FILE_READ_BUDGET);
-            let mut file_budget = allowance;
-            if read_file(
-                path,
-                &owner,
-                cursor,
-                &mut self.ledger,
-                &mut file_budget,
-                now,
-            )
-            .is_err()
-            {
-                cursor.partial = true;
-                cursor.caught_up = true;
+            if !hot.contains(path) {
+                self.visit(path, &mut budget, &mut pending_bytes, now);
             }
-            budget -= allowance - file_budget;
             attempted += 1;
         }
         if !paths.is_empty() {
             self.file_turn = (self.file_turn + attempted) % paths.len();
         }
-        self.ledger.prune(retention_start(now));
+        let oldest = retention_start(now);
+        self.ledger.prune(oldest);
+        if self.coverage_gap.is_some_and(|date| date < oldest) {
+            self.coverage_gap = None;
+        }
+    }
+
+    fn visit(
+        &mut self,
+        path: &PathBuf,
+        budget: &mut usize,
+        pending_bytes: &mut usize,
+        now: DateTime<Local>,
+    ) {
+        if *budget == 0 {
+            return;
+        }
+        let Some(cursor) = self.files.get_mut(path) else {
+            return;
+        };
+        let allowance = (*budget).min(FILE_READ_BUDGET);
+        let mut remaining = allowance;
+        let result = read_file(
+            path,
+            &path.to_string_lossy(),
+            cursor,
+            &mut self.ledger,
+            &mut remaining,
+            pending_bytes,
+            now,
+        );
+        *budget -= allowance - remaining;
+        if let Err(error) = result {
+            if error.kind() == std::io::ErrorKind::NotFound {
+                // Known numeric records remain until retention expiry; only the
+                // missing cursor and its transient transcript buffer are retired.
+                if cursor.partial
+                    || !cursor.caught_up
+                    || !cursor.pending.is_empty()
+                    || cursor.discarding
+                {
+                    // A single date retains the coverage warning without retaining
+                    // deleted-file paths, transcript bytes or unbounded tombstones.
+                    let date = now.date_naive();
+                    self.coverage_gap = Some(self.coverage_gap.map_or(date, |old| old.max(date)));
+                }
+                *pending_bytes -= cursor.pending.capacity();
+                self.files.remove(path);
+            } else {
+                cursor.partial = true;
+                cursor.caught_up = true;
+            }
+        }
     }
 
     fn discover(&mut self, now: DateTime<Local>) {
@@ -229,8 +290,10 @@ impl TokenReader {
                     self.limited = true;
                 }
             } else if kind.is_file() && entry.path().extension().is_some_and(|e| e == "jsonl") {
-                if self.files.len() < MAX_FILES {
-                    let priority = entry.metadata().ok().and_then(|m| m.modified().ok());
+                let priority = entry.metadata().ok().and_then(|m| m.modified().ok());
+                if let Some(cursor) = self.files.get_mut(&entry.path()) {
+                    cursor.priority = priority;
+                } else if self.files.len() < MAX_FILES {
                     self.files.entry(entry.path()).or_insert_with(|| Cursor {
                         priority,
                         ..Default::default()
@@ -242,22 +305,32 @@ impl TokenReader {
         }
     }
 
-    pub fn summary(&self, now: DateTime<Local>) -> TokenUsageSnapshot {
+    pub fn summary(
+        &self,
+        now: DateTime<Local>,
+        windows: &[crate::domain::types::UsageWindow],
+    ) -> TokenUsageSnapshot {
         let status = if self.discovery_error && self.files.is_empty() {
             TokenUsageStatus::Unavailable
         } else if !self.discovered
             || self
                 .files
                 .values()
-                .any(|f| !f.caught_up || !f.pending.is_empty() || f.discarding)
+                .any(|f| !f.caught_up || !f.pending.is_empty())
         {
             TokenUsageStatus::Loading
-        } else if self.limited || self.discovery_error || self.files.values().any(|f| f.partial) {
+        } else if self.limited
+            || self.discovery_error
+            || self.files.values().any(|f| f.partial)
+            || self
+                .coverage_gap
+                .is_some_and(|date| date >= retention_start(now))
+        {
             TokenUsageStatus::Partial
         } else {
             TokenUsageStatus::Ready
         };
-        self.ledger.summarize(now, status)
+        self.ledger.summarize(now, status, windows)
     }
 }
 
@@ -267,6 +340,7 @@ fn read_file(
     c: &mut Cursor,
     ledger: &mut TokenLedger,
     budget: &mut usize,
+    pending_bytes: &mut usize,
     now: DateTime<Local>,
 ) -> std::io::Result<()> {
     if fs::symlink_metadata(path)?.file_type().is_symlink() {
@@ -274,30 +348,36 @@ fn read_file(
     }
     let mut file = fs::File::open(path)?;
     let meta = file.metadata()?;
-    let mut prefix = vec![0; (meta.len() as usize).min(PREFIX_BYTES)];
-    file.read_exact(&mut prefix)?;
+    let mut sample = [0; PREFIX_BYTES];
+    let prefix_len = (meta.len() as usize).min(PREFIX_BYTES);
+    file.read_exact(&mut sample[..prefix_len])?;
+    let prefix = fingerprint(&sample[..prefix_len]);
+    let prefix_changed = c
+        .prefix
+        .is_some_and(|(len, previous)| len > prefix_len || fingerprint(&sample[..len]) != previous);
     let mut boundary_changed = false;
-    if !c.boundary.is_empty() && c.offset <= meta.len() {
-        file.seek(SeekFrom::Start(c.offset - c.boundary.len() as u64))?;
-        let mut boundary = vec![0; c.boundary.len()];
-        file.read_exact(&mut boundary)?;
-        boundary_changed = boundary != c.boundary;
+    if let Some((len, previous)) = c.boundary.filter(|_| c.offset <= meta.len()) {
+        file.seek(SeekFrom::Start(c.offset - len as u64))?;
+        file.read_exact(&mut sample[..len])?;
+        boundary_changed = fingerprint(&sample[..len]) != previous;
     }
     let changed = boundary_changed
         || c.offset > meta.len()
-        || (!c.prefix.is_empty() && c.prefix != prefix)
+        || prefix_changed
         || c.created != meta.created().ok()
         || (c.offset > 0 && c.offset == meta.len() && c.modified != meta.modified().ok());
     if changed {
         ledger.remove_owner(owner);
+        *pending_bytes -= c.pending.capacity();
         *c = Cursor {
             priority: meta.modified().ok(),
             ..Default::default()
         };
     }
-    c.prefix = prefix;
+    c.prefix = Some((prefix_len, prefix));
     c.created = meta.created().ok();
     c.modified = meta.modified().ok();
+    c.priority = c.modified;
     file.seek(SeekFrom::Start(c.offset))?;
     let take = (*budget).min(meta.len().saturating_sub(c.offset) as usize);
     let mut remaining = take;
@@ -314,25 +394,47 @@ fn read_file(
             if *byte == b'\n' {
                 if !c.discarding {
                     let line = std::mem::take(&mut c.pending);
+                    *pending_bytes -= line.capacity();
                     ingest(&line, owner, c, ledger, now);
                 }
                 c.discarding = false;
             } else if !c.discarding {
-                if c.pending.len() < MAX_LINE {
-                    c.pending.push(*byte);
-                } else {
-                    c.pending.clear();
+                if c.pending.len() == c.pending.capacity() && c.pending.len() < MAX_LINE {
+                    let capacity = c.pending.capacity();
+                    let growth = capacity
+                        .max(CHUNK_BYTES)
+                        .min(MAX_LINE - capacity)
+                        .min(MAX_PENDING_BYTES.saturating_sub(*pending_bytes));
+                    c.pending.reserve_exact(growth);
+                    *pending_bytes += c.pending.capacity() - capacity;
+                }
+                if c.pending.len() >= MAX_LINE
+                    || c.pending.len() == c.pending.capacity()
+                    || *pending_bytes > MAX_PENDING_BYTES
+                {
+                    *pending_bytes -= c.pending.capacity();
+                    c.pending = Vec::new();
                     c.discarding = true;
                     c.partial = true;
+                } else {
+                    c.pending.push(*byte);
                 }
             }
         }
     }
     c.caught_up = c.offset >= meta.len();
-    c.boundary.resize((c.offset as usize).min(PREFIX_BYTES), 0);
-    file.seek(SeekFrom::Start(c.offset - c.boundary.len() as u64))?;
-    file.read_exact(&mut c.boundary)?;
+    let len = (c.offset as usize).min(PREFIX_BYTES);
+    file.seek(SeekFrom::Start(c.offset - len as u64))?;
+    file.read_exact(&mut sample[..len])?;
+    c.boundary = Some((len, fingerprint(&sample[..len])));
     Ok(())
+}
+
+fn fingerprint(bytes: &[u8]) -> u64 {
+    // Rewrite checks need equality evidence, never retained transcript content.
+    let mut hash = DefaultHasher::new();
+    bytes.hash(&mut hash);
+    hash.finish()
 }
 
 fn ingest(
@@ -447,7 +549,230 @@ mod tests {
         for _ in 0..30 {
             r.scan(now());
         }
-        r.summary(now())
+        r.summary(now(), &[])
+    }
+
+    #[test]
+    fn missing_files_release_cursor_slots_but_keep_known_usage() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.jsonl");
+        fs::write(&path, meta("session") + &event(100, 20)).unwrap();
+        let mut reader = TokenReader::new(dir.path().into());
+        assert_eq!(settle(&mut reader).today.totals.total(), Some(120));
+        fs::remove_file(path).unwrap();
+        reader.scan(now());
+        assert!(reader.files.is_empty());
+        assert_eq!(reader.summary(now(), &[]).today.totals.total(), Some(120));
+        assert_eq!(reader.summary(now(), &[]).status, TokenUsageStatus::Ready);
+        let expired = now() + chrono::Duration::days(40);
+        reader.scan(expired);
+        assert_eq!(reader.summary(expired, &[]).month.totals.total(), None);
+    }
+
+    #[test]
+    fn unreadable_existing_path_preserves_cursor_and_known_usage_as_partial() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.jsonl");
+        fs::write(&path, meta("session") + &event(100, 20)).unwrap();
+        let mut reader = TokenReader::new(dir.path().into());
+        settle(&mut reader);
+        fs::remove_file(&path).unwrap();
+        fs::create_dir(&path).unwrap();
+        reader.scan(now());
+        assert_eq!(reader.files.len(), 1);
+        let summary = reader.summary(now(), &[]);
+        assert_eq!(summary.status, TokenUsageStatus::Partial);
+        assert_eq!(summary.today.totals.total(), Some(120));
+    }
+
+    #[test]
+    fn rewrite_detection_retains_fingerprints_instead_of_transcript_bytes() {
+        let dir = tempfile::tempdir().unwrap();
+        let marker = "sensitive-conversation-marker";
+        let line = format!(
+            "{}\n",
+            json!({"type":"response_item","payload":{"content":marker}})
+        );
+        fs::write(
+            dir.path().join("session.jsonl"),
+            meta("session") + &line + &event(100, 20),
+        )
+        .unwrap();
+        let mut reader = TokenReader::new(dir.path().into());
+        settle(&mut reader);
+        let cursor = reader.files.values().next().unwrap();
+        let retained = format!(
+            "{:?}{:?}{:?}",
+            cursor.prefix, cursor.boundary, cursor.pending
+        );
+        let marker_bytes = format!("{:?}", marker.as_bytes());
+        assert!(!retained.contains(marker_bytes.trim_matches(['[', ']'])));
+        assert_eq!(reader.summary(now(), &[]).today.totals.total(), Some(120));
+    }
+
+    #[test]
+    fn oversized_unterminated_lines_release_their_pending_allocation() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("session.jsonl"), vec![b'x'; MAX_LINE + 1]).unwrap();
+        let mut reader = TokenReader::new(dir.path().into());
+        reader.scan(now());
+        reader.scan(now());
+        let cursor = reader.files.values().next().unwrap();
+        assert!(cursor.discarding);
+        assert_eq!(cursor.pending.capacity(), 0);
+        assert!(cursor.partial);
+    }
+
+    #[test]
+    fn unfinished_lines_have_an_aggregate_memory_bound_and_report_partial_coverage() {
+        let dir = tempfile::tempdir().unwrap();
+        for index in 0..12 {
+            fs::write(
+                dir.path().join(format!("{index}.jsonl")),
+                vec![b'x'; MAX_LINE],
+            )
+            .unwrap();
+        }
+        let mut reader = TokenReader::new(dir.path().into());
+        for _ in 0..4 {
+            reader.scan(now());
+        }
+        let retained: usize = reader.files.values().map(|c| c.pending.capacity()).sum();
+        assert!(retained <= READ_BUDGET, "retained {retained} pending bytes");
+        assert!(reader.files.values().any(|c| c.partial));
+    }
+
+    #[test]
+    fn recent_caught_up_session_is_visited_on_every_pass_without_starving_rotation() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        for index in 0..FILES_PER_PASS * 3 {
+            let path = dir.path().join(format!("{index:04}.jsonl"));
+            fs::write(&path, "").unwrap();
+            fs::File::options()
+                .write(true)
+                .open(path)
+                .unwrap()
+                .set_modified(std::time::UNIX_EPOCH)
+                .unwrap();
+        }
+        let active = dir.path().join("active.jsonl");
+        fs::write(&active, meta("active") + &event(100, 20)).unwrap();
+        let mut reader = TokenReader::new(dir.path().into());
+        settle(&mut reader);
+        reader.file_turn = FILES_PER_PASS;
+        fs::OpenOptions::new()
+            .append(true)
+            .open(active)
+            .unwrap()
+            .write_all(event(250, 40).as_bytes())
+            .unwrap();
+        reader.scan(now());
+        assert_eq!(reader.summary(now(), &[]).today.totals.total(), Some(290));
+        let old = dir.path().join("0100.jsonl");
+        fs::write(&old, meta("old") + &event(100, 20)).unwrap();
+        for _ in 0..4 {
+            reader.scan(now());
+        }
+        assert_eq!(reader.summary(now(), &[]).today.totals.total(), Some(410));
+    }
+
+    #[test]
+    fn review_hot_budget_exhaustion_keeps_unvisited_candidates_in_background_rotation() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let paths: Vec<_> = ["a.jsonl", "b.jsonl", "c.jsonl"]
+            .into_iter()
+            .map(|name| dir.path().join(name))
+            .collect();
+        for path in &paths[..2] {
+            fs::write(path, "").unwrap();
+        }
+        fs::write(&paths[2], meta("third-session") + &event(100, 20)).unwrap();
+        let mut reader = TokenReader::new(dir.path().into());
+        settle(&mut reader);
+        fs::OpenOptions::new()
+            .append(true)
+            .open(&paths[2])
+            .unwrap()
+            .write_all(event(250, 40).as_bytes())
+            .unwrap();
+        for _ in 0..3 {
+            for path in &paths[..2] {
+                fs::OpenOptions::new()
+                    .append(true)
+                    .open(path)
+                    .unwrap()
+                    .write_all(&vec![b'\n'; FILE_READ_BUDGET])
+                    .unwrap();
+            }
+            for (index, path) in paths.iter().enumerate() {
+                fs::File::options()
+                    .write(true)
+                    .open(path)
+                    .unwrap()
+                    .set_modified(
+                        std::time::UNIX_EPOCH + std::time::Duration::from_secs((3 - index) as u64),
+                    )
+                    .unwrap();
+                reader.files.get_mut(path).unwrap().priority = Some(
+                    std::time::UNIX_EPOCH + std::time::Duration::from_secs((3 - index) as u64),
+                );
+            }
+            reader.scan(now());
+        }
+        assert_eq!(reader.summary(now(), &[]).today.totals.total(), Some(290));
+        assert!(reader.files[&paths[2]].caught_up);
+    }
+
+    #[test]
+    fn newest_unread_session_is_loaded_before_the_historic_background_backlog() {
+        let dir = tempfile::tempdir().unwrap();
+        for index in 0..8 {
+            let path = dir.path().join(format!("archive-{index:02}.jsonl"));
+            fs::write(&path, vec![b'\n'; FILE_READ_BUDGET + 1]).unwrap();
+            fs::File::options()
+                .write(true)
+                .open(path)
+                .unwrap()
+                .set_modified(std::time::UNIX_EPOCH)
+                .unwrap();
+        }
+        let recent = dir.path().join("z-current.jsonl");
+        fs::write(&recent, meta("current-session") + &event(100, 20)).unwrap();
+        let mut reader = TokenReader::new(dir.path().into());
+        reader.scan(now());
+        let summary = reader.summary(now(), &[]);
+        assert_eq!(summary.today.totals.total(), Some(120));
+        assert!(reader.files[&recent].caught_up);
+        assert!(reader.files.values().any(|cursor| !cursor.caught_up));
+    }
+
+    #[test]
+    fn review_deleted_incomplete_or_invalid_tails_keep_partial_coverage_until_expiry() {
+        for tail in ["{\"type\":\"event_msg\"", "invalid-json\n"] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("session.jsonl");
+            fs::write(&path, meta("session") + &event(100, 20) + tail).unwrap();
+            let mut reader = TokenReader::new(dir.path().into());
+            let before = settle(&mut reader);
+            assert_eq!(before.today.totals.total(), Some(120));
+            assert!(matches!(
+                before.status,
+                TokenUsageStatus::Loading | TokenUsageStatus::Partial
+            ));
+            fs::remove_file(path).unwrap();
+            reader.scan(now());
+            assert!(reader.files.is_empty());
+            let after = reader.summary(now(), &[]);
+            assert_eq!(after.today.totals.total(), Some(120));
+            assert_eq!(after.status, TokenUsageStatus::Partial);
+            let expired = now() + chrono::Duration::days(40);
+            reader.scan(expired);
+            let after_expiry = reader.summary(expired, &[]);
+            assert_eq!(after_expiry.status, TokenUsageStatus::Ready);
+            assert_eq!(after_expiry.month.totals.total(), None);
+        }
     }
 
     #[test]
@@ -527,6 +852,35 @@ mod tests {
     }
 
     #[test]
+    fn appending_to_a_short_file_reads_only_new_bytes() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.jsonl");
+        fs::write(&path, meta("session") + &event(100, 20)).unwrap();
+        let mut reader = TokenReader::new(dir.path().into());
+        settle(&mut reader);
+        let old_offset = reader.files[&path].offset;
+        assert!(old_offset < PREFIX_BYTES as u64);
+        let filler = "{\"type\":\"other\"}\n";
+        fs::OpenOptions::new()
+            .append(true)
+            .open(&path)
+            .unwrap()
+            .write_all(
+                filler
+                    .repeat(FILE_READ_BUDGET / filler.len() + 1)
+                    .as_bytes(),
+            )
+            .unwrap();
+        reader.scan(now());
+        assert_eq!(
+            reader.files[&path].offset,
+            old_offset + FILE_READ_BUDGET as u64
+        );
+        assert_eq!(reader.summary(now(), &[]).today.totals.total(), Some(120));
+    }
+
+    #[test]
     fn same_size_rewrite_and_discovery_progress_do_not_leave_stale_totals() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("session.jsonl");
@@ -585,7 +939,7 @@ mod tests {
         }
         let mut reader = TokenReader::new(dir.path().into());
         reader.scan(now());
-        assert_eq!(reader.summary(now()).status, TokenUsageStatus::Loading);
+        assert_eq!(reader.summary(now(), &[]).status, TokenUsageStatus::Loading);
         let summary = settle(&mut reader);
         assert_eq!(summary.status, TokenUsageStatus::Ready);
         assert_eq!(summary.today.totals.total(), Some(120));
@@ -643,7 +997,7 @@ mod tests {
         std::fs::write(dir.path().join("z.jsonl"), meta("recent") + &event(100, 20)).unwrap();
         let mut reader = TokenReader::new(dir.path().into());
         reader.scan(now());
-        assert_eq!(reader.summary(now()).today.totals.total(), Some(120));
+        assert_eq!(reader.summary(now(), &[]).today.totals.total(), Some(120));
     }
 
     #[test]
