@@ -32,8 +32,10 @@ with sync_playwright() as p:
     }""")
     assert page.locator(".provider-name img").count() == 1
     assert "invert(1)" in page.locator(".provider-name img").evaluate("el => getComputedStyle(el).filter")
-    assert page.locator('[data-period]').count() == 3
-    expect(page.locator('[data-period=week]')).to_have_text('이번 주')
+    assert page.locator('[data-period]').count() == 2
+    assert page.locator('[data-period=week]').count() == 0
+    indicator = page.locator('.token-periods').evaluate("el=>({width:parseFloat(getComputedStyle(el,'::before').width),tab:el.querySelector('button').getBoundingClientRect().width})")
+    assert abs(indicator['width']-indicator['tab']) < 1, indicator
     page.locator("summary").click()
     expect(page.locator("details")).to_have_attribute("open", "")
     expect(page.locator(".token-totals")).to_contain_text("1,200")
@@ -43,8 +45,8 @@ with sync_playwright() as p:
     month.click()
     assert page.locator('.token-periods').evaluate("el => getComputedStyle(el,'::before').transform") != 'none'
     month.press('ArrowLeft')
-    expect(page.locator('[data-period=week]')).to_have_attribute('aria-selected', 'true')
-    page.locator('[data-period=week]').press('End')
+    expect(page.locator('[data-period=today]')).to_have_attribute('aria-selected', 'true')
+    page.locator('[data-period=today]').press('End')
     expect(month).to_have_attribute('aria-selected', 'true')
     month.focus()
     page.evaluate("""() => {
@@ -74,8 +76,8 @@ with sync_playwright() as p:
         window.ui.setSnapshots([structuredClone(window.snap)]);
     }""")
     assert page.locator('.token-details .token-model-bar').count() == 0, 'Model composition belongs in the main quota bar'
-    expect(page.locator('.provider-card .token-model-legend')).to_contain_text('6.1 Sol')
-    expect(page.locator('.token-model-legend')).to_contain_text('6 Astra')
+    expect(page.locator('.provider-card .token-model-legend')).to_contain_text('6.1 Sol 90.9%')
+    expect(page.locator('.token-model-legend')).to_contain_text('6 Astra 9.1%')
     assert page.locator('.track-models > span').count() == 2
     assert page.locator('.provider-entry:visible .track-fill').evaluate('el=>el.style.width') == '40%'
     expect(page.locator('.provider-entry:visible .provider-pct')).to_have_text('40%')

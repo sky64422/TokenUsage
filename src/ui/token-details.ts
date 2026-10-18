@@ -1,11 +1,11 @@
 import type { TokenCounts, TokenPeriod, TokenUsageSnapshot } from "./types";
-import { tokenTotal, MODEL_MISSING } from "./format";
+import { tokenTotal, MODEL_MISSING, formatTokenPercent } from "./format";
 
 const MISSING = "—";
 const STATUS = { loading: "집계 중", ready: "", partial: "일부 기록", unavailable: "읽기 실패" };
 const integerFormat = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 });
 const compactFormat = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
-type TokenPeriodId = "today" | "week" | "month";
+type TokenPeriodId = "today" | "month";
 const isCount = (n: number | null): n is number => n !== null && Number.isSafeInteger(n) && n >= 0;
 
 export function cacheReadPercent(c: TokenCounts): number | null {
@@ -19,7 +19,6 @@ export function modelShare(c: TokenCounts, totals: TokenCounts): number | null {
 export function formatTokens(value: number | null): string {
   return isCount(value) ? (value < 10_000 ? integerFormat.format(value) : compactFormat.format(value)) : MISSING;
 }
-function percent(value: number | null): string { return value === null ? MISSING : `${value.toFixed(1).replace(/\.0$/, "")}%`; }
 
 export function mountTokenDetails(root: HTMLElement, onResize: () => void): { update(snapshot: TokenUsageSnapshot | null): void } {
   root.classList.add("token-details-root");
@@ -27,7 +26,6 @@ export function mountTokenDetails(root: HTMLElement, onResize: () => void): { up
   root.innerHTML = `<details class="token-details"><summary>토큰 상세<span class="token-chevron" aria-hidden="true"></span></summary>
     <div class="token-content"><div class="token-periods settings-tabs" role="tablist" aria-label="토큰 집계 기간">
       <button type="button" class="settings-tab-btn is-active" id="token-tab-today" role="tab" aria-controls="codex-token-period-panel" data-period="today" aria-selected="true">오늘</button>
-      <button type="button" class="settings-tab-btn" id="token-tab-week" role="tab" aria-controls="codex-token-period-panel" data-period="week" aria-selected="false" tabindex="-1">이번 주</button>
       <button type="button" class="settings-tab-btn" id="token-tab-month" role="tab" aria-controls="codex-token-period-panel" data-period="month" aria-selected="false" tabindex="-1">이번 달</button>
     </div><div id="codex-token-period-panel" role="tabpanel" aria-labelledby="token-tab-today"><div class="token-provenance"><span>이 기기의 기록</span><time></time></div>
     <p class="token-status" role="status"></p><div class="token-totals"></div><div class="token-models"></div>
@@ -92,7 +90,7 @@ export function mountTokenDetails(root: HTMLElement, onResize: () => void): { up
 function metric(label: string, value: number | null, ratio = false): HTMLElement {
   const el = document.createElement("div"); el.className = "token-metric";
   const title = document.createElement("span"); title.textContent = label;
-  const amount = document.createElement("strong"); amount.textContent = ratio ? percent(value) : formatTokens(value);
+  const amount = document.createElement("strong"); amount.textContent = ratio ? formatTokenPercent(value) : formatTokens(value);
   if (!ratio && isCount(value)) amount.title = `${integerFormat.format(value)} tokens`;
   el.append(title, amount); return el;
 }
@@ -101,7 +99,7 @@ function modelRow(name: string | null, counts: TokenCounts, data: TokenPeriod): 
   const row = document.createElement("section"); row.className = "token-model";
   const heading = document.createElement("div"); heading.className = "token-model-heading";
   const label = document.createElement("span"); label.textContent = name || MODEL_MISSING; label.title = label.textContent;
-  const share = document.createElement("span"); share.className = "token-share"; share.textContent = percent(modelShare(counts, data.totals));
+  const share = document.createElement("span"); share.className = "token-share"; share.textContent = formatTokenPercent(modelShare(counts, data.totals));
   share.setAttribute("aria-label", `모델별 토큰 비중 ${share.textContent}`);
   heading.append(label, share); row.append(heading);
   const grid = document.createElement("div"); grid.className = "token-metrics";

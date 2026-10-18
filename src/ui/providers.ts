@@ -2,6 +2,7 @@ import {
   clampPct,
   formatCountdown,
   formatPct,
+  formatTokenPercent,
   formatProviderStatus,
   formatResetClock,
   formatWindowLabel,
@@ -223,7 +224,7 @@ function usageRow(opts: {
         <span class="provider-pct ${lvl}">${escapeHtml(pctText)}</span>
       </div>
       ${segments.length ? `<div class="token-model-legend" tabindex="0" aria-label="${escapeAttr(modelDescription)}" title="${escapeAttr(modelDescription)}">
-        ${segments.map(s => `<span class="token-legend-item" title="${escapeAttr(s.model)} · 기기 토큰 ${s.share.toFixed(1)}%"><i class="token-model-dot" style="background:${s.color}" aria-hidden="true"></i><span>${escapeHtml(s.label)}</span></span>`).join("")}</div>` : ""}
+        ${segments.map(s => `<span class="token-legend-item" title="${escapeAttr(s.model)} · 기기 토큰 ${formatTokenPercent(s.share)}"><i class="token-model-dot" style="background:${s.color}" aria-hidden="true"></i><span>${escapeHtml(s.label)} ${formatTokenPercent(s.share)}</span></span>`).join("")}</div>` : ""}
     </div>
   `;
 }

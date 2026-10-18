@@ -141,6 +141,9 @@ export function formatWindowLabel(labelOrKind: string | null | undefined): strin
 
 
 export const MODEL_MISSING = "모델 미제공";
+export function formatTokenPercent(value: number | null): string {
+  return value === null ? "—" : `${value.toFixed(1).replace(/\.0$/, "")}%`;
+}
 const DARKEST_MODEL = 48;
 const MODEL_LIGHTNESS_RANGE = 32;
 const MODEL_LABEL_LIMIT = 13;

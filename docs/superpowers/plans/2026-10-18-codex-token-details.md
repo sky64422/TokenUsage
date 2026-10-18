@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Codex only for token collection. Do not add AGY/Claude/Grok token readers or modify CLI settings.
-- Use `이 기기의 기록`, `오늘 / 이번 주 / 이번 달`; week starts Monday at local midnight, month starts on the first date of the current month.
+- Use `이 기기의 기록`, `오늘 / 이번 달` (updated 2026-10-19); month starts on the first date of the current month.
 - Read actual usage metadata only. No conversation/tool/thinking content in retained state, emitted snapshots, fixtures or diagnostics.
 - Quota source, ring percentage, fixed 5-second refresh, activity and auth semantics remain independent.
 - `TOKENUSAGE_SKIP_DIRECT_QUOTA=1` disables real token reads.

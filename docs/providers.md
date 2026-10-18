@@ -70,7 +70,8 @@ All quota adapters live in `src-tauri/src/infrastructure/providers/quota/` and a
 The user-authorized `infrastructure/token_usage/` reader indexes only Codex session
 usage/model metadata on a bounded background worker. It attaches optional
 `token_usage` to Codex snapshots after vendor fetching, including quota failures.
-Today, current Monday-based week and calendar-month summaries are labeled `이 기기의 기록`; cumulative
+The UI exposes Today and calendar-month summaries, labeled `이 기기의 기록`; the
+internal Monday-based week summary remains available for compatibility. Cumulative
 reports and copied sessions are deduplicated. Cache and reasoning are subsets,
 never extra quota or token totals. Partial scans/unknown fields remain explicit.
 Only numeric/model metadata is indexed or emitted. Incomplete file lines use
@@ -82,7 +83,8 @@ Codex main bars keep vendor quota width and percentage. Optional token `windows`
 summaries cover reset-minus-five-hours / reset-minus-seven-days through the summary
 timestamp, matched by kind and reset instant. Their model shares shade only the
 filled portion. Accessible labels identify local token shares; visible legends
-contain only matching color dots and short model names, as requested. These do
+contain matching color dots, short model names and token-share percentages
+(at most one decimal), as requested. These do
 not estimate model-specific quota consumption. Missing, expired or unmatched reset data leaves a plain quota
 bar. Calendar token tabs remain independent. Retention includes the preceding
 seven days across month boundaries so weekly quota periods remain available.
@@ -96,7 +98,10 @@ allocations total at most 8 MiB; oversized/discarded buffers are released.
 Confirmed missing files release cursor slots while known numeric history stays
 until retention expiry; permission failures remain partial. Retention pruning
 runs only when its date advances. Summaries are cached until records, coverage,
-calendar boundaries or quota-window boundaries change. Timestamp-only updates
+calendar boundaries or quota-window boundaries change. Records written after a
+scan captures its timestamp retain numeric metadata and activate only when that
+time arrives. Record-limit coverage warnings expire with the latest excluded
+event date, not merely when a slot is freed. Timestamp-only updates
 do not request an extra quota refresh. Startup still rebuilds the metadata index
 from session files; there is no persistent token index, so large histories may
 need multiple bounded passes. These limits are not measured CPU/RAM savings.

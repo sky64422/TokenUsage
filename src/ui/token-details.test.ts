@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { cacheReadPercent, formatTokens, modelShare } from "./token-details";
-import { tokenTotal, modelSegments } from "./format";
+import { tokenTotal, modelSegments, formatTokenPercent } from "./format";
 
 describe("recorded token display", () => {
+  it("formats token ratios consistently in details and main legends", () => {
+    expect(formatTokenPercent(null)).toBe("—");
+    expect(formatTokenPercent(0)).toBe("0%");
+    expect(formatTokenPercent(100)).toBe("100%");
+    expect(formatTokenPercent(100 / 1.1)).toBe("90.9%");
+  });
   const counts = { input: 1000, cache_read: 750, cache_write: 100, output: 200, reasoning: 50 };
   it("does not double-count cached input or reasoning output", () => {
     expect(tokenTotal(counts)).toBe(1200);

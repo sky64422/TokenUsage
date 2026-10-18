@@ -71,13 +71,13 @@ Windows validation uses isolated app profiles, existing desktop pixels and no fu
 
 ### Codex token details and quota-track regression (2026-10-18)
 
-With Vite running, `python scripts/token-details-smoke.py` checks Today / This
-week / This month, model metadata, persistent expansion/selection/focus, provider marks,
+With Vite running, `python scripts/token-details-smoke.py` checks Today / This month, model metadata, persistent expansion/selection/focus, provider marks,
 zero/missing/partial/error states, escaping, three themes and scaled widths.
-It also checks model-share shades in the main quota bars, matching dots/abbreviations
+It also checks model-share shades in the main quota bars, matching dots/abbreviations/percentages
 on one legend line, unchanged vendor width/percentage, stale-reset fallback,
 independence from calendar tab selection, legend focus while numeric data changes, tab keyboard navigation
-and the shared settings selection indicator under reduced motion. `python
+and the two-tab selection indicator width under reduced motion. Tiny 1% quota
+fills with three models must retain positive segment widths and the vendor percentage. `python
 scripts/notch-ring-smoke.py` checks one continuous ring with no secondary ring,
 including unknown/zero/full/overage and running activity.
 `python scripts/usage-track-smoke.py` compares empty-track pixels across zero,
@@ -87,6 +87,9 @@ metadata, never live transcripts or OS preferences.
 
 Rust token tests cover cumulative increments, copied/forked histories, replacement,
 partial writes, Monday/week/month boundaries, oversized lines, resumable discovery and fairness.
+Regression cases cover events written just after scan time (also across a month
+boundary), activation without replay or double-counting, and record-limit coverage
+expiry/cache invalidation without falsely clearing same-period warnings.
 Limits per background pass: 512 discovery entries, 8 MiB total reads, 1 MiB per
 file, 64 file attempts; at most 4096 files and 100000 retained metadata records.
 Recent files, including unread sessions, share a reserved 2 MiB allowance while background paths
