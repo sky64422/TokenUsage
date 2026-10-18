@@ -533,7 +533,7 @@
 .track-models { position: absolute; inset: 0; display: flex; gap: min(2px, calc(25% / var(--model-gaps, 1))); }
 .track-models > span { display: block; height: 100%; flex: 1 1 0; min-width: 0; border-radius: 1px; }
 .track-fill:has(.track-models)::before { z-index: 1; }
-.token-model-legend { display: flex; align-items: center; gap: 8px; margin-top: -4px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; color: var(--muted-foreground); font-size: 10px; line-height: 13px; }
+.token-model-legend { display: flex; align-items: center; gap: 12px; margin-top: -4px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; color: var(--muted-foreground); font-size: 10px; line-height: 13px; }
 .token-model-legend::-webkit-scrollbar { display: none; }
 .token-model-legend:focus-visible { outline: 1px solid var(--ring); outline-offset: 2px; border-radius: 3px; }
 .token-legend-item { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; }
