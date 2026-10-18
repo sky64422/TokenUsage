@@ -1,6 +1,7 @@
 pub mod notch_window;
 pub mod poll;
 pub mod providers;
+pub mod token_usage;
 pub mod store;
 pub mod tray;
 pub mod updater;
