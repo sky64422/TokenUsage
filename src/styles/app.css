@@ -213,6 +213,8 @@ body {
   max-width: 100%;
   background: var(--ok);
   overflow: hidden;
+  /* Keep fill shadows and sheen inside the measured usage, including while running. */
+  clip-path: inset(0 round 9999px);
   box-shadow:
     0 0 0 0.5px rgba(255, 255, 255, calc(0.14 * var(--accent-opacity))) inset,
     0 0 10px rgba(var(--ok-rgb), calc(0.22 * var(--accent-opacity)));
@@ -250,7 +252,7 @@ body {
   opacity: 0.85;
 }
 
-/* Active running sheen — accelerated traveling highlight with track aura */
+/* Active running sheen stays inside the filled portion. */
 .track-fill.is-running::before,
 .provider-card[data-activity="running"] .track-fill.is-active::before {
   background-position: 120% 0;
@@ -265,10 +267,6 @@ body {
     transparent 100%
   );
   background-size: 220% 100%;
-}
-
-.provider-card[data-activity="running"] .track {
-  box-shadow: inset 0 1px 2px var(--track-inset), 0 0 8px rgba(255, 255, 255, 0.14);
 }
 
 /* Soft luminous cap at active end (partial fill only) */
