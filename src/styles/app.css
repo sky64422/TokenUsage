@@ -1895,7 +1895,8 @@ body {
 .settings-pill-action[data-feedback="error"],
 .settings-row-btn[data-feedback="error"] { color: var(--warn); border-color: var(--warn); }
 @media (prefers-reduced-motion: reduce) {
-  .settings-tabs::before, .settings-tab-btn, .settings-pill-action, .settings-row-btn,
+  .settings-tabs::before { transition: none !important; }
+  .settings-tab-btn, .settings-pill-action, .settings-row-btn,
   .settings-switch, .settings-switch::after, .opacity-meter, .opacity-meter-fill,
   .diag-copy-icon, .diag-check-icon, .diag-text, .quit-text, .quit-icon-wrap {
     transition: none !important;

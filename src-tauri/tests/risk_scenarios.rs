@@ -12,6 +12,23 @@ fn ensure_skip_network() {
     });
 }
 
+#[test]
+fn risk_preview_carries_independent_empty_codex_tokens_without_live_reads() {
+    ensure_skip_network();
+    let dir = tempdir().unwrap();
+    let core = AppCore::new(default_state(), dir.path().into());
+    let snapshots = core.refresh_all();
+    let codex = snapshots.iter().find(|s| s.provider_id == ProviderId::Codex).unwrap();
+    assert_eq!(codex.source, DataSource::Unavailable);
+    let tokens = codex.token_usage.as_ref().unwrap();
+    assert_eq!(tokens.source, "local_records");
+    assert_eq!(tokens.status, token_usage_lib::domain::token_usage::TokenUsageStatus::Ready);
+    assert!(tokens.today.models.is_empty());
+    assert!(tokens.week.models.is_empty());
+    assert!(tokens.month.models.is_empty());
+    assert!(snapshots.iter().filter(|s| s.provider_id != ProviderId::Codex).all(|s| s.token_usage.is_none()));
+}
+
 use token_usage_lib::application::service::AppCore;
 use token_usage_lib::domain::types::{AppTheme, DataSource, PersistedState, ProviderId};
 use token_usage_lib::infrastructure::store::{default_state, load_state, save_state, state_path};

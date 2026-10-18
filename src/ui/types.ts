@@ -49,6 +49,7 @@ export interface TokenUsageSnapshot {
   status: "loading" | "ready" | "partial" | "unavailable";
   today: TokenPeriod;
   week: TokenPeriod;
+  month: TokenPeriod;
 }
 
 export interface ProviderConfig {

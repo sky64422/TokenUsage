@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cacheReadPercent, tokenTotal, formatTokens, modelShare } from "./token-details";
+import { cacheReadPercent, tokenTotal, formatTokens, modelShare, modelSegments } from "./token-details";
 
 describe("recorded token display", () => {
   const counts = { input: 1000, cache_read: 750, cache_write: 100, output: 200, reasoning: 50 };
@@ -19,5 +19,17 @@ describe("recorded token display", () => {
   });
   it("uses the ratio of summed counters for the total", () => {
     expect(cacheReadPercent({ ...counts, input: 1100, cache_read: 750 })).toBeCloseTo(68.1818, 3);
+  });
+
+  it("ranks model segments with darker shades for larger amounts and short labels", () => {
+    const small = { ...counts, input: 100, output: 20, cache_read: 0 };
+    const data = { models: [{ model: "gpt-6-astra", counts: small }, { model: "gpt-6.1-sol", counts }],
+      totals: { ...counts, input: 1100, output: 220 } };
+    const segments = modelSegments(data);
+    expect(segments.map(s => s.label)).toEqual(["6.1 Sol", "6 Astra"]);
+    expect(segments[0].share).toBeCloseTo(100 / 1.1);
+    expect(segments[0].lightness).toBeLessThan(segments[1].lightness);
+    expect(segments[0].color).toMatch(/^hsl\(210 38% /);
+    expect(modelSegments({ ...data, totals: { ...data.totals, input: null } })).toEqual([]);
   });
 });
