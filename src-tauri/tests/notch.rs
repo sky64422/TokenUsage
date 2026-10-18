@@ -610,6 +610,27 @@ fn expanded_token_details_use_intrinsic_height_up_to_the_work_area() {
 }
 
 #[test]
+fn vertical_detail_expands_down_before_using_space_above() {
+    use token_usage_lib::domain::notch::calculate_layout_target;
+    let m = monitor(1.);
+    for edge in [NotchEdge::Left, NotchEdge::Right] {
+        let mut placement = NotchPlacement { edge, offset: 0.15, monitor_hint: None };
+        let short = calculate_layout_target(&m, &placement, 4, true, 150., Some(80.)).unwrap();
+        let expanded = calculate_layout_target(&m, &placement, 4, true, 600., Some(80.)).unwrap();
+        assert_eq!(short.detail.unwrap().y, expanded.detail.unwrap().y,
+            "with room below, expansion must keep the panel top fixed");
+        assert_eq!(short.window, expanded.window);
+        assert_eq!(short.notch, expanded.notch);
+        placement.offset = 0.9;
+        let short = calculate_layout_target(&m, &placement, 4, true, 150., Some(296.)).unwrap();
+        let expanded = calculate_layout_target(&m, &placement, 4, true, 600., Some(296.)).unwrap();
+        assert!(expanded.detail.unwrap().y < short.detail.unwrap().y,
+            "use space above only after the bottom boundary prevents downward growth");
+        assert_eq!(expanded.detail.unwrap().y + expanded.detail.unwrap().height, m.work.y + m.work.height);
+    }
+}
+
+#[test]
 fn horizontal_notch_detail_window_centers_on_target_cell() {
     use token_usage_lib::domain::notch::calculate_layout_target;
     let m = monitor(1.);

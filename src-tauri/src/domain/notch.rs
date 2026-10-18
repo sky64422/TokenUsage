@@ -381,19 +381,12 @@ pub fn calculate_layout_target(
                 NotchEdge::Left => notch.x + depth + gap,
                 _ => unreachable!(),
             };
-            let y = if let Some(t) = target {
-                let center = notch.y + t * s;
-                let ideal = center - dh / 2.0;
-                if dh <= notch.height {
-                    ideal.clamp(notch.y, notch.y + notch.height - dh)
-                } else {
-                    ideal.clamp(w.y, (w.y + w.height - dh).max(w.y))
-                }
-            } else {
-                let center = notch.y + notch.height / 2.0;
-                let ideal = center - dh / 2.0;
-                ideal.clamp(w.y, (w.y + w.height - dh).max(w.y))
-            };
+            // Anchor the compact header to its provider. Content grows downward
+            // from that fixed top until the work area's bottom requires a shift.
+            let center = target.map(|t| notch.y + t * s)
+                .unwrap_or(notch.y + notch.height / 2.0);
+            let ideal = center - MIN_DETAIL_HEIGHT * content_scale * s / 2.0;
+            let y = ideal.clamp(w.y, (w.y + w.height - dh).max(w.y));
             (x, y)
         } else {
             let y = match edge {
