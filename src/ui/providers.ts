@@ -200,6 +200,7 @@ function usageRow(opts: {
     over || (!idle && formatCountdown(w.resets_at) === "soon");
   const groupClass = opts.isGroupStart ? " is-group-start" : "";
   const segments = width > 0 && pct !== null && !idle && opts.models ? modelSegments(opts.models) : [];
+  const parts = segments.filter(segment => segment.share > 0);
   const modelDescription = `${label} 기간의 이 기기 입력+출력 토큰 비중입니다. 모델별 한도 소모율이 아닙니다.`;
 
   return `
@@ -215,7 +216,7 @@ function usageRow(opts: {
       <div class="usage-metrics">
         <div class="track" aria-hidden="true">
           <div class="track-fill ${lvl}${width > 0 && !idle ? " is-active" : ""}${opts.cardRunning ? " is-running" : ""}" style="width:${width}%">
-            ${segments.length ? `<div class="track-models">${segments.filter(s => s.share > 0).map(s => `<span style="flex-grow:${s.share};background:${s.color}"></span>`).join("")}</div>` : ""}
+            ${parts.length ? `<div class="track-models" style="--model-gaps:${Math.max(1, parts.length - 1)}">${parts.map(s => `<span style="flex-grow:${s.share};background:${s.color}"></span>`).join("")}</div>` : ""}
             ${showStop && !segments.length ? `<span class="track-stop"></span>` : ""}
           </div>
         </div>

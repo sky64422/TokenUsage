@@ -112,6 +112,22 @@ with sync_playwright() as p:
     assert page.locator('.track-models').count() == 0, 'Stale period must not color a new quota cycle'
     page.evaluate("window.snap.windows[0].resets_at=window.snap.token_usage.windows[0].resets_at;window.ui.setSnapshots([structuredClone(window.snap)]);")
 
+    # A tiny nonzero quota must retain colored usage even with multiple models.
+    page.evaluate("""() => {
+        window.beforeTiny=structuredClone(window.snap);
+        const counts={input:100,output:0,cache_read:0,cache_write:0,reasoning:0};
+        window.snap.windows[0].used_percent=1;window.snap.windows[0].used=1;
+        window.snap.primary_used_percent=1;
+        window.snap.token_usage.windows[0].usage={models:['one','two','three'].map(model=>({model,counts})),totals:{...counts,input:300}};
+        window.ui.setSnapshots([structuredClone(window.snap)]);
+    }""")
+    tiny = page.locator('.track-models').evaluate('el=>({fill:el.getBoundingClientRect().width,parts:[...el.children].map(p=>({x:p.getBoundingClientRect().x,width:p.getBoundingClientRect().width,right:p.getBoundingClientRect().right}))})')
+    assert tiny['fill'] > 0 and all(part['width'] > 0 for part in tiny['parts']), tiny
+    assert 0 <= tiny['parts'][1]['x']-tiny['parts'][0]['right'] < 2, tiny
+    expect(page.locator('.provider-entry:visible .provider-pct')).to_have_text('1%')
+    page.screenshot(path='tmp/token-low-usage-models.png')
+    page.evaluate('window.snap=window.beforeTiny;delete window.beforeTiny;window.ui.setSnapshots([structuredClone(window.snap)]);')
+
     for state, label in [("loading", "집계 중"), ("partial", "일부 기록"), ("unavailable", "읽기 실패")]:
         page.evaluate("state => {window.snap.token_usage.status=state;window.ui.setSnapshots([structuredClone(window.snap)]);}", state)
         expect(page.locator(".token-status:visible")).to_have_text(label)

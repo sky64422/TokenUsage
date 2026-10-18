@@ -532,7 +532,7 @@
 .usage-row.level-critical, .usage-row.level-over { --model-base-color: var(--critical); }
 .track:has(.track-models) { border-radius: 1px; }
 .track-fill:has(.track-models) { background: none; box-shadow: none; border-radius: 1px; clip-path: inset(0 round 1px); }
-.track-models { position: absolute; inset: 0; display: flex; gap: 2px; }
+.track-models { position: absolute; inset: 0; display: flex; gap: min(2px, calc(25% / var(--model-gaps, 1))); }
 .track-models > span { display: block; height: 100%; flex: 1 1 0; min-width: 0; border-radius: 1px; }
 .track-fill:has(.track-models)::before { z-index: 1; }
 .token-model-legend { display: flex; align-items: center; gap: 8px; margin-top: -4px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; color: var(--muted-foreground); font-size: 10px; line-height: 13px; }
