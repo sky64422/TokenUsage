@@ -28,6 +28,7 @@ pub fn finish_snapshot(
     };
 
     ProviderSnapshot {
+        token_usage: None,
         provider_id: id,
         display_name: id.display_name().into(),
         windows,

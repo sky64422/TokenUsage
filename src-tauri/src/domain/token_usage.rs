@@ -151,4 +151,16 @@ mod tests {
         assert!(!a.add(&counts(1, 0, 1)));
         assert_eq!(a.input, None);
     }
+
+    #[test]
+    fn old_quota_cache_deserializes_without_token_details() {
+        let old = serde_json::json!({"provider_id":"codex","display_name":"Codex","windows":[],
+            "status":"auth_required","source":"unavailable","as_of":"2026-10-18T00:00:00Z",
+            "message":null,"primary_resets_at":null,"primary_used_percent":null});
+        let mut snap: crate::domain::types::ProviderSnapshot = serde_json::from_value(old).unwrap();
+        assert!(snap.token_usage.is_none());
+        snap.token_usage = Some(TokenLedger::default().summarize(Local::now(), TokenUsageStatus::Ready));
+        assert_eq!(snap.status, crate::domain::types::SnapshotStatus::AuthRequired);
+        assert!(snap.primary_used_percent.is_none());
+    }
 }

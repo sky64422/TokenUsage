@@ -65,6 +65,18 @@ All quota adapters live in `src-tauri/src/infrastructure/providers/quota/` and a
 
 ## 3. Provider Activity Monitoring
 
+### Codex recorded token details (2026-10-18)
+
+The user-authorized `infrastructure/token_usage/` reader indexes only Codex session
+usage/model metadata on a bounded background worker. It attaches optional
+`token_usage` to Codex snapshots after vendor fetching, including quota failures.
+Today and seven-local-date summaries are labeled `이 기기의 기록`; cumulative
+reports and copied sessions are deduplicated. Cache and reasoning are subsets,
+never extra quota or token totals. Partial scans/unknown fields remain explicit.
+No prompt, tool arguments, thinking or account identity is retained or emitted.
+Preview mode disables real reads. AGY and other token readers are deferred.
+
+
 `src-tauri/src/infrastructure/activity.rs` owns the background loop and Tauri events.
 `activity/monitor.rs` owns bounded file discovery, tail reads and AGY file timestamps;
 `activity/evidence.rs` parses structural lifecycle evidence and applies TTL/aggregation

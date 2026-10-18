@@ -88,6 +88,8 @@ pub struct UsageWindow {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProviderSnapshot {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token_usage: Option<super::token_usage::TokenUsageSnapshot>,
     pub provider_id: ProviderId,
     pub display_name: String,
     pub windows: Vec<UsageWindow>,

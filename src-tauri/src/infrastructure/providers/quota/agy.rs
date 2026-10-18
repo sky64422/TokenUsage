@@ -86,6 +86,7 @@ pub fn fetch() -> Result<ProviderSnapshot, String> {
     }
     if state.pending && state.error.is_none() {
         return Ok(ProviderSnapshot {
+            token_usage: None,
             provider_id: ProviderId::Agy,
             display_name: ProviderId::Agy.display_name().into(),
             windows: vec![],

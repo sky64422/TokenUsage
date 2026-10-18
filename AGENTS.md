@@ -16,6 +16,7 @@
 
 - Screen-edge **usage monitor notch**, not a billing dashboard or team admin console.
 - **Primary data:** vendor quota: direct OAuth (Claude / Codex / Grok) and official CLI (Antigravity). No tokscale, no local JSONL estimates.
+- **Codex token details (user-requested 2026-10-18):** Read recorded numeric usage and model metadata from Codex sessions for a separate `이 기기의 기록` detail. Never derive quota %, costs or activity from token totals; retain no conversation/tool/thinking content. Other providers' token ledgers remain out of scope.
 - **No** browser scraping of vendor dashboards without an explicit design decision.
 - **Notifications** are out of scope until requested.
 - **Antigravity (AGY):** official installed `agy --sandbox --print-timeout 30s --print /usage` only (added by user request 2026-10-02). Cached to disk (`quota-cache/agy_snapshot.json`) for 0ms cold start; background CLI completion notifies immediately via `poll::notify_refresh()`. Gemini and Claude/GPT 5h/week quotas remain separate. No legacy cloudcode-pa API, browser scraping, or token estimates.

@@ -20,6 +20,7 @@ export interface UsageWindow {
 }
 
 export interface ProviderSnapshot {
+  token_usage?: TokenUsageSnapshot | null;
   provider_id: ProviderId;
   display_name: string;
   windows: UsageWindow[];
@@ -29,6 +30,25 @@ export interface ProviderSnapshot {
   message: string | null;
   primary_resets_at: string | null;
   primary_used_percent: number | null;
+}
+
+export interface TokenCounts {
+  input: number | null;
+  cache_read: number | null;
+  cache_write: number | null;
+  output: number | null;
+  reasoning: number | null;
+}
+export interface TokenPeriod {
+  models: { model: string | null; counts: TokenCounts }[];
+  totals: TokenCounts;
+}
+export interface TokenUsageSnapshot {
+  source: "local_records";
+  as_of: string;
+  status: "loading" | "ready" | "partial" | "unavailable";
+  today: TokenPeriod;
+  week: TokenPeriod;
 }
 
 export interface ProviderConfig {

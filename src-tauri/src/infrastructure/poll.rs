@@ -86,6 +86,7 @@ mod tests {
     #[tokio::test]
     async fn refresh_delivers_the_worker_snapshots() {
         let snapshot = ProviderSnapshot {
+            token_usage: None,
             provider_id: ProviderId::Grok,
             display_name: "Grok".into(),
             windows: vec![],

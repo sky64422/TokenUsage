@@ -7,6 +7,13 @@
 
 ## Runtime
 
+Codex-only token details additionally use `infrastructure/token_usage/` and pure
+`domain/token_usage.rs` accounting. A bounded incremental worker reads recorded
+numeric/model metadata and enriches the Codex snapshot with optional `token_usage`.
+This local detail has independent loading/partial/error states and never supplies
+vendor quota percentages or activity. It retains no conversation content.
+
+
 ```
 Web UI (provider rings, inward quota details, 3-tab settings sheet)
         │ invoke / events (snapshots-updated, provider-activity)

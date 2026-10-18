@@ -104,6 +104,9 @@ impl AppCore {
             }
         }
 
+        if let Some(codex) = next.get_mut(&ProviderId::Codex) {
+            codex.token_usage = Some(crate::infrastructure::token_usage::snapshot());
+        }
         let mut guard = self.lock();
         let count = next.len();
         guard.snapshots = next;
@@ -274,6 +277,7 @@ fn missing_quota_snapshot(id: ProviderId, vendor_err: Option<&str>) -> ProviderS
         }
     };
     ProviderSnapshot {
+        token_usage: None,
         provider_id: id,
         display_name: id.display_name().into(),
         windows: vec![],
