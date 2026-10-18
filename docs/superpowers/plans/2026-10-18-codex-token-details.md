@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Codex only for token collection. Do not add AGY/Claude/Grok token readers or modify CLI settings.
-- Use `이 기기의 기록`, `오늘 / 이번 달` (updated 2026-10-19); month starts on the first date of the current month.
+- Use `오늘 / 이번 달` (updated 2026-10-19); omit visible provenance, timestamps, status and explanatory footnotes; month starts on the first date of the current month.
 - Read actual usage metadata only. No conversation/tool/thinking content in retained state, emitted snapshots, fixtures or diagnostics.
 - Quota source, ring percentage, fixed 5-second refresh, activity and auth semantics remain independent.
 - `TOKENUSAGE_SKIP_DIRECT_QUOTA=1` disables real token reads.
@@ -85,7 +85,7 @@
 - [ ] Add a Playwright smoke using existing Vite fixture style: open detail, choose month, focus the button, update snapshots, switch provider and return; assert expansion/selection/focus persist. Cover missing/zero/partial/error, long model label, many models and overflow, three themes and scale 0.92/1.
 - [ ] Include Provider icon assertions for Codex, grouped AGY, Claude/Grok and missing-quota rows. Icons use `alt=""`, `aria-hidden="true"`, fixed 14px scaled size and neutral existing marks; no model-family icon duplication or changes to quota column layout.
 - [ ] Run `npx vitest run src/ui/token-details.test.ts` and `python scripts/token-details-smoke.py`; observe failing behavior before implementing.
-- [ ] Render token metadata below quota with native disclosure/button controls, provider-specific state, period tabs, model amounts/shares, input/output split, CacheRead ratio and separate CacheWrite/reasoning numbers. Patch stable DOM elements rather than replace focused controls on every snapshot. Present `이 기기의 기록`, updated time and partial/loading/error states.
+- [ ] Render token metadata below quota with native disclosure/button controls, provider-specific state, period tabs, model amounts/shares, input/output split, CacheRead ratio and separate CacheWrite/reasoning numbers. Patch stable DOM elements rather than replace focused controls on every snapshot. Keep provenance, update time and partial/loading/error states in snapshot data; omit this copy and explanatory footnotes from the visible detail (user request 2026-10-19).
 - [ ] Request native surface height after layout-affecting actions through the existing serializer. Do not add a ResizeObserver/content-hug loop or frontend HWND movement. Run frontend tests, token smoke, existing detail smoke and `python scripts/settings-smoke.py`; commit Task 4 files when green.
 
 ### Task 5: Full verification and feedback preview

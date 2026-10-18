@@ -70,7 +70,8 @@ All quota adapters live in `src-tauri/src/infrastructure/providers/quota/` and a
 The user-authorized `infrastructure/token_usage/` reader indexes only Codex session
 usage/model metadata on a bounded background worker. It attaches optional
 `token_usage` to Codex snapshots after vendor fetching, including quota failures.
-The UI exposes Today and calendar-month summaries, labeled `이 기기의 기록`; the
+The UI exposes Today and calendar-month summaries without visible provenance,
+update time, status copy or explanatory footnotes (user request 2026-10-19); the
 internal Monday-based week summary remains available for compatibility. Cumulative
 reports and copied sessions are deduplicated. Cache and reasoning are subsets,
 never extra quota or token totals. Partial scans/unknown fields remain explicit.

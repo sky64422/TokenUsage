@@ -130,9 +130,9 @@ with sync_playwright() as p:
     page.screenshot(path='tmp/token-low-usage-models.png')
     page.evaluate('window.snap=window.beforeTiny;delete window.beforeTiny;window.ui.setSnapshots([structuredClone(window.snap)]);')
 
-    for state, label in [("loading", "집계 중"), ("partial", "일부 기록"), ("unavailable", "읽기 실패")]:
+    for state in ["loading", "partial", "unavailable"]:
         page.evaluate("state => {window.snap.token_usage.status=state;window.ui.setSnapshots([structuredClone(window.snap)]);}", state)
-        expect(page.locator(".token-status:visible")).to_have_text(label)
+        assert page.locator('.token-provenance,.token-status,.token-note').count() == 0
         if state == 'unavailable':
             assert page.locator('.track-models').count() == 0
     page.evaluate("""() => {

@@ -72,7 +72,8 @@ Windows validation uses isolated app profiles, existing desktop pixels and no fu
 ### Codex token details and quota-track regression (2026-10-18)
 
 With Vite running, `python scripts/token-details-smoke.py` checks Today / This month, model metadata, persistent expansion/selection/focus, provider marks,
-zero/missing/partial/error states, escaping, three themes and scaled widths.
+zero/missing/partial/error data, absence of provenance/status/footnote copy,
+escaping, three themes and scaled widths.
 It also checks model-share shades in the main quota bars, matching dots/abbreviations/percentages
 on one legend line, unchanged vendor width/percentage, stale-reset fallback,
 independence from calendar tab selection, legend focus while numeric data changes, tab keyboard navigation

@@ -2,7 +2,6 @@ import type { TokenCounts, TokenPeriod, TokenUsageSnapshot } from "./types";
 import { tokenTotal, MODEL_MISSING, formatTokenPercent } from "./format";
 
 const MISSING = "—";
-const STATUS = { loading: "집계 중", ready: "", partial: "일부 기록", unavailable: "읽기 실패" };
 const integerFormat = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 });
 const compactFormat = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 type TokenPeriodId = "today" | "month";
@@ -27,14 +26,11 @@ export function mountTokenDetails(root: HTMLElement, onResize: () => void): { up
     <div class="token-content"><div class="token-periods settings-tabs" role="tablist" aria-label="토큰 집계 기간">
       <button type="button" class="settings-tab-btn is-active" id="token-tab-today" role="tab" aria-controls="codex-token-period-panel" data-period="today" aria-selected="true">오늘</button>
       <button type="button" class="settings-tab-btn" id="token-tab-month" role="tab" aria-controls="codex-token-period-panel" data-period="month" aria-selected="false" tabindex="-1">이번 달</button>
-    </div><div id="codex-token-period-panel" role="tabpanel" aria-labelledby="token-tab-today"><div class="token-provenance"><span>이 기기의 기록</span><time></time></div>
-    <p class="token-status" role="status"></p><div class="token-totals"></div><div class="token-models"></div>
-    <p class="token-note">캐시 입력은 입력에, 추론은 출력에 포함됩니다.</p></div></div></details>`;
+    </div><div id="codex-token-period-panel" role="tabpanel" aria-labelledby="token-tab-today">
+    <div class="token-totals"></div><div class="token-models"></div></div></div></details>`;
   const details = root.querySelector<HTMLDetailsElement>("details")!;
   const rows = root.querySelector<HTMLElement>(".token-models")!;
   const totals = root.querySelector<HTMLElement>(".token-totals")!;
-  const status = root.querySelector<HTMLElement>(".token-status")!;
-  const time = root.querySelector<HTMLTimeElement>("time")!;
   let period: TokenPeriodId = "today";
   let snapshot: TokenUsageSnapshot | null = null;
   let rowKey = "";
@@ -67,12 +63,7 @@ export function mountTokenDetails(root: HTMLElement, onResize: () => void): { up
     root.hidden = snapshot === null;
     if (!snapshot) return;
     const data = snapshot[period];
-    const date = new Date(snapshot.as_of);
-    time.textContent = Number.isNaN(date.getTime()) ? "" : date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
-    time.dateTime = snapshot.as_of;
-    status.textContent = STATUS[snapshot.status] || (data.models.length === 0 ? "기록 없음" : "");
-    status.hidden = !status.textContent;
-    const nextKey = JSON.stringify([data, period, snapshot.status]);
+    const nextKey = JSON.stringify([data, period]);
     if (nextKey === rowKey) return;
     rowKey = nextKey;
     rows.replaceChildren(); totals.replaceChildren();
