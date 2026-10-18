@@ -1,3 +1,5 @@
+import type { TokenCounts, TokenPeriod } from "./types";
+
 export function clampPct(pct: number | null | undefined): number | null {
   if (pct == null || Number.isNaN(pct)) return null;
   return Math.min(100, Math.max(0, pct));
@@ -137,3 +139,29 @@ export function formatWindowLabel(labelOrKind: string | null | undefined): strin
 }
 
 
+
+export const MODEL_MISSING = "모델 미제공";
+const DARKEST_MODEL = 48;
+const MODEL_LIGHTNESS_RANGE = 32;
+const MODEL_LABEL_LIMIT = 13;
+const isCount = (n: number | null): n is number => n !== null && Number.isSafeInteger(n) && n >= 0;
+
+export function tokenTotal(c: TokenCounts): number | null {
+  if (!isCount(c.input) || !isCount(c.output)) return null;
+  const total = c.input + c.output;
+  return Number.isSafeInteger(total) ? total : null;
+}
+export function modelSegments(data: TokenPeriod): { model: string; label: string; share: number; color: string; lightness: number }[] {
+  const total = tokenTotal(data.totals);
+  const models = data.models.map(row => ({ model: row.model || MODEL_MISSING, total: tokenTotal(row.counts) }));
+  if (total === null || total <= 0 || models.some(row => row.total === null)
+    || models.reduce((sum, row) => sum + (row.total ?? 0), 0) !== total) return [];
+  models.sort((a, b) => b.total! - a.total! || a.model.localeCompare(b.model));
+  const maximum = models[0]?.total ?? 0;
+  return models.map(row => {
+    const lightness = DARKEST_MODEL + (1 - row.total! / maximum) * MODEL_LIGHTNESS_RANGE;
+    const short = row.model.replace(/^gpt-/i, "").replace(/-(sol|astra|codex)$/i, (_, family: string) => ` ${family[0].toUpperCase()}${family.slice(1)}`);
+    return { model: row.model, label: short.length > MODEL_LABEL_LIMIT ? `${short.slice(0, MODEL_LABEL_LIMIT - 1)}…` : short,
+      share: row.total! / total * 100, lightness, color: `color-mix(in srgb, var(--model-base-color) ${100 - (lightness - DARKEST_MODEL) / MODEL_LIGHTNESS_RANGE * 60}%, white)` };
+  });
+}

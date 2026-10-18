@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { cacheReadPercent, tokenTotal, formatTokens, modelShare, modelSegments } from "./token-details";
+import { cacheReadPercent, formatTokens, modelShare } from "./token-details";
+import { tokenTotal, modelSegments } from "./format";
 
 describe("recorded token display", () => {
   const counts = { input: 1000, cache_read: 750, cache_write: 100, output: 200, reasoning: 50 };
@@ -29,7 +30,7 @@ describe("recorded token display", () => {
     expect(segments.map(s => s.label)).toEqual(["6.1 Sol", "6 Astra"]);
     expect(segments[0].share).toBeCloseTo(100 / 1.1);
     expect(segments[0].lightness).toBeLessThan(segments[1].lightness);
-    expect(segments[0].color).toMatch(/^hsl\(210 38% /);
+    expect(segments[0].color).toContain("var(--model-base-color) 100%");
     expect(modelSegments({ ...data, totals: { ...data.totals, input: null } })).toEqual([]);
   });
 });

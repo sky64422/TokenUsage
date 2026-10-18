@@ -50,6 +50,7 @@ export interface TokenUsageSnapshot {
   today: TokenPeriod;
   week: TokenPeriod;
   month: TokenPeriod;
+  windows?: { kind: WindowKind; resets_at: string; usage: TokenPeriod }[];
 }
 
 export interface ProviderConfig {

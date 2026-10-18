@@ -8,8 +8,9 @@ import {
   formatWindowReset,
   isOver,
   levelClass,
+  modelSegments,
 } from "./format";
-import type { ProviderActivity, ProviderId, ProviderSnapshot, UsageWindow } from "./types";
+import type { ProviderActivity, ProviderId, ProviderSnapshot, TokenPeriod, UsageWindow } from "./types";
 import { PROVIDER_CATALOG } from "./provider-catalog";
 import { mountTokenDetails } from "./token-details";
 
@@ -50,8 +51,17 @@ export function mountProviders(root: HTMLElement, onResize: () => void = () => {
       entry.element.hidden = false;
       const { token_usage: _tokens, as_of: _asOf, ...quota } = snap;
       const running = activities.get(snap.provider_id) === "running";
-      const key = JSON.stringify([quota, running]);
-      if (entry.key !== key) { entry.quota.innerHTML = cardHtml(snap, running); entry.key = key; }
+      const key = JSON.stringify([quota, running, snap.token_usage?.windows, snap.token_usage?.status]);
+      if (entry.key !== key) {
+        const legends = [...entry.quota.querySelectorAll<HTMLElement>(".token-model-legend")];
+        const focused = legends.indexOf(document.activeElement as HTMLElement);
+        const scrolls = legends.map(el => el.scrollLeft);
+        entry.quota.innerHTML = cardHtml(snap, running); entry.key = key;
+        entry.quota.querySelectorAll<HTMLElement>(".token-model-legend").forEach((el, index) => {
+          el.scrollLeft = scrolls[index] ?? 0;
+          if (index === focused) el.focus({ preventScroll: true });
+        });
+      }
       entry.tokens?.update(snap.token_usage ?? null);
     }
   }
@@ -113,6 +123,9 @@ function cardHtml(s: ProviderSnapshot, isRunning: boolean): string {
             cardIdle: idle,
             cardRunning: isRunning,
             icon: !s.windows.some(w => w.group) && i === 0 ? s.provider_id : undefined,
+            models: s.provider_id === "codex" && s.token_usage?.status !== "unavailable"
+              ? s.token_usage?.windows?.find(period => period.kind === w.kind && w.resets_at !== null
+                && Date.parse(period.resets_at) === Date.parse(w.resets_at))?.usage : undefined,
           });
         })
         .join("")
@@ -159,6 +172,7 @@ function usageRow(opts: {
   cardIdle: boolean;
   cardRunning?: boolean;
   icon?: ProviderId;
+  models?: TokenPeriod;
 }): string {
   const w = opts.window;
   const over = isOver(w.used_percent, opts.cardMessage, w.used, w.limit);
@@ -185,9 +199,11 @@ function usageRow(opts: {
   const urgent =
     over || (!idle && formatCountdown(w.resets_at) === "soon");
   const groupClass = opts.isGroupStart ? " is-group-start" : "";
+  const segments = width > 0 && pct !== null && !idle && opts.models ? modelSegments(opts.models) : [];
+  const modelDescription = `${label} 기간의 이 기기 입력+출력 토큰 비중입니다. 모델별 한도 소모율이 아닙니다.`;
 
   return `
-    <div class="usage-row${idle ? " is-idle" : ""}${groupClass}" title="${escapeAttr(title)}">
+    <div class="usage-row ${lvl}${idle ? " is-idle" : ""}${groupClass}" title="${escapeAttr(title)}">
       <div class="usage-head">
         <span class="provider-name"${opts.nameHidden ? ' aria-hidden="true"' : ""}>${opts.icon ? providerMark(opts.icon) : ""}<span>${escapeHtml(opts.name)}</span></span>
         <span class="window-label">${escapeHtml(label)}</span>
@@ -199,11 +215,14 @@ function usageRow(opts: {
       <div class="usage-metrics">
         <div class="track" aria-hidden="true">
           <div class="track-fill ${lvl}${width > 0 && !idle ? " is-active" : ""}${opts.cardRunning ? " is-running" : ""}" style="width:${width}%">
-            ${showStop ? `<span class="track-stop"></span>` : ""}
+            ${segments.length ? `<div class="track-models">${segments.filter(s => s.share > 0).map(s => `<span style="flex-grow:${s.share};background:${s.color}"></span>`).join("")}</div>` : ""}
+            ${showStop && !segments.length ? `<span class="track-stop"></span>` : ""}
           </div>
         </div>
         <span class="provider-pct ${lvl}">${escapeHtml(pctText)}</span>
       </div>
+      ${segments.length ? `<div class="token-model-legend" tabindex="0" aria-label="${escapeAttr(modelDescription)}" title="${escapeAttr(modelDescription)}">
+        ${segments.map(s => `<span class="token-legend-item" title="${escapeAttr(s.model)} · 기기 토큰 ${s.share.toFixed(1)}%"><i class="token-model-dot" style="background:${s.color}" aria-hidden="true"></i><span>${escapeHtml(s.label)}</span></span>`).join("")}</div>` : ""}
     </div>
   `;
 }

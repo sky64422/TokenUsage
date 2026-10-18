@@ -1,23 +1,13 @@
 import type { TokenCounts, TokenPeriod, TokenUsageSnapshot } from "./types";
+import { tokenTotal, MODEL_MISSING } from "./format";
 
 const MISSING = "—";
-const MODEL_MISSING = "모델 미제공";
 const STATUS = { loading: "집계 중", ready: "", partial: "일부 기록", unavailable: "읽기 실패" };
 const integerFormat = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 });
 const compactFormat = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
-const MODEL_HUE = 210;
-const MODEL_SATURATION = 38;
-const DARKEST_MODEL = 48;
-const MODEL_LIGHTNESS_RANGE = 32;
-const MODEL_LABEL_LIMIT = 13;
 type TokenPeriodId = "today" | "week" | "month";
 const isCount = (n: number | null): n is number => n !== null && Number.isSafeInteger(n) && n >= 0;
 
-export function tokenTotal(c: TokenCounts): number | null {
-  if (!isCount(c.input) || !isCount(c.output)) return null;
-  const total = c.input + c.output;
-  return Number.isSafeInteger(total) ? total : null;
-}
 export function cacheReadPercent(c: TokenCounts): number | null {
   return isCount(c.input) && c.input > 0 && isCount(c.cache_read) && c.cache_read <= c.input
     ? c.cache_read / c.input * 100 : null;
@@ -28,20 +18,6 @@ export function modelShare(c: TokenCounts, totals: TokenCounts): number | null {
 }
 export function formatTokens(value: number | null): string {
   return isCount(value) ? (value < 10_000 ? integerFormat.format(value) : compactFormat.format(value)) : MISSING;
-}
-export function modelSegments(data: TokenPeriod): { model: string; label: string; share: number; color: string; lightness: number }[] {
-  const total = tokenTotal(data.totals);
-  const models = data.models.map(row => ({ model: row.model || MODEL_MISSING, total: tokenTotal(row.counts) }));
-  if (total === null || total <= 0 || models.some(row => row.total === null)
-    || models.reduce((sum, row) => sum + (row.total ?? 0), 0) !== total) return [];
-  models.sort((a, b) => b.total! - a.total! || a.model.localeCompare(b.model));
-  const maximum = models[0]?.total ?? 0;
-  return models.map(row => {
-    const lightness = DARKEST_MODEL + (1 - row.total! / maximum) * MODEL_LIGHTNESS_RANGE;
-    const short = row.model.replace(/^gpt-/i, "").replace(/-(sol|astra|codex)$/i, (_, family: string) => ` ${family[0].toUpperCase()}${family.slice(1)}`);
-    return { model: row.model, label: short.length > MODEL_LABEL_LIMIT ? `${short.slice(0, MODEL_LABEL_LIMIT - 1)}…` : short,
-      share: row.total! / total * 100, lightness, color: `hsl(${MODEL_HUE} ${MODEL_SATURATION}% ${lightness}%)` };
-  });
 }
 function percent(value: number | null): string { return value === null ? MISSING : `${value.toFixed(1).replace(/\.0$/, "")}%`; }
 
@@ -101,36 +77,11 @@ export function mountTokenDetails(root: HTMLElement, onResize: () => void): { up
     const nextKey = JSON.stringify([data, period, snapshot.status]);
     if (nextKey === rowKey) return;
     rowKey = nextKey;
-    const oldLegend = totals.querySelector<HTMLElement>(".token-model-legend");
-    const legendFocused = oldLegend !== null && document.activeElement === oldLegend;
-    const legendScroll = oldLegend?.scrollLeft ?? 0;
     rows.replaceChildren(); totals.replaceChildren();
     if (data.models.length > 0) {
       const summary = document.createElement("div"); summary.className = "token-summary";
       summary.append(metric("총 토큰", tokenTotal(data.totals)), metric("CacheRead 비중", cacheReadPercent(data.totals), true));
       totals.append(summary);
-      const segments = modelSegments(data);
-      if (segments.length) {
-        const composition = document.createElement("div"); composition.className = "token-composition";
-        const bar = document.createElement("div"); bar.className = "token-model-bar"; bar.setAttribute("role", "img");
-        bar.setAttribute("aria-label", `모델별 토큰 비중: ${segments.map(s => `${s.model} ${percent(s.share)}`).join(", ")}`);
-        const legend = document.createElement("div"); legend.className = "token-model-legend";
-        legend.tabIndex = 0; legend.setAttribute("aria-label", "모델 범례");
-        for (const segment of segments) {
-          if (segment.share > 0) {
-            const part = document.createElement("span"); part.style.width = `${segment.share}%`; part.style.backgroundColor = segment.color;
-            part.setAttribute("aria-hidden", "true"); bar.append(part);
-          }
-          const item = document.createElement("span"); item.className = "token-legend-item";
-          item.title = `${segment.model} · ${percent(segment.share)}`;
-          const dot = document.createElement("i"); dot.className = "token-model-dot"; dot.style.backgroundColor = segment.color; dot.setAttribute("aria-hidden", "true");
-          const name = document.createElement("span"); name.textContent = segment.label;
-          item.append(dot, name); legend.append(item);
-        }
-        composition.append(bar, legend); totals.append(composition);
-        legend.scrollLeft = legendScroll;
-        if (legendFocused) legend.focus({ preventScroll: true });
-      }
       for (const model of data.models) rows.append(modelRow(model.model, model.counts, data));
     }
     onResize();

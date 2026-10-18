@@ -69,33 +69,54 @@ with sync_playwright() as p:
         const b={input:100,cache_read:0,cache_write:0,output:20,reasoning:0};
         window.snap.token_usage.month={models:[{model:'gpt-6.1-sol',counts:a},{model:'gpt-6-astra',counts:b}],
           totals:{...a,input:1100,output:220}};
+        window.snap.windows[0].resets_at='2099-10-18T05:00:00Z';
+        window.snap.token_usage.windows=[{kind:'rolling_5h',resets_at:window.snap.windows[0].resets_at,usage:structuredClone(window.snap.token_usage.month)}];
         window.ui.setSnapshots([structuredClone(window.snap)]);
     }""")
-    expect(page.locator('.token-model-legend')).to_contain_text('6.1 Sol')
+    assert page.locator('.token-details .token-model-bar').count() == 0, 'Model composition belongs in the main quota bar'
+    expect(page.locator('.provider-card .token-model-legend')).to_contain_text('6.1 Sol')
     expect(page.locator('.token-model-legend')).to_contain_text('6 Astra')
-    assert page.locator('.token-model-bar > span').count() == 2
+    assert page.locator('.track-models > span').count() == 2
+    assert page.locator('.provider-entry:visible .track-fill').evaluate('el=>el.style.width') == '40%'
+    expect(page.locator('.provider-entry:visible .provider-pct')).to_have_text('40%')
+    assert page.locator('.model-legend-source').count() == 0
+    bars = page.locator('.track-models > span').evaluate_all('els=>els.map(el=>({x:el.getBoundingClientRect().x,right:el.getBoundingClientRect().right,radius:getComputedStyle(el).borderRadius}))')
+    assert abs(bars[1]['x']-bars[0]['right']-2) < .1, bars
+    assert all(bar['radius'] == '1px' for bar in bars)
     legend = page.evaluate("""() => {
-        const parts=[...document.querySelectorAll('.token-model-bar > span')];
+        const parts=[...document.querySelectorAll('.track-models > span')];
         const dots=[...document.querySelectorAll('.token-model-dot')];
         const names=[...document.querySelectorAll('.token-legend-item')];
         return {colors:parts.map(el=>getComputedStyle(el).backgroundColor),dots:dots.map(el=>getComputedStyle(el).backgroundColor),
-          ys:names.map(el=>el.getBoundingClientRect().y),barBottom:document.querySelector('.token-model-bar').getBoundingClientRect().bottom,
-          legendY:document.querySelector('.token-model-legend').getBoundingClientRect().y};
+          ys:names.map(el=>el.getBoundingClientRect().y),barBottom:document.querySelector('.track').getBoundingClientRect().bottom,
+          legendY:document.querySelector('.token-model-legend').getBoundingClientRect().y,
+          font:getComputedStyle(document.querySelector('.token-model-legend')).fontSize};
     }""")
     assert legend['colors'] == legend['dots'], legend
     assert len(set(legend['ys'])) == 1 and legend['legendY'] > legend['barBottom'], legend
+    assert legend['legendY'] - legend['barBottom'] <= 8 and legend['font'] == '10px', legend
     page.locator('.token-model-legend').focus()
     page.evaluate("""() => {
-        window.snap.token_usage.month.models[0].counts.input++;
-        window.snap.token_usage.month.totals.input++;
+        window.snap.token_usage.windows[0].usage.models[0].counts.input++;
+        window.snap.token_usage.windows[0].usage.totals.input++;
         window.ui.setSnapshots([structuredClone(window.snap)]);
     }""")
     expect(page.locator('.token-model-legend')).to_be_focused()
     page.screenshot(path='tmp/token-model-shades.png')
+    # Calendar tabs change the numeric drilldown, never the main bar's quota-period mix.
+    colors = page.locator('.track-models').inner_html()
+    page.locator('[data-period=today]').click()
+    assert page.locator('.track-models').inner_html() == colors
+    month.click()
+    page.evaluate("window.snap.windows[0].resets_at='2099-10-18T10:00:00Z';window.ui.setSnapshots([structuredClone(window.snap)]);")
+    assert page.locator('.track-models').count() == 0, 'Stale period must not color a new quota cycle'
+    page.evaluate("window.snap.windows[0].resets_at=window.snap.token_usage.windows[0].resets_at;window.ui.setSnapshots([structuredClone(window.snap)]);")
 
     for state, label in [("loading", "집계 중"), ("partial", "일부 기록"), ("unavailable", "읽기 실패")]:
         page.evaluate("state => {window.snap.token_usage.status=state;window.ui.setSnapshots([structuredClone(window.snap)]);}", state)
         expect(page.locator(".token-status:visible")).to_have_text(label)
+        if state == 'unavailable':
+            assert page.locator('.track-models').count() == 0
     page.evaluate("""() => {
         window.snap.token_usage.status='ready';
         const counts={input:0,cache_read:0,cache_write:0,output:0,reasoning:null};
@@ -110,9 +131,12 @@ with sync_playwright() as p:
         window.snap.token_usage.status='partial';
         window.snap.token_usage.month={models:Array.from({length:7},(_,i)=>({model:i===0?'<img src=x onerror=alert(1)>':'gpt-very-long-model-name-'+i,counts})),
           totals:Object.fromEntries(Object.entries(counts).map(([key,value])=>[key,value*7]))};
+        window.snap.token_usage.windows[0].usage=structuredClone(window.snap.token_usage.month);
         window.ui.setSnapshots([structuredClone(window.snap)]);
     }""")
     assert page.locator(".token-model img").count() == 0
+    assert page.locator('.token-model-legend img').count() == 0
+    assert page.locator('.token-model-legend').evaluate('el=>el.scrollWidth>el.clientWidth')
     for theme in ["dark", "glass", "liquid"]:
         for scale in [1, 0.92]:
             page.evaluate("""({theme,scale}) => {
