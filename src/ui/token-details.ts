@@ -155,6 +155,6 @@ function modelRow(name: string | null, counts: TokenCounts, data: TokenPeriod): 
   heading.append(label, share); row.append(heading);
   const grid = document.createElement("div"); grid.className = "token-metrics";
   grid.append(metric("입력", counts.input), metric("출력", counts.output), metric("CacheRead", counts.cache_read),
-    metric("CacheWrite", counts.cache_write), metric("추론", counts.reasoning), metric("캐시 비중", cacheReadPercent(counts), true));
+    metric("CacheWrite", counts.cache_write), metric("캐시 비중", cacheReadPercent(counts), true), metric("추론", counts.reasoning));
   row.append(grid); return row;
 }
