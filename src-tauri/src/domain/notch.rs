@@ -369,9 +369,9 @@ pub fn calculate_layout_target(
         let dw = ((DETAIL_WIDTH * content_scale) * s)
             .ceil()
             .min(w.width - if edge.vertical() { depth + gap } else { 0. });
-        let dh = (detail_height.clamp(MIN_DETAIL_HEIGHT * content_scale, DETAIL_HEIGHT * content_scale) * s)
+        let dh = (detail_height.max(MIN_DETAIL_HEIGHT * content_scale) * s)
             .ceil()
-            .min(w.height - if edge.vertical() { 0. } else { depth + gap });
+            .min(available_detail_height(notch, w, edge, gap));
         if dw <= 0. || dh <= 0. {
             return Err("Display is too small for usage details".into());
         }
@@ -457,8 +457,7 @@ fn surface_canvas(notch: Rect, work: Rect, edge: NotchEdge, scale: f64, content_
     let gap = (GAP * scale).round();
     let width = ((DETAIL_WIDTH * content_scale) * scale).ceil()
         .min(work.width - if edge.vertical() { notch.width + gap } else { 0. });
-    let height = ((DETAIL_HEIGHT * content_scale) * scale).ceil()
-        .min(work.height - if edge.vertical() { 0. } else { notch.height + gap });
+    let height = available_detail_height(notch, work, edge, gap);
     if width <= 0. || height <= 0. { return notch; }
     let reserve = if edge.vertical() {
         let center = notch.y + notch.height / 2.;
@@ -479,6 +478,14 @@ fn surface_canvas(notch: Rect, work: Rect, edge: NotchEdge, scale: f64, content_
         }
     };
     notch.union(reserve)
+}
+
+fn available_detail_height(notch: Rect, work: Rect, edge: NotchEdge, gap: f64) -> f64 {
+    match edge {
+        NotchEdge::Left | NotchEdge::Right => work.height,
+        NotchEdge::Top => work.y + work.height - notch.y - notch.height - gap,
+        NotchEdge::Bottom => notch.y - gap - work.y,
+    }.clamp(0., work.height.max(0.))
 }
 
 mod drag;

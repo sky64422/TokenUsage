@@ -571,7 +571,7 @@ fn changing_detail_preserves_native_canvas_and_notch_position() {
                     let inset = closed.metrics.inset;
                     let last = inset + cell * (count as f64 - 0.5);
                     for target in [None, Some(inset + cell / 2.), Some(last)] {
-                        for height in [78., 150., 234., 400., DETAIL_HEIGHT] {
+                        for height in [78., 150., 234., 400., DETAIL_HEIGHT, 900., 2400.] {
                             let open = calculate_layout_target(&m, &p, count, true, height, target).unwrap();
                             assert_eq!(closed.window, open.window);
                             assert_eq!(closed.notch, open.notch);
@@ -587,6 +587,25 @@ fn changing_detail_preserves_native_canvas_and_notch_position() {
                 }
             }
         }
+    }
+}
+
+#[test]
+fn expanded_token_details_use_intrinsic_height_up_to_the_work_area() {
+    let m = monitor(1.);
+    for edge in [NotchEdge::Left, NotchEdge::Right, NotchEdge::Top, NotchEdge::Bottom] {
+        let p = NotchPlacement { edge, offset: 0.3, monitor_hint: None };
+        let closed = calculate_layout(&m, &p, 1, false, 0.).unwrap();
+        let open = calculate_layout(&m, &p, 1, true, 700.).unwrap();
+        let d = open.detail.unwrap();
+        assert_eq!(d.height, 700., "content that fits must not be capped at 560 DIP");
+        assert_eq!(closed.window, open.window);
+        assert_eq!(closed.notch, open.notch);
+        let constrained = calculate_layout(&m, &p, 1, true, 2400.).unwrap();
+        let c = constrained.detail.unwrap();
+        assert!(c.y >= m.work.y);
+        assert!(c.y + c.height <= m.work.y + m.work.height);
+        assert_eq!(closed.window, constrained.window);
     }
 }
 
