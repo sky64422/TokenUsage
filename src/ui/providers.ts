@@ -10,14 +10,20 @@ import {
   levelClass,
 } from "./format";
 import type { ProviderActivity, ProviderId, ProviderSnapshot, UsageWindow } from "./types";
+import { PROVIDER_CATALOG } from "./provider-catalog";
+import { mountTokenDetails } from "./token-details";
 
-export function mountProviders(root: HTMLElement): {
+export function mountProviders(root: HTMLElement, onResize: () => void = () => {}): {
   setSnapshots: (snaps: ProviderSnapshot[]) => void;
   setActivities: (acts: ProviderActivity[]) => void;
 } {
   let snaps: ProviderSnapshot[] = [];
   const activities = new Map<ProviderId, string>();
   let lastDisplay = "";
+  const entries = new Map<ProviderId, { element: HTMLElement; quota: HTMLElement; key: string; tokens: ReturnType<typeof mountTokenDetails> | null }>();
+  root.innerHTML = `<div class="empty-state">Waiting for usage…</div><div class="provider-list"></div>`;
+  const list = root.querySelector<HTMLElement>(".provider-list")!;
+  const empty = root.querySelector<HTMLElement>(".empty-state")!;
 
   function render(): void {
     // Freshness timestamps are retained in snapshots, but do not alter this card.
@@ -26,11 +32,28 @@ export function mountProviders(root: HTMLElement): {
       [snapshot, activities.get(snapshot.provider_id) === "running"]));
     if (display === lastDisplay) return;
     lastDisplay = display;
-    if (snaps.length === 0) {
-      root.innerHTML = `<div class="empty-state">Waiting for usage…</div>`;
-      return;
+    empty.hidden = snaps.length > 0;
+    list.hidden = snaps.length === 0;
+    for (const [id, entry] of entries) entry.element.hidden = !snaps.some(s => s.provider_id === id);
+    for (const snap of snaps) {
+      let entry = entries.get(snap.provider_id);
+      if (!entry) {
+        const element = document.createElement("div"); element.className = "provider-entry";
+        const quota = document.createElement("div"); element.append(quota); list.append(element);
+        let tokens: ReturnType<typeof mountTokenDetails> | null = null;
+        if (snap.provider_id === "codex") {
+          const tokenRoot = document.createElement("div"); element.append(tokenRoot);
+          tokens = mountTokenDetails(tokenRoot, onResize);
+        }
+        entry = { element, quota, key: "", tokens }; entries.set(snap.provider_id, entry);
+      }
+      entry.element.hidden = false;
+      const { token_usage: _tokens, as_of: _asOf, ...quota } = snap;
+      const running = activities.get(snap.provider_id) === "running";
+      const key = JSON.stringify([quota, running]);
+      if (entry.key !== key) { entry.quota.innerHTML = cardHtml(snap, running); entry.key = key; }
+      entry.tokens?.update(snap.token_usage ?? null);
     }
-    root.innerHTML = `<div class="provider-list">${snaps.map((s) => cardHtml(s, activities.get(s.provider_id) === "running")).join("")}</div>`;
   }
 
   setInterval(() => {
@@ -89,6 +112,7 @@ function cardHtml(s: ProviderSnapshot, isRunning: boolean): string {
             cardMessage: s.message,
             cardIdle: idle,
             cardRunning: isRunning,
+            icon: !s.windows.some(w => w.group) && i === 0 ? s.provider_id : undefined,
           });
         })
         .join("")
@@ -97,7 +121,7 @@ function cardHtml(s: ProviderSnapshot, isRunning: boolean): string {
   const activityAttr = isRunning ? ' data-activity="running"' : "";
   return `
     <div class="provider-card${idle ? " is-idle" : ""}" data-provider="${s.provider_id}"${activityAttr}>
-      ${s.windows.some(w => w.group) ? `<div class="quota-service-name">${escapeHtml(s.display_name)}</div>` : ""}
+      ${s.windows.some(w => w.group) ? `<div class="quota-service-name">${providerMark(s.provider_id)}<span>${escapeHtml(s.display_name)}</span></div>` : ""}
       ${rows}
     </div>
   `;
@@ -114,7 +138,7 @@ function emptyUsageRow(
   return `
     <div class="usage-row${idle ? " is-idle" : ""}">
       <div class="usage-head">
-        <span class="provider-name">${escapeHtml(s.display_name)}</span>
+        <span class="provider-name">${providerMark(s.provider_id)}<span>${escapeHtml(s.display_name)}</span></span>
         <span class="window-label"></span>
         <span class="window-reset"></span>
       </div>
@@ -134,6 +158,7 @@ function usageRow(opts: {
   cardMessage: string | null;
   cardIdle: boolean;
   cardRunning?: boolean;
+  icon?: ProviderId;
 }): string {
   const w = opts.window;
   const over = isOver(w.used_percent, opts.cardMessage, w.used, w.limit);
@@ -164,7 +189,7 @@ function usageRow(opts: {
   return `
     <div class="usage-row${idle ? " is-idle" : ""}${groupClass}" title="${escapeAttr(title)}">
       <div class="usage-head">
-        <span class="provider-name"${opts.nameHidden ? ' aria-hidden="true"' : ""}>${escapeHtml(opts.name)}</span>
+        <span class="provider-name"${opts.nameHidden ? ' aria-hidden="true"' : ""}>${opts.icon ? providerMark(opts.icon) : ""}<span>${escapeHtml(opts.name)}</span></span>
         <span class="window-label">${escapeHtml(label)}</span>
         <span class="window-reset${urgent ? " urgent" : ""}"
               data-resets-at="${escapeAttr(w.resets_at ?? "")}"
@@ -189,6 +214,10 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function providerMark(id: ProviderId): string {
+  return `<img class="provider-detail-mark" src="${escapeAttr(PROVIDER_CATALOG[id].mark)}" alt="" aria-hidden="true" width="14" height="14">`;
 }
 
 function escapeAttr(s: string): string {

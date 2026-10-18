@@ -376,6 +376,9 @@
   border-color: rgba(255, 255, 255, 0.32);
 }
 .quota-service-name {
+  display: flex;
+  align-items: center;
+  gap: calc(6px * var(--notch-scale, 1));
   font-size: 12px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.85);
@@ -527,10 +530,40 @@
   margin-top: calc(6px * var(--notch-scale, 1));
 }
 .notch-detail .provider-name {
+  display: flex;
+  align-items: center;
+  gap: calc(6px * var(--notch-scale, 1));
   font-size: max(13px, calc(15px * var(--notch-scale, 1)));
   font-weight: 600;
   line-height: 1.25;
 }
+.provider-name > span { overflow: hidden; text-overflow: ellipsis; }
+.provider-detail-mark { flex: 0 0 auto; width: calc(14px * var(--notch-scale, 1)); height: calc(14px * var(--notch-scale, 1)); object-fit: contain; filter: brightness(0) invert(1); }
+.provider-entry[hidden], .token-details-root[hidden], .provider-list[hidden], .empty-state[hidden] { display: none; }
+.token-details { margin-top: calc(14px * var(--notch-scale, 1)); border-top: 1px solid var(--border); padding-top: calc(10px * var(--notch-scale, 1)); color: var(--foreground); font-size: max(11px, calc(12px * var(--notch-scale, 1))); }
+.token-details summary { display: flex; align-items: center; justify-content: space-between; cursor: pointer; list-style: none; font-weight: 600; padding: 4px 0; }
+.token-details summary::-webkit-details-marker { display: none; }
+.token-chevron { width: 6px; height: 6px; border-right: 1px solid var(--muted-foreground); border-bottom: 1px solid var(--muted-foreground); transform: rotate(45deg); margin-right: 3px; }
+.token-details[open] .token-chevron { transform: rotate(225deg); }
+.token-content { padding-top: 10px; }
+.token-periods { display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: rgba(127,127,127,.1); }
+.token-periods button { flex: 1; min-height: 28px; padding: 3px 6px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted-foreground); font: inherit; cursor: pointer; }
+.token-periods button[aria-pressed="true"] { color: var(--foreground); background: rgba(127,127,127,.15); border-color: var(--border); }
+.token-details summary:focus-visible, .token-periods button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.token-provenance { display: flex; justify-content: space-between; margin: 10px 0; color: var(--muted-foreground); font-size: 11px; }
+.token-status { color: var(--muted-foreground); margin: 8px 0; }
+.token-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-bottom: 12px; }
+.token-model { padding: 12px 0; border-top: 1px solid var(--border); }
+.token-model-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-weight: 600; }
+.token-model-heading > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.token-share { flex: 0 0 auto; color: var(--muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }
+.token-split { height: 4px; border-radius: 3px; background: rgba(220,220,230,.22); margin-bottom: 10px; overflow: hidden; }
+.token-split > span { display: block; height: 100%; background: rgba(220,220,230,.7); border-radius: inherit; }
+.token-metrics { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 7px 12px; }
+.token-metric { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
+.token-metric > span { color: var(--muted-foreground); font-size: 11px; white-space: nowrap; }
+.token-metric strong { font-weight: 500; font-variant-numeric: tabular-nums; }
+.token-note { color: var(--muted-foreground); font-size: 11px; line-height: 1.5; margin: 0 0 3px; overflow-wrap: anywhere; }
 .notch-detail .settings {
   position: static;
   display: flex;
