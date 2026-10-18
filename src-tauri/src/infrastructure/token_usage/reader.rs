@@ -509,7 +509,9 @@ fn ingest(
                 c.partial = true;
                 return;
             };
-            if at <= now && at.date_naive() >= retention_start(now) {
+            if at.date_naive() >= retention_start(now) {
+                // A record may be written after the pass captured `now`. Keep its
+                // numeric metadata; summary filtering activates it at its timestamp.
                 // Logical session, timestamp and cumulative counters survive copied files.
                 let key = format!("{session}:{}:{total:?}", at.to_rfc3339());
                 ledger.upsert(owner, &key, at, c.model.clone(), counts);
@@ -816,6 +818,41 @@ mod tests {
         assert_eq!(settle(&mut reader).today.totals.total(), Some(290));
         std::fs::write(&path, meta("replacement") + &event(100, 20)).unwrap();
         assert_eq!(settle(&mut reader).today.totals.total(), Some(120));
+    }
+
+    #[test]
+    fn records_ahead_of_scan_time_activate_without_replay_and_preserve_later_deltas() {
+        use std::io::Write;
+        for scan_at in [
+            now(),
+            Local.with_ymd_and_hms(2026, 10, 31, 23, 59, 59).unwrap()
+                + chrono::Duration::milliseconds(950),
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("session.jsonl");
+            let event_at = scan_at + chrono::Duration::milliseconds(100);
+            let future = event(100, 20).replace(&now().to_rfc3339(), &event_at.to_rfc3339());
+            fs::write(&path, meta("session") + &context("model") + &future).unwrap();
+            let mut reader = TokenReader::new(dir.path().into());
+            reader.scan(scan_at);
+            assert_eq!(reader.summary(scan_at, &[]).today.totals.total(), None);
+            let consumed_offset = reader.files[&path].offset;
+            let later = scan_at + chrono::Duration::seconds(1);
+            reader.scan(later);
+            assert_eq!(reader.files[&path].offset, consumed_offset);
+            assert_eq!(reader.summary(later, &[]).today.totals.total(), Some(120));
+            reader.scan(later);
+            assert_eq!(reader.summary(later, &[]).today.totals.total(), Some(120));
+            let appended = event(250, 40).replace(&now().to_rfc3339(), &later.to_rfc3339());
+            fs::OpenOptions::new()
+                .append(true)
+                .open(&path)
+                .unwrap()
+                .write_all(appended.as_bytes())
+                .unwrap();
+            reader.scan(later);
+            assert_eq!(reader.summary(later, &[]).today.totals.total(), Some(290));
+        }
     }
 
     #[test]

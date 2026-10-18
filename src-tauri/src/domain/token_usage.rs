@@ -112,7 +112,7 @@ pub struct TokenLedger {
     lineage: BTreeMap<String, String>,
     records: usize,
     limit: usize,
-    limited: bool,
+    excluded_through: Option<NaiveDate>,
     revision: u64,
     pruned_through: Option<NaiveDate>,
     summary_cache: RefCell<Option<SummaryCache>>,
@@ -133,7 +133,7 @@ impl Default for TokenLedger {
             lineage: BTreeMap::new(),
             records: 0,
             limit: MAX_RETAINED_RECORDS,
-            limited: false,
+            excluded_through: None,
             revision: 0,
             pruned_through: None,
             summary_cache: RefCell::new(None),
@@ -190,10 +190,14 @@ impl TokenLedger {
             .get(owner)
             .is_some_and(|rows| rows.contains_key(key));
         if !exists && self.records >= self.limit {
-            if !self.limited {
+            // Preserve missing coverage until its latest event date expires,
+            // including future records; freeing a slot cannot recover a lost row.
+            let date = at.date_naive();
+            let excluded_through = Some(self.excluded_through.map_or(date, |old| old.max(date)));
+            if self.excluded_through != excluded_through {
+                self.excluded_through = excluded_through;
                 self.revision = self.revision.wrapping_add(1);
             }
-            self.limited = true;
             return;
         }
         if !exists {
@@ -213,6 +217,10 @@ impl TokenLedger {
     }
 
     pub fn prune(&mut self, oldest: NaiveDate) {
+        if self.excluded_through.is_some_and(|date| date < oldest) {
+            self.excluded_through = None;
+            self.revision = self.revision.wrapping_add(1);
+        }
         if self
             .pruned_through
             .is_some_and(|previous| oldest <= previous)
@@ -321,7 +329,9 @@ impl TokenLedger {
         if !today_ok || !month_ok || !week_ok {
             status = TokenUsageStatus::Partial;
         }
-        if self.limited && status != TokenUsageStatus::Loading {
+        if self.excluded_through.is_some_and(|date| date >= oldest)
+            && status != TokenUsageStatus::Loading
+        {
             status = TokenUsageStatus::Partial;
         }
         let windows = window_models
@@ -692,6 +702,109 @@ mod tests {
                 .totals
                 .total(),
             Some(22)
+        );
+    }
+
+    #[test]
+    fn rejected_record_coverage_expires_before_new_complete_period() {
+        let now = Local.with_ymd_and_hms(2026, 10, 18, 12, 0, 0).unwrap();
+        let mut ledger = TokenLedger {
+            limit: 2,
+            ..Default::default()
+        };
+        for key in ["a", "b", "excluded"] {
+            ledger.upsert("old-file", key, now, None, counts(100, 0, 20));
+        }
+        assert_eq!(
+            ledger.summarize(now, TokenUsageStatus::Ready, &[]).status,
+            TokenUsageStatus::Partial
+        );
+        let later = now + chrono::Duration::days(40);
+        ledger.prune(retention_start(later));
+        ledger.upsert("new-file", "new", later, None, counts(100, 0, 20));
+        let summary = ledger.summarize(later, TokenUsageStatus::Ready, &[]);
+        assert_eq!(summary.today.totals.total(), Some(120));
+        assert_eq!(summary.status, TokenUsageStatus::Ready);
+    }
+
+    #[test]
+    fn freeing_same_day_slots_does_not_erase_excluded_record_coverage() {
+        let now = Local.with_ymd_and_hms(2026, 10, 18, 12, 0, 0).unwrap();
+        let mut ledger = TokenLedger {
+            limit: 2,
+            ..Default::default()
+        };
+        for owner in ["a", "b", "excluded"] {
+            ledger.upsert(owner, owner, now, None, counts(100, 0, 20));
+        }
+        ledger.remove_owner("a");
+        ledger.prune(retention_start(now));
+        ledger.upsert("new-file", "new", now, None, counts(100, 0, 20));
+        let summary = ledger.summarize(now, TokenUsageStatus::Ready, &[]);
+        assert_eq!(summary.today.totals.total(), Some(240));
+        assert_eq!(summary.status, TokenUsageStatus::Partial);
+    }
+
+    #[test]
+    fn latest_rejected_date_preserves_future_coverage_until_its_own_expiry() {
+        let now = Local.with_ymd_and_hms(2026, 10, 18, 12, 0, 0).unwrap();
+        let future = now + chrono::Duration::days(40);
+        let mut ledger = TokenLedger {
+            limit: 2,
+            ..Default::default()
+        };
+        for key in ["a", "b", "old-excluded"] {
+            ledger.upsert("old-file", key, now, None, counts(100, 0, 20));
+        }
+        ledger.upsert(
+            "future-file",
+            "future-excluded",
+            future,
+            None,
+            counts(100, 0, 20),
+        );
+        ledger.prune(retention_start(future));
+        ledger.upsert("new-file", "new", future, None, counts(100, 0, 20));
+        assert_eq!(
+            ledger
+                .summarize(future, TokenUsageStatus::Ready, &[])
+                .status,
+            TokenUsageStatus::Partial
+        );
+        let expired = future + chrono::Duration::days(40);
+        ledger.prune(retention_start(expired));
+        ledger.upsert("final-file", "final", expired, None, counts(100, 0, 20));
+        let summary = ledger.summarize(expired, TokenUsageStatus::Ready, &[]);
+        assert_eq!(summary.status, TokenUsageStatus::Ready);
+        assert_eq!(summary.today.totals.total(), Some(120));
+    }
+
+    #[test]
+    fn expiring_coverage_invalidates_cached_summary_even_without_pruned_rows() {
+        let now = Local.with_ymd_and_hms(2026, 10, 18, 12, 0, 0).unwrap();
+        let mut ledger = TokenLedger {
+            limit: 2,
+            ..Default::default()
+        };
+        for key in ["a", "b", "excluded"] {
+            ledger.upsert("file", key, now, None, counts(100, 0, 20));
+        }
+        ledger.remove_owner("file");
+        assert_eq!(ledger.records, 0);
+        assert_eq!(
+            ledger.summarize(now, TokenUsageStatus::Ready, &[]).status,
+            TokenUsageStatus::Partial
+        );
+        let cached_revision = ledger.summary_cache.borrow().as_ref().unwrap().revision;
+        let expired = now + chrono::Duration::days(40);
+        ledger.prune(retention_start(expired));
+        assert_ne!(ledger.revision, cached_revision);
+        assert_eq!(ledger.records, 0);
+        assert_eq!(
+            ledger
+                .summarize(expired, TokenUsageStatus::Ready, &[])
+                .status,
+            TokenUsageStatus::Ready
         );
     }
 
