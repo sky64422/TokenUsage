@@ -38,7 +38,7 @@ impl RawCounts {
 struct Info { total_token_usage: Option<RawCounts>, last_token_usage: Option<RawCounts> }
 #[derive(Default, Deserialize)]
 struct Payload {
-    id: Option<String>, model: Option<String>, #[serde(rename="type")] kind: Option<String>, info: Option<Info>,
+    id: Option<String>, model: Option<String>, to_model: Option<String>, #[serde(rename="type")] kind: Option<String>, info: Option<Info>,
     forked_from_id: Option<String>, parent_thread_id: Option<String>,
 }
 #[derive(Deserialize)]
@@ -49,6 +49,11 @@ struct Cursor {
     offset: u64, pending: Vec<u8>, discarding: bool, prefix: Vec<u8>, created: Option<SystemTime>, modified: Option<SystemTime>,
     session: Option<String>, model: Option<String>, previous: Option<RawCounts>, inherited: bool,
     partial: bool, caught_up: bool,
+}
+impl Cursor {
+    fn set_model(&mut self, model: Option<String>) {
+        self.model = model.filter(|m| !m.is_empty() && m.len() <= 96 && !m.chars().any(char::is_control));
+    }
 }
 
 pub struct TokenReader {
@@ -157,7 +162,9 @@ fn ingest(line: &[u8], owner: &str, c: &mut Cursor, ledger: &mut TokenLedger, no
             c.session = p.id.filter(|id| id.len() <= 128 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'));
             c.inherited = p.forked_from_id.is_some() || p.parent_thread_id.is_some();
         }
-        "turn_context" => { c.model = p.model.filter(|m| m.len() <= 96 && !m.chars().any(char::is_control)); }
+        "turn_context" => c.set_model(p.model),
+        "response_item" if p.model.is_some() => c.set_model(p.model),
+        "event_msg" if p.kind.as_deref() == Some("model_reroute") => c.set_model(p.to_model),
         "event_msg" if p.kind.as_deref() == Some("token_count") => {
             let Some(info) = p.info else { return; };
             let Some(total) = info.total_token_usage else { c.partial = true; return; };
@@ -237,5 +244,54 @@ mod tests {
         let mut reader = TokenReader::new(dir.path().into()); let result = settle(&mut reader);
         assert_eq!(result.today.totals.total(), Some(120));
         assert_eq!(result.status, TokenUsageStatus::Partial);
+    }
+
+    #[test]
+    fn model_reroute_uses_the_reported_destination_model() {
+        let dir = tempfile::tempdir().unwrap();
+        let reroute = format!("{}\n", json!({"type":"event_msg","payload":{"type":"model_reroute","to_model":"actual-model"}}));
+        std::fs::write(dir.path().join("session.jsonl"), meta("session") + &context("requested-model") + &reroute + &event(100,20)).unwrap();
+        let mut reader = TokenReader::new(dir.path().into());
+        assert_eq!(settle(&mut reader).today.models[0].model.as_deref(), Some("actual-model"));
+    }
+
+    #[test]
+    fn same_size_rewrite_and_discovery_progress_do_not_leave_stale_totals() {
+        let dir = tempfile::tempdir().unwrap(); let path = dir.path().join("session.jsonl");
+        std::fs::write(&path, meta("session") + &context("alpha") + &event(100,20)).unwrap();
+        let mut reader = TokenReader::new(dir.path().into());
+        assert_eq!(settle(&mut reader).today.models[0].model.as_deref(), Some("alpha"));
+        std::fs::write(&path, meta("session") + &context("bravo") + &event(100,20)).unwrap();
+        std::fs::File::options().write(true).open(&path).unwrap().set_modified(std::time::UNIX_EPOCH).unwrap();
+        assert_eq!(settle(&mut reader).today.models[0].model.as_deref(), Some("bravo"));
+    }
+
+    #[test]
+    fn inaccessible_root_and_oversized_lines_are_explicit_and_content_is_not_retained() {
+        let dir = tempfile::tempdir().unwrap(); let path = dir.path().join("not-a-directory");
+        std::fs::write(&path, "x").unwrap();
+        let mut reader = TokenReader::new(path);
+        assert_eq!(settle(&mut reader).status, TokenUsageStatus::Unavailable);
+        let content = "sensitive-conversation".repeat(MAX_LINE / 10);
+        let line = format!("{}\n", json!({"type":"response_item","payload":{"content":content}}));
+        std::fs::write(dir.path().join("session.jsonl"), meta("private-session") + &line + &event(100,20)).unwrap();
+        let mut reader = TokenReader::new(dir.path().into()); let summary = settle(&mut reader);
+        assert_eq!(summary.status, TokenUsageStatus::Partial);
+        assert_eq!(summary.today.totals.total(), Some(120));
+        let json = serde_json::to_string(&summary).unwrap();
+        assert!(!json.contains("sensitive-conversation")); assert!(!json.contains("private-session"));
+        assert!(!json.contains("session.jsonl"));
+    }
+
+    #[test]
+    fn discovery_budget_is_resumable_and_repeated_copies_are_not_extra_usage() {
+        let dir = tempfile::tempdir().unwrap();
+        let text = meta("same-session") + &event(100,20);
+        for i in 0..DISCOVERY_ENTRIES+1 { std::fs::write(dir.path().join(format!("{i}.jsonl")), &text).unwrap(); }
+        let mut reader = TokenReader::new(dir.path().into()); reader.scan(now());
+        assert_eq!(reader.summary(now()).status, TokenUsageStatus::Loading);
+        let summary = settle(&mut reader);
+        assert_eq!(summary.status, TokenUsageStatus::Ready);
+        assert_eq!(summary.today.totals.total(), Some(120));
     }
 }
