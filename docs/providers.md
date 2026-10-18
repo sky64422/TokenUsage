@@ -83,12 +83,9 @@ written to the index or diagnostics.
 Codex main bars keep vendor quota width and percentage. Optional token `windows`
 summaries cover reset-minus-five-hours / reset-minus-seven-days through the summary
 timestamp, matched by kind and reset instant. Their model shares shade only the
-filled portion. Visible legends contain matching color dots, short model names
-and parenthesized percentages colored like their segments (at most one decimal).
-Percentages use the full 100% track: clamped vendor fill multiplied by the local
-input+output share, not the within-fill token ratio. For example, 40% fill with
-75% local model share displays (30%). Accessible labels identify this visual
-allocation, not a vendor-reported model quota. Missing, expired or unmatched reset data leaves a plain quota
+filled portion. Visible legends contain only matching color dots and short model
+names; model percentages were removed at user request (2026-10-19). Accessible
+labels identify local token composition, not a vendor-reported model quota. Missing, expired or unmatched reset data leaves a plain quota
 bar. Calendar token tabs remain independent. Retention includes the preceding
 seven days across month boundaries so weekly quota periods remain available.
 Preview mode disables real reads. AGY and other token readers are deferred.

@@ -76,8 +76,8 @@ with sync_playwright() as p:
         window.ui.setSnapshots([structuredClone(window.snap)]);
     }""")
     assert page.locator('.token-details .token-model-bar').count() == 0, 'Model composition belongs in the main quota bar'
-    expect(page.locator('.provider-card .token-model-legend')).to_contain_text('6.1 Sol (36.4%)')
-    expect(page.locator('.token-model-legend')).to_contain_text('6 Astra (3.6%)')
+    expect(page.locator('.token-legend-item').nth(0)).to_have_text('6.1 Sol')
+    expect(page.locator('.token-legend-item').nth(1)).to_have_text('6 Astra')
     assert page.locator('.track-models > span').count() == 2
     assert page.locator('.provider-entry:visible .track-fill').evaluate('el=>el.style.width') == '40%'
     expect(page.locator('.provider-entry:visible .provider-pct')).to_have_text('40%')
@@ -90,13 +90,11 @@ with sync_playwright() as p:
         const dots=[...document.querySelectorAll('.token-model-dot')];
         const names=[...document.querySelectorAll('.token-legend-item')];
         return {colors:parts.map(el=>getComputedStyle(el).backgroundColor),dots:dots.map(el=>getComputedStyle(el).backgroundColor),
-          percentages:[...document.querySelectorAll('.token-legend-share')].map(el=>getComputedStyle(el).color),
           ys:names.map(el=>el.getBoundingClientRect().y),barBottom:document.querySelector('.track').getBoundingClientRect().bottom,
           legendY:document.querySelector('.token-model-legend').getBoundingClientRect().y,
           font:getComputedStyle(document.querySelector('.token-model-legend')).fontSize};
     }""")
     assert legend['colors'] == legend['dots'], legend
-    assert legend['percentages'] == legend['dots'], legend
     assert len(set(legend['ys'])) == 1 and legend['legendY'] > legend['barBottom'], legend
     assert legend['legendY'] - legend['barBottom'] <= 8 and legend['font'] == '10px', legend
     page.locator('.token-model-legend').focus()
