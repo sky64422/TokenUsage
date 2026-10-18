@@ -2,6 +2,7 @@ use crate::domain::token_usage::{
     retention_start, TokenCounts, TokenLedger, TokenUsageSnapshot, TokenUsageStatus,
 };
 use chrono::{DateTime, Local, NaiveDate};
+use crate::domain::types::ProviderId;
 use serde::Deserialize;
 use std::{
     collections::{hash_map::DefaultHasher, BTreeMap, VecDeque},
@@ -117,6 +118,7 @@ impl Cursor {
 }
 
 pub struct TokenReader {
+    provider: ProviderId,
     root: PathBuf,
     queue: VecDeque<PathBuf>,
     directory: Option<ReadDir>,
@@ -132,7 +134,12 @@ pub struct TokenReader {
 
 impl TokenReader {
     pub fn new(root: PathBuf) -> Self {
+        Self::for_provider(ProviderId::Codex, root)
+    }
+
+    pub fn for_provider(provider: ProviderId, root: PathBuf) -> Self {
         Self {
+            provider,
             queue: VecDeque::from([root.clone()]),
             root,
             directory: None,
@@ -225,6 +232,7 @@ impl TokenReader {
             &mut remaining,
             pending_bytes,
             now,
+            self.provider,
         );
         *budget -= allowance - remaining;
         if let Err(error) = result {
@@ -283,6 +291,9 @@ impl TokenReader {
             if kind.is_symlink() {
                 continue;
             }
+            if self.provider == ProviderId::Agy && !agy_source_path(&self.root, &entry.path(), kind.is_dir()) {
+                continue;
+            }
             if kind.is_dir() {
                 if self.queue.len() < MAX_FILES {
                     self.queue.push_back(entry.path());
@@ -290,6 +301,9 @@ impl TokenReader {
                     self.limited = true;
                 }
             } else if kind.is_file() && entry.path().extension().is_some_and(|e| e == "jsonl") {
+                if self.provider == ProviderId::Grok && entry.file_name() != "updates.jsonl" {
+                    continue;
+                }
                 let priority = entry.metadata().ok().and_then(|m| m.modified().ok());
                 if let Some(cursor) = self.files.get_mut(&entry.path()) {
                     cursor.priority = priority;
@@ -334,6 +348,8 @@ impl TokenReader {
     }
 }
 
+// The shared bounded reader keeps all source formats under the same allocation limits.
+#[allow(clippy::too_many_arguments)]
 fn read_file(
     path: &PathBuf,
     owner: &str,
@@ -342,6 +358,7 @@ fn read_file(
     budget: &mut usize,
     pending_bytes: &mut usize,
     now: DateTime<Local>,
+    provider: ProviderId,
 ) -> std::io::Result<()> {
     if fs::symlink_metadata(path)?.file_type().is_symlink() {
         return Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied));
@@ -395,7 +412,14 @@ fn read_file(
                 if !c.discarding {
                     let line = std::mem::take(&mut c.pending);
                     *pending_bytes -= line.capacity();
-                    ingest(&line, owner, c, ledger, now);
+                    if provider == ProviderId::Codex {
+                        ingest(&line, owner, c, ledger, now);
+                    } else {
+                        let scope = path.ancestors().nth(3).and_then(|p| p.file_name()).and_then(|n| n.to_str()).unwrap_or("");
+                        if super::recorded::ingest(provider, &line, scope, owner, ledger, now).is_err() {
+                            c.partial = true;
+                        }
+                    }
                 }
                 c.discarding = false;
             } else if !c.discarding {
@@ -435,6 +459,21 @@ fn fingerprint(bytes: &[u8]) -> u64 {
     let mut hash = DefaultHasher::new();
     bytes.hash(&mut hash);
     hash.finish()
+}
+
+fn agy_source_path(root: &std::path::Path, path: &std::path::Path, directory: bool) -> bool {
+    let Ok(relative) = path.strip_prefix(root) else { return false; };
+    let parts: Vec<_> = relative.components().map(|p| p.as_os_str().to_string_lossy()).collect();
+    if !parts.first().is_some_and(|p| p.starts_with("antigravity")) { return false; }
+    match parts.len() {
+        1 => directory,
+        2 => directory && parts[1] == "brain",
+        3 => directory && parts[1] == "brain",
+        4 => directory && parts[1] == "brain" && parts[3] == ".system_generated",
+        5 => directory && parts[1] == "brain" && parts[3] == ".system_generated" && parts[4] == "logs",
+        6 => !directory && parts[1] == "brain" && parts[3] == ".system_generated" && parts[4] == "logs" && parts[5] == "transcript.jsonl",
+        _ => false,
+    }
 }
 
 fn ingest(
@@ -552,6 +591,26 @@ mod tests {
             r.scan(now());
         }
         r.summary(now(), &[])
+    }
+
+    #[test]
+    fn provider_sources_are_incremental_and_skip_agy_full_transcript_mirror() {
+        let dir = tempfile::tempdir().unwrap();
+        let logs = dir.path().join("antigravity-cli/brain/conversation/.system_generated/logs");
+        fs::create_dir_all(&logs).unwrap();
+        let record = format!("{}\n", json!({"type":"PLANNER_RESPONSE","source":"MODEL","status":"DONE",
+            "step_index":1,"created_at":now().to_rfc3339(),"input_tokens":20,"cache_read_tokens":80,"output_tokens":10}));
+        fs::write(logs.join("transcript.jsonl"), &record).unwrap();
+        fs::write(logs.join("transcript_full.jsonl"), &record).unwrap();
+        let mut reader = TokenReader::for_provider(ProviderId::Agy, dir.path().into());
+        let first = settle(&mut reader);
+        assert_eq!(first.today.totals.total(), Some(110));
+        assert_eq!(first.today.totals.cache_read, Some(80));
+        assert_eq!(first.today.models[0].model, None);
+        assert_eq!(reader.files.len(), 1);
+        let offset = reader.files.values().next().unwrap().offset;
+        assert_eq!(settle(&mut reader).today, first.today);
+        assert_eq!(reader.files.values().next().unwrap().offset, offset);
     }
 
     #[test]

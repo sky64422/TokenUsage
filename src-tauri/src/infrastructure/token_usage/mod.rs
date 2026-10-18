@@ -1,8 +1,11 @@
 mod reader;
+mod recorded;
 
 use crate::domain::token_usage::{TokenLedger, TokenUsageSnapshot, TokenUsageStatus};
-use crate::domain::types::UsageWindow;
+use crate::domain::types::{ProviderId, UsageWindow};
+use crate::infrastructure::providers::paths;
 use chrono::Local;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -13,22 +16,27 @@ struct State {
     running: bool,
     completed: Option<Instant>,
 }
-static STATE: OnceLock<Arc<Mutex<State>>> = OnceLock::new();
+static STATES: OnceLock<HashMap<ProviderId, Arc<Mutex<State>>>> = OnceLock::new();
 
 /// No credentials or transcript discovery in isolated fixture mode.
-pub fn snapshot(windows: &[UsageWindow]) -> TokenUsageSnapshot {
+pub fn snapshot(provider: ProviderId, windows: &[UsageWindow]) -> TokenUsageSnapshot {
     if std::env::var("TOKENUSAGE_SKIP_DIRECT_QUOTA").as_deref() == Ok("1") {
         return TokenLedger::default().summarize(Local::now(), TokenUsageStatus::Ready, &[]);
     }
-    let state = STATE.get_or_init(|| {
-        Arc::new(Mutex::new(State {
-            reader: crate::infrastructure::providers::paths::codex_home()
-                .map(|p| reader::TokenReader::new(p.join("sessions"))),
+    let states = STATES.get_or_init(|| ProviderId::all().into_iter().map(|id| {
+        let reader = match id {
+            ProviderId::Codex => paths::codex_home().map(|p| reader::TokenReader::new(p.join("sessions"))),
+            ProviderId::Claude => paths::claude_home().map(|p| reader::TokenReader::for_provider(id, p.join("projects"))),
+            ProviderId::Grok => paths::grok_home().map(|p| reader::TokenReader::for_provider(id, p.join("sessions"))),
+            ProviderId::Agy => paths::gemini_home().map(|p| reader::TokenReader::for_provider(id, p)),
+        };
+        (id, Arc::new(Mutex::new(State {
+            reader,
             cached: TokenLedger::default().summarize(Local::now(), TokenUsageStatus::Loading, &[]),
-            running: false,
-            completed: None,
-        }))
-    });
+            running: false, completed: None,
+        })))
+    }).collect());
+    let state = &states[&provider];
     let Ok(mut guard) = state.lock() else {
         return TokenLedger::default().summarize(Local::now(), TokenUsageStatus::Unavailable, &[]);
     };

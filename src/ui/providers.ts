@@ -41,12 +41,11 @@ export function mountProviders(root: HTMLElement, onResize: () => void = () => {
       if (!entry) {
         const element = document.createElement("div"); element.className = "provider-entry";
         const quota = document.createElement("div"); element.append(quota); list.append(element);
-        let tokens: ReturnType<typeof mountTokenDetails> | null = null;
-        if (snap.provider_id === "codex") {
-          const tokenRoot = document.createElement("div"); element.append(tokenRoot);
-          tokens = mountTokenDetails(tokenRoot, onResize);
-        }
-        entry = { element, quota, key: "", tokens }; entries.set(snap.provider_id, entry);
+        entry = { element, quota, key: "", tokens: null }; entries.set(snap.provider_id, entry);
+      }
+      if (!entry.tokens && (snap.token_usage || snap.provider_id === "codex")) {
+        const tokenRoot = document.createElement("div"); entry.element.append(tokenRoot);
+        entry.tokens = mountTokenDetails(tokenRoot, onResize, snap.provider_id);
       }
       entry.element.hidden = false;
       const { token_usage: _tokens, as_of: _asOf, ...quota } = snap;
@@ -123,9 +122,7 @@ function cardHtml(s: ProviderSnapshot, isRunning: boolean): string {
             cardIdle: idle,
             cardRunning: isRunning,
             icon: !s.windows.some(w => w.group) && i === 0 ? s.provider_id : undefined,
-            models: s.provider_id === "codex" && s.token_usage?.status !== "unavailable"
-              ? s.token_usage?.windows?.find(period => period.kind === w.kind && w.resets_at !== null
-                && Date.parse(period.resets_at) === Date.parse(w.resets_at))?.usage : undefined,
+            models: tokenModelsForWindow(s, w),
           });
         })
         .join("")
@@ -138,6 +135,25 @@ function cardHtml(s: ProviderSnapshot, isRunning: boolean): string {
       ${rows}
     </div>
   `;
+}
+
+function sameWindow(candidate: Pick<UsageWindow, "kind" | "resets_at" | "group">, window: UsageWindow): boolean {
+  return candidate.kind === window.kind && window.resets_at !== null
+    && Date.parse(candidate.resets_at ?? "") === Date.parse(window.resets_at)
+    && (candidate.group ?? null) === (window.group ?? null);
+}
+
+export function tokenModelsForWindow(snapshot: ProviderSnapshot, window: UsageWindow): TokenPeriod | undefined {
+  if (snapshot.token_usage?.status === "unavailable"
+    || (window.kind !== "rolling_5h" && window.kind !== "weekly")) return undefined;
+  const candidates = snapshot.token_usage?.windows?.filter(period => sameWindow(period, window)) ?? [];
+  const labeled = candidates.filter(period => period.label != null && period.label === window.label);
+  if (labeled.length === 1) return labeled[0].usage;
+  // Older snapshots omitted labels. A shared weekly reset cannot identify an
+  // Opus/Sonnet bucket unless both sides have a single unambiguous period.
+  if (labeled.length === 0 && candidates.length === 1 && candidates[0].label == null
+    && snapshot.windows.filter(period => sameWindow(period, window)).length === 1) return candidates[0].usage;
+  return undefined;
 }
 
 function emptyUsageRow(

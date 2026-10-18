@@ -84,12 +84,17 @@ pub struct TokenUsageSnapshot {
 pub struct TokenWindowUsage {
     pub kind: WindowKind,
     pub resets_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
     pub usage: TokenPeriod,
 }
 
 #[derive(Clone, PartialEq)]
 struct Contribution {
     key: String,
+    event: Option<String>,
     at: DateTime<Local>,
     model: Option<String>,
     counts: TokenCounts,
@@ -123,8 +128,31 @@ struct SummaryCache {
     at: DateTime<Local>,
     next_record: Option<DateTime<Local>>,
     status: TokenUsageStatus,
-    windows: Vec<(WindowKind, DateTime<Local>, DateTime<Local>)>,
+    windows: Vec<RecordedWindow>,
     snapshot: TokenUsageSnapshot,
+}
+
+#[derive(Clone, PartialEq)]
+struct RecordedWindow {
+    kind: WindowKind,
+    reset: DateTime<Local>,
+    start: DateTime<Local>,
+    group: Option<String>,
+    label: Option<String>,
+}
+impl RecordedWindow {
+    fn matches_model(&self, model: Option<&str>) -> bool {
+        let model = model.unwrap_or("").to_ascii_lowercase();
+        let label = self.label.as_deref().unwrap_or("").to_ascii_lowercase();
+        match self.group.as_deref().map(str::to_ascii_lowercase).as_deref() {
+            Some("gemini") => model.starts_with("gemini-"),
+            Some("claude" | "claude/gpt" | "claude and gpt") => model.starts_with("claude-") || model.starts_with("gpt-"),
+            Some(_) => false,
+            None if label.starts_with("opus ") => model.starts_with("claude-") && model.contains("opus"),
+            None if label.starts_with("sonnet ") => model.starts_with("claude-") && model.contains("sonnet"),
+            None => true,
+        }
+    }
 }
 impl Default for TokenLedger {
     fn default() -> Self {
@@ -205,6 +233,7 @@ impl TokenLedger {
         }
         let contribution = Contribution {
             key: key.into(),
+            event: None,
             at,
             model,
             counts,
@@ -239,6 +268,27 @@ impl TokenLedger {
         }
     }
 
+    /// A completed turn can be re-emitted with a corrected set of model rows.
+    pub fn replace_event(&mut self, owner: &str, event: &str, at: DateTime<Local>, rows: Vec<(Option<String>, TokenCounts)>) {
+        let prefix = format!("{event}:");
+        if let Some(existing) = self.files.get_mut(owner) {
+            let keys: Vec<_> = existing.range(prefix.clone()..).take_while(|(key, _)| key.starts_with(&prefix))
+                .map(|(key, _)| key.clone()).collect();
+            if !keys.is_empty() {
+                self.records -= keys.len();
+                self.revision = self.revision.wrapping_add(1);
+                for key in keys { existing.remove(&key); }
+            }
+        }
+        for (model, counts) in rows {
+            let key = format!("{prefix}{}", model.as_deref().unwrap_or(""));
+            self.upsert(owner, &key, at, model, counts);
+            if let Some(record) = self.files.get_mut(owner).and_then(|records| records.get_mut(&key)) {
+                record.event = Some(event.into());
+            }
+        }
+    }
+
     pub fn summarize(
         &self,
         now: DateTime<Local>,
@@ -267,7 +317,7 @@ impl TokenLedger {
                 if reset <= now || start > now {
                     return None;
                 }
-                Some((window.kind, reset, start))
+                Some(RecordedWindow { kind: window.kind, reset, start, group: window.group.clone(), label: window.label.clone() })
             })
             .collect();
         if let Some(cache) = self.summary_cache.borrow().as_ref() {
@@ -286,22 +336,32 @@ impl TokenLedger {
         let window_keys = window_models.clone();
         let mut window_models: Vec<_> = window_models
             .drain(..)
-            .map(|(kind, reset, start)| {
-                (
-                    kind,
-                    reset,
-                    start,
-                    BTreeMap::<Option<String>, TokenCounts>::new(),
-                )
-            })
+            .map(|window| (window, BTreeMap::<Option<String>, TokenCounts>::new()))
             .collect();
         let mut seen = HashSet::new();
         let mut next_record = None;
-        for r in self.files.values().flat_map(|v| v.values()) {
+        // Copies of a turn with different model maps must select one complete
+        // observation, rather than combining the unknown and named versions.
+        let mut event_versions = BTreeMap::<&str, BTreeMap<&str, (DateTime<Local>, usize)>>::new();
+        for (owner, rows) in &self.files {
+            for row in rows.values().filter(|row| row.at <= now && row.at.date_naive() >= oldest) {
+                if let Some(event) = row.event.as_deref() {
+                    let version = event_versions.entry(event).or_default().entry(owner)
+                        .or_insert((row.at, 0));
+                    version.0 = version.0.max(row.at);
+                    version.1 += usize::from(row.model.is_some());
+                }
+            }
+        }
+        let event_owners: BTreeMap<_, _> = event_versions.into_iter().filter_map(|(event, versions)|
+            versions.into_iter().max_by_key(|(owner, version)| (*version, *owner)).map(|(owner, _)| (event, owner))).collect();
+        for (owner, r) in self.files.iter().flat_map(|(owner, rows)| rows.values().map(move |row| (owner, row))) {
             if r.at > now {
                 next_record = Some(next_record.map_or(r.at, |at: DateTime<Local>| at.min(r.at)));
             }
-            if r.at > now || r.at.date_naive() < oldest || !seen.insert(self.logical_key(&r.key)) {
+            if r.at > now || r.at.date_naive() < oldest
+                || r.event.as_deref().is_some_and(|event| event_owners.get(event).is_some_and(|selected| *selected != owner))
+                || !seen.insert(self.logical_key(&r.key)) {
                 continue;
             }
             if !r.counts.valid() {
@@ -317,8 +377,8 @@ impl TokenLedger {
             if r.at.date_naive() == now.date_naive() && !merge(&mut today, r) {
                 status = TokenUsageStatus::Partial;
             }
-            for (_, _, start, models) in &mut window_models {
-                if r.at >= *start && !merge(models, r) {
+            for (window, models) in &mut window_models {
+                if r.at >= window.start && window.matches_model(r.model.as_deref()) && !merge(models, r) {
                     status = TokenUsageStatus::Partial;
                 }
             }
@@ -336,14 +396,16 @@ impl TokenLedger {
         }
         let windows = window_models
             .into_iter()
-            .map(|(kind, reset, _, models)| {
+            .map(|(window, models)| {
                 let (usage, valid) = period(models);
                 if !valid {
                     status = TokenUsageStatus::Partial;
                 }
                 TokenWindowUsage {
-                    kind,
-                    resets_at: reset.to_rfc3339(),
+                    kind: window.kind,
+                    resets_at: window.reset.to_rfc3339(),
+                    group: window.group,
+                    label: window.label,
                     usage,
                 }
             })
@@ -595,6 +657,55 @@ mod tests {
             .summarize(now, TokenUsageStatus::Ready, &expired)
             .windows
             .is_empty());
+    }
+
+    #[test]
+    fn copied_event_versions_choose_a_complete_model_map_without_double_counting() {
+        let now = Local.with_ymd_and_hms(2026, 10, 19, 12, 0, 0).unwrap();
+        let mut ledger = TokenLedger::default();
+        ledger.replace_event("original", "session:prompt", now, vec![(None, counts(100, 0, 0))]);
+        ledger.replace_event("copy", "session:prompt", now,
+            vec![(Some("grok-a".into()), counts(60, 0, 0)), (Some("grok-b".into()), counts(40, 0, 0))]);
+        let summary = ledger.summarize(now, TokenUsageStatus::Ready, &[]);
+        assert_eq!(summary.today.totals.total(), Some(100));
+        assert_eq!(summary.today.models.len(), 2);
+        ledger.replace_event("copy", "session:prompt", now, vec![(Some("grok-b".into()), counts(90, 0, 0))]);
+        let summary = ledger.summarize(now, TokenUsageStatus::Ready, &[]);
+        assert_eq!(summary.today.totals.total(), Some(90));
+        assert_eq!(summary.today.models.len(), 1);
+        ledger.replace_event("original", "session:prompt", now + chrono::Duration::seconds(1), vec![(None, counts(80, 0, 0))]);
+        assert_eq!(ledger.summarize(now, TokenUsageStatus::Ready, &[]).today.totals.total(), Some(90));
+        let later = ledger.summarize(now + chrono::Duration::seconds(1), TokenUsageStatus::Ready, &[]);
+        assert_eq!(later.today.totals.total(), Some(80));
+        assert_eq!(later.today.models[0].model, None);
+    }
+
+    #[test]
+    fn matching_windows_keep_families_and_model_buckets_independent() {
+        use crate::domain::types::UsageUnit;
+        let now = Local.with_ymd_and_hms(2026, 10, 19, 12, 0, 0).unwrap();
+        let base = UsageWindow { group: None, kind: WindowKind::Weekly, used: 20., limit: Some(100.),
+            unit: UsageUnit::Percent, resets_at: Some((now + chrono::Duration::days(1)).to_rfc3339()),
+            used_percent: Some(20.), label: Some("Week".into()) };
+        let mut windows = vec![base.clone(); 5];
+        windows[1].label = Some("Opus week".into());
+        windows[2].label = Some("Sonnet week".into());
+        windows[3].group = Some("Gemini".into());
+        windows[4].group = Some("Claude".into());
+        let mut ledger = TokenLedger::default();
+        for (model, amount) in [(Some("claude-opus-4-7"), 100), (Some("claude-sonnet-4-6"), 200),
+            (Some("gemini-3.6-pro"), 300), (None, 400)] {
+            ledger.upsert("file", &format!("{model:?}"), now, model.map(String::from), counts(amount, 0, 0));
+        }
+        let result = ledger.summarize(now, TokenUsageStatus::Ready, &windows);
+        let amounts: Vec<_> = result.windows.iter().map(|w| w.usage.totals.total()).collect();
+        assert_eq!(amounts, vec![Some(1000), Some(100), Some(200), Some(300), Some(300)]);
+        assert_eq!(result.windows[1].label.as_deref(), Some("Opus week"));
+        assert_eq!(result.windows[3].group.as_deref(), Some("Gemini"));
+        windows[0].label = Some("Sonnet week".into());
+        assert_eq!(ledger.summarize(now, TokenUsageStatus::Ready, &windows).windows[0].usage.totals.total(), Some(200));
+        windows[0].group = Some("Unrecognized".into());
+        assert!(ledger.summarize(now, TokenUsageStatus::Ready, &windows).windows[0].usage.models.is_empty());
     }
 
     #[test]

@@ -65,11 +65,13 @@ All quota adapters live in `src-tauri/src/infrastructure/providers/quota/` and a
 
 ## 3. Provider Activity Monitoring
 
-### Codex recorded token details (2026-10-18)
+### Recorded token details (expanded 2026-10-19)
 
-The user-authorized `infrastructure/token_usage/` reader indexes only Codex session
-usage/model metadata on a bounded background worker. It attaches optional
-`token_usage` to Codex snapshots after vendor fetching, including quota failures.
+The user-authorized `infrastructure/token_usage/` reader indexes exact recorded
+usage/model metadata for Codex, AGY, Claude and Grok. Independent bounded background
+workers and ledgers attach optional `token_usage` after vendor fetching, including
+quota failures. Vendor quotas still come exclusively from their existing official
+OAuth/CLI sources; recorded tokens never replace or estimate a vendor quota.
 The UI exposes Today and calendar-month summaries without visible provenance,
 update time, status copy or explanatory footnotes (user request 2026-10-19); the
 internal Monday-based week summary remains available for compatibility. Cumulative
@@ -80,17 +82,38 @@ bounded transient parsing buffers; rewrite detection retains length/hash
 fingerprints rather than raw transcript samples. No conversation content is
 written to the index or diagnostics.
 
-Codex main bars keep vendor quota width and percentage. Optional token `windows`
+Main bars keep vendor quota width and percentage. Optional token `windows`
 summaries cover reset-minus-five-hours / reset-minus-seven-days through the summary
-timestamp, matched by kind and reset instant. Their model shares shade only the
+timestamp, matched by kind, reset instant, group and label. Their model shares shade only the
 filled portion. Visible legends contain only matching color dots and short model
 names; model percentages were removed at user request (2026-10-19). Accessible
 labels identify local token composition, not a vendor-reported model quota. Missing, expired or unmatched reset data leaves a plain quota
 bar. Calendar token tabs remain independent. Retention includes the preceding
 seven days across month boundaries so weekly quota periods remain available.
-Preview mode disables real reads. AGY and other token readers are deferred.
+Preview fixture mode disables real reads for every provider.
 
-Collection is incremental in memory, with one background worker. Per pass it
+| Provider | Recorded source | Available details / normalization |
+| --- | --- | --- |
+| Codex | `sessions/**/*.jsonl` usage events | Existing model/context and cumulative-delta handling; input includes cache and output includes reasoning. |
+| AGY | `antigravity*/brain/*/.system_generated/logs/transcript.jsonl` | Completed model steps: input + separate cache-read becomes inclusive input; output is recorded. Existing history has no model name, cache-write or reasoning count, so those remain unknown. Ignore `transcript_full.jsonl`. |
+| Claude | `projects/**/*.jsonl`, top-level assistant usage | Response ID deduplicates repeated chunks. Inclusive input sums uncached input, cache-read and cache-write. Recorded model is retained; reasoning remains unknown. Ignore nested progress/tool summaries and synthetic responses. |
+| Grok | `sessions/**/updates.jsonl`, completed turn metadata | Exact per-model counts; cache is already inside input and reasoning inside output. Validate model totals, replace corrected turn maps atomically and select one complete version across copied files. Ignore capacity metadata and chat/event mirrors. |
+
+AGY's unknown historical model is never inferred from today's selected model or
+attributed to a Gemini/Claude quota family. Claude Opus/Sonnet weekly buckets are
+filtered independently even when resets match. Daily/monthly credit bars remain
+plain because their exact start boundary is not supplied to the token ledger.
+Tabs/panels have provider-specific ARIA IDs and retain selection/open state across
+refreshes. Missing numeric fields remain `null` and display an em dash.
+
+Schema references: [AGY transcript contract](https://www.antigravity.google/docs/hooks),
+[AGY token examples](https://www.antigravity.google/docs/cli/headless/),
+[Claude disjoint input buckets](https://platform.claude.com/docs/en/build-with-claude/prompt-caching),
+[Grok durable update source](https://github.com/xai-org/grok-build).
+
+Collection is incremental in memory, with at most one active worker per enabled
+provider. Each provider has independent cursors, coverage, retention and caches;
+initialization of a disabled reader performs no discovery. Per provider/pass it
 discovers at most 512 entries, reads at most 8 MiB (1 MiB per file), and visits
 at most 64 files. Recent files, including unread sessions, receive a reserved 2 MiB allowance;
 background files continue in stable rotation. Retained incomplete-line

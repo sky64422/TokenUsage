@@ -1,4 +1,4 @@
-import type { TokenCounts, TokenPeriod, TokenUsageSnapshot } from "./types";
+import type { ProviderId, TokenCounts, TokenPeriod, TokenUsageSnapshot } from "./types";
 import { tokenTotal, MODEL_MISSING, formatTokenPercent } from "./format";
 
 const MISSING = "—";
@@ -19,14 +19,16 @@ export function formatTokens(value: number | null): string {
   return isCount(value) ? (value < 10_000 ? integerFormat.format(value) : compactFormat.format(value)) : MISSING;
 }
 
-export function mountTokenDetails(root: HTMLElement, onResize: () => void): { update(snapshot: TokenUsageSnapshot | null): void } {
+export function mountTokenDetails(root: HTMLElement, onResize: () => void, provider: ProviderId = "codex"): { update(snapshot: TokenUsageSnapshot | null): void } {
+  const todayId = `${provider}-token-tab-today`, monthId = `${provider}-token-tab-month`;
+  const panelId = `${provider}-token-period-panel`;
   root.classList.add("token-details-root");
   root.hidden = true;
   root.innerHTML = `<details class="token-details"><summary>토큰 상세<span class="token-chevron" aria-hidden="true"></span></summary>
     <div class="token-content"><div class="token-periods settings-tabs" role="tablist" aria-label="토큰 집계 기간">
-      <button type="button" class="settings-tab-btn is-active" id="token-tab-today" role="tab" aria-controls="codex-token-period-panel" data-period="today" aria-selected="true">오늘</button>
-      <button type="button" class="settings-tab-btn" id="token-tab-month" role="tab" aria-controls="codex-token-period-panel" data-period="month" aria-selected="false" tabindex="-1">이번 달</button>
-    </div><div id="codex-token-period-panel" role="tabpanel" aria-labelledby="token-tab-today">
+      <button type="button" class="settings-tab-btn is-active" id="${todayId}" role="tab" aria-controls="${panelId}" data-period="today" aria-selected="true">오늘</button>
+      <button type="button" class="settings-tab-btn" id="${monthId}" role="tab" aria-controls="${panelId}" data-period="month" aria-selected="false" tabindex="-1">이번 달</button>
+    </div><div id="${panelId}" role="tabpanel" aria-labelledby="${todayId}">
     <div class="token-totals"></div><div class="token-models"></div></div></div></details>`;
   const details = root.querySelector<HTMLDetailsElement>("details")!;
   const rows = root.querySelector<HTMLElement>(".token-models")!;
@@ -60,11 +62,13 @@ export function mountTokenDetails(root: HTMLElement, onResize: () => void): { up
   });
 
   function render(): void {
-    root.hidden = snapshot === null;
-    if (!snapshot) return;
+    const hidden = snapshot === null;
+    const visibilityChanged = root.hidden !== hidden;
+    root.hidden = hidden;
+    if (!snapshot) { if (visibilityChanged) onResize(); return; }
     const data = snapshot[period];
     const nextKey = JSON.stringify([data, period]);
-    if (nextKey === rowKey) return;
+    if (nextKey === rowKey) { if (visibilityChanged) onResize(); return; }
     rowKey = nextKey;
     rows.replaceChildren(); totals.replaceChildren();
     if (data.models.length > 0) {

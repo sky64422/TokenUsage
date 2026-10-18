@@ -104,8 +104,8 @@ impl AppCore {
             }
         }
 
-        if let Some(codex) = next.get_mut(&ProviderId::Codex) {
-            codex.token_usage = Some(crate::infrastructure::token_usage::snapshot(&codex.windows));
+        for (id, snapshot) in &mut next {
+            snapshot.token_usage = Some(crate::infrastructure::token_usage::snapshot(*id, &snapshot.windows));
         }
         let mut guard = self.lock();
         let count = next.len();

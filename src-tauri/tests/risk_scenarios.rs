@@ -13,7 +13,7 @@ fn ensure_skip_network() {
 }
 
 #[test]
-fn risk_preview_carries_independent_empty_codex_tokens_without_live_reads() {
+fn risk_preview_carries_independent_empty_provider_tokens_without_live_reads() {
     ensure_skip_network();
     let dir = tempdir().unwrap();
     let core = AppCore::new(default_state(), dir.path().into());
@@ -26,7 +26,9 @@ fn risk_preview_carries_independent_empty_codex_tokens_without_live_reads() {
     assert!(tokens.today.models.is_empty());
     assert!(tokens.week.models.is_empty());
     assert!(tokens.month.models.is_empty());
-    assert!(snapshots.iter().filter(|s| s.provider_id != ProviderId::Codex).all(|s| s.token_usage.is_none()));
+    assert!(snapshots.iter().all(|s| s.token_usage.as_ref().is_some_and(|tokens|
+        tokens.today.models.is_empty() && tokens.month.models.is_empty()
+            && tokens.source == "local_records")));
 }
 
 use token_usage_lib::application::service::AppCore;

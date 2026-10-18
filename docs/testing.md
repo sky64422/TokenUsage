@@ -1,3 +1,24 @@
+## Provider token details (2026-10-19)
+
+`npm test` includes AGY/Claude/Grok parser normalization, response/turn deduplication,
+corrected/copied model maps, unknown fields, overflow, source mirror filtering and
+family/bucket isolation. Preview fixture tests ensure all providers avoid live reads.
+`python scripts/provider-token-details-smoke.py --port PORT` uses synthetic metadata
+to verify four simultaneous panels, late data, unique ARIA IDs, independent tabs,
+open/focus preservation, missing-field dashes and precise group/label/reset matching.
+Run the existing Codex smoke as well. Native verification must open each provider's
+detail and Today/Month tabs, inspect intrinsic sizing and screenshot inclusion, and
+restore isolated-preview preferences afterwards. No real conversation fixtures are
+committed.
+
+Expansion validation: 242 tests passed (one opt-in live vendor test ignored),
+production build and Clippy passed. The isolated native preview displayed actual
+AGY/Grok/Codex recorded metadata; the available Claude history had no records in
+the selected current month, while its numeric UI was covered with synthetic data.
+All four native panels retained provider-specific IDs and intrinsic heights without
+overflow. Four-edge expansion, first-open settings height (440/440 DIP), hover
+nonactivation, click-through and actual OS screenshot inclusion were also checked.
+
 ## Native screenshot compatibility (2026-10-19)
 
 Current Glass/Liquid use Windows Composition host-backdrop blur with geometry-only
