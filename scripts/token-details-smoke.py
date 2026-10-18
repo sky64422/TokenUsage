@@ -34,10 +34,10 @@ with sync_playwright() as p:
     assert "invert(1)" in page.locator(".provider-name img").evaluate("el => getComputedStyle(el).filter")
     assert page.locator('[data-period]').count() == 2
     assert page.locator('[data-period=week]').count() == 0
-    indicator = page.locator('.token-periods').evaluate("el=>({width:parseFloat(getComputedStyle(el,'::before').width),tab:el.querySelector('button').getBoundingClientRect().width})")
-    assert abs(indicator['width']-indicator['tab']) < 1, indicator
     page.locator("summary").click()
     expect(page.locator("details")).to_have_attribute("open", "")
+    indicator = page.locator('.token-periods').evaluate("el=>({width:parseFloat(getComputedStyle(el,'::before').width),tab:el.querySelector('button').getBoundingClientRect().width})")
+    assert abs(indicator['width']-indicator['tab']) < 1, indicator
     expect(page.locator(".token-totals")).to_contain_text("1,200")
     expect(page.locator(".token-totals")).to_contain_text("75%")
     expect(page.locator(".token-metrics")).to_contain_text("CacheWrite—")
@@ -76,8 +76,8 @@ with sync_playwright() as p:
         window.ui.setSnapshots([structuredClone(window.snap)]);
     }""")
     assert page.locator('.token-details .token-model-bar').count() == 0, 'Model composition belongs in the main quota bar'
-    expect(page.locator('.provider-card .token-model-legend')).to_contain_text('6.1 Sol 90.9%')
-    expect(page.locator('.token-model-legend')).to_contain_text('6 Astra 9.1%')
+    expect(page.locator('.provider-card .token-model-legend')).to_contain_text('6.1 Sol (36.4%)')
+    expect(page.locator('.token-model-legend')).to_contain_text('6 Astra (3.6%)')
     assert page.locator('.track-models > span').count() == 2
     assert page.locator('.provider-entry:visible .track-fill').evaluate('el=>el.style.width') == '40%'
     expect(page.locator('.provider-entry:visible .provider-pct')).to_have_text('40%')
@@ -90,11 +90,13 @@ with sync_playwright() as p:
         const dots=[...document.querySelectorAll('.token-model-dot')];
         const names=[...document.querySelectorAll('.token-legend-item')];
         return {colors:parts.map(el=>getComputedStyle(el).backgroundColor),dots:dots.map(el=>getComputedStyle(el).backgroundColor),
+          percentages:[...document.querySelectorAll('.token-legend-share')].map(el=>getComputedStyle(el).color),
           ys:names.map(el=>el.getBoundingClientRect().y),barBottom:document.querySelector('.track').getBoundingClientRect().bottom,
           legendY:document.querySelector('.token-model-legend').getBoundingClientRect().y,
           font:getComputedStyle(document.querySelector('.token-model-legend')).fontSize};
     }""")
     assert legend['colors'] == legend['dots'], legend
+    assert legend['percentages'] == legend['dots'], legend
     assert len(set(legend['ys'])) == 1 and legend['legendY'] > legend['barBottom'], legend
     assert legend['legendY'] - legend['barBottom'] <= 8 and legend['font'] == '10px', legend
     page.locator('.token-model-legend').focus()

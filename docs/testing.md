@@ -74,8 +74,8 @@ Windows validation uses isolated app profiles, existing desktop pixels and no fu
 With Vite running, `python scripts/token-details-smoke.py` checks Today / This month, model metadata, persistent expansion/selection/focus, provider marks,
 zero/missing/partial/error data, absence of provenance/status/footnote copy,
 escaping, three themes and scaled widths.
-It also checks model-share shades in the main quota bars, matching dots/abbreviations/percentages
-on one legend line, unchanged vendor width/percentage, stale-reset fallback,
+It also checks model-share shades in the main quota bars, matching dots/abbreviations/colored parenthesized percentages
+on one legend line (40% fill × 90.9% token share → 36.4%), unchanged vendor width/percentage, stale-reset fallback,
 independence from calendar tab selection, legend focus while numeric data changes, tab keyboard navigation
 and the two-tab selection indicator width under reduced motion. Tiny 1% quota
 fills with three models must retain positive segment widths and the vendor percentage. `python

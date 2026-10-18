@@ -202,7 +202,7 @@ function usageRow(opts: {
   const groupClass = opts.isGroupStart ? " is-group-start" : "";
   const segments = width > 0 && pct !== null && !idle && opts.models ? modelSegments(opts.models) : [];
   const parts = segments.filter(segment => segment.share > 0);
-  const modelDescription = `${label} 기간의 이 기기 입력+출력 토큰 비중입니다. 모델별 한도 소모율이 아닙니다.`;
+  const modelDescription = `${label} 전체 막대 100% 기준의 모델별 구간입니다. 이 기기 입력+출력 토큰 비중으로 채움 영역을 배분한 값입니다.`;
 
   return `
     <div class="usage-row ${lvl}${idle ? " is-idle" : ""}${groupClass}" title="${escapeAttr(title)}">
@@ -224,7 +224,10 @@ function usageRow(opts: {
         <span class="provider-pct ${lvl}">${escapeHtml(pctText)}</span>
       </div>
       ${segments.length ? `<div class="token-model-legend" tabindex="0" aria-label="${escapeAttr(modelDescription)}" title="${escapeAttr(modelDescription)}">
-        ${segments.map(s => `<span class="token-legend-item" title="${escapeAttr(s.model)} · 기기 토큰 ${formatTokenPercent(s.share)}"><i class="token-model-dot" style="background:${s.color}" aria-hidden="true"></i><span>${escapeHtml(s.label)} ${formatTokenPercent(s.share)}</span></span>`).join("")}</div>` : ""}
+        ${segments.map(s => {
+          const allocation = formatTokenPercent(width * s.share / 100);
+          return `<span class="token-legend-item" title="${escapeAttr(s.model)} · 전체 막대 ${allocation}"><i class="token-model-dot" style="background:${s.color}" aria-hidden="true"></i><span>${escapeHtml(s.label)} <strong class="token-legend-share" style="color:${s.color}">(${allocation})</strong></span></span>`;
+        }).join("")}</div>` : ""}
     </div>
   `;
 }
