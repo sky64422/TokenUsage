@@ -7,7 +7,7 @@ ap=argparse.ArgumentParser();ap.add_argument('--port',type=int,default=1420);ap.
 FIXTURE=r'''token=>{
  window.fixture={settings:{theme:'dark',opacity:.92,autostart:false,hover_detail:false,always_show_notch:true,show_animation:true,show_orbit:true,show_icon_glow:true,quote_refresh_secs:10000,notch:{edge:'right',offset:.5,monitor_hint:'mock'},claude:{enabled:true},codex:{enabled:true},grok:{enabled:true},agy:{enabled:true}},watchlist:[{id:'a',symbol:'AAPL',display_name:'Apple',asset_kind:'equity',sort_index:0,card_tint:'none'}]};
  window.snapshots=['claude','codex','grok','agy'].map(provider_id=>({provider_id,display_name:provider_id,windows:[],status:'unavailable',source:'unavailable',message:null,as_of:'fixture',primary_resets_at:null,primary_used_percent:null}));
- window.callbacks={};window.handlers={};window.nativeRequests=[];window.holdTheme=false;window.rejectTheme=false;let next=0;const cache=new Map();
+ window.callbacks={};window.handlers={};window.nativeRequests=[];window.holdTheme=false;window.rejectTheme=false;let next=0;
  window.__TAURI_INTERNALS__={metadata:{currentWindow:{label:'main'},currentWebview:{label:'main'}},transformCallback:cb=>{window.callbacks[++next]=cb;return next;},unregisterCallback:id=>delete window.callbacks[id],invoke:async(c,a={})=>{
   if(c==='get_state')return structuredClone(window.fixture);
   if(c==='get_quotes')return [{symbol:'AAPL',price:200,currency:'USD',as_of:'fixture',source:'fixture',display:{primary:{price:200,change:1},secondary:{price:null,change:null}}}];
@@ -25,11 +25,9 @@ FIXTURE=r'''token=>{
    window.nativeRequests.push(a);const height=Math.round(a.height),count=token?4:1;
    return {edge:'right',anchor_x:'left',anchor_y:'top',scale:1,monitor:'mock',window:{x:0,y:0,width:720,height:800},notch:{x:664,y:180,width:56,height:count*72+88},detail:a.expanded?{x:396,y:Math.round(400-height/2),width:260,height}:null,metrics:{slot_count:count,content_scale:window.contentScale??1,depth:56,cell:72,shoulder:28,inner_radius:28,inset:44,detail_radius:16,drag_threshold:5,rest_depth:10,rest_length:80}};
   }
-  if(c==='release_liquid_backdrop'){cache.clear();return;}
-  if(c==='capture_liquid_backdrop'){
-   const key=JSON.stringify(a);if(cache.get(a.surface)===key)return new ArrayBuffer(0);cache.set(a.surface,key);
-   const b=new ArrayBuffer(12+a.width*a.height*4),v=new DataView(b),pixels=new Uint8Array(b);pixels.set([76,81,48,49]);v.setUint32(4,a.width,true);v.setUint32(8,a.height,true);for(let i=12;i<pixels.length;i+=4)pixels.set([60,80,100,255],i);return b;
-  }
+  if(c==='begin_liquid_backdrop')return 1;
+  if(c==='sync_liquid_backdrop')return;
+  if(c==='release_liquid_backdrop')return;
   return null;
  }};
 }'''

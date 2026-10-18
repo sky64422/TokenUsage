@@ -23,7 +23,11 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .on_page_load(|view, _| infrastructure::liquid_glass::reset_on_load(view))
+        .on_page_load(|view, payload| {
+            if payload.event() == tauri::webview::PageLoadEvent::Started {
+                infrastructure::liquid_glass::reset_on_load(view);
+            }
+        })
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
             std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
@@ -86,6 +90,8 @@ pub fn run() {
             commands::get_snapshots,
             commands::set_opacity,
             commands::set_theme,
+            infrastructure::liquid_glass::begin_liquid_backdrop,
+            infrastructure::liquid_glass::sync_liquid_backdrop,
             infrastructure::liquid_glass::release_liquid_backdrop,
             infrastructure::liquid_glass::capture_liquid_backdrop,
             commands::set_autostart,

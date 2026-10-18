@@ -34,7 +34,7 @@ Rust AppCore
 - `src/ui/notch.ts` renders keyed provider rings (40 DIP) and the concave SVG silhouette (64 DIP depth, 32 DIP arcs, 44 DIP end insets). Ring DOM survives snapshot refreshes.
 - `src/ui/notch-state.ts` owns hover/pin/settings/escape transitions, delayed close, and headline presentation.
 - `src/ui/surface-finish.ts` tracks pointer-driven reflections only for the opt-in glass theme; it never transforms native geometry. `settings.theme` defaults to dark and persists through `set_theme`.
-- `src/ui/liquid-glass.ts` renders the Glass/Liquid backdrop independently of foreground content. `liquid-loop.ts` serializes frames, drops results from previous theme generations and releases capture after an in-flight read. `infrastructure/liquid_glass.rs` owns bounded local regions and capture-exclusion leases; `liquid_capture.rs` owns a dedicated worker, reusable GDI surfaces and raw RGBA cache; no desktop pixels are persisted or logged.
+- `src/ui/liquid-glass.ts` synchronizes Glass/Liquid surface geometry and tint layers with ordered session/revision IPC. `infrastructure/liquid_glass.rs` marshals native material operations to the UI thread; `native_material.rs` owns same-HWND Windows Composition host-backdrop blur and geometric clips. Materials neither read desktop pixels nor exclude the widget from screenshots. `liquid_capture.rs` remains a bounded GDI worker for legacy diagnostics only.
 - `domain/notch.rs` computes physical monitor/working-area bounds and shape hit regions (64 DIP depth, 72 DIP provider cells, 12 DIP lateral margins). Negative coordinates and per-monitor scale are valid.
 - Native notch metrics include a separate `content_scale` (0.85–1): compact the rail on smaller logical displays, capped at the current QHD size. Actual DPI conversion stays in `layout.scale`; detail/settings dimensions remain independent.
 - `domain/notch/drag.rs` owns pure edge/monitor drag selection, reexported through `domain::notch::NotchDrag` to preserve the existing API.
@@ -105,7 +105,7 @@ The original command names and JSON payloads are unchanged.
 - Preferences & Controls: `set_theme`, `set_opacity`, `set_autostart`, `set_hover_detail`, `set_always_show_notch`, `set_show_animation`, `set_provider_enabled`
 - Notch & Window Geometry: `get_notch_monitors`, `get_notch_reveal`, `set_notch_focus`, `set_notch_placement`, `begin_notch_drag`, `finish_notch_drag`, `set_notch_surface`
 - Activity & Diagnostics: `get_provider_activity`, `get_diagnostics`, `check_for_updates`, `quit_app`
-- Liquid material: `capture_liquid_backdrop` (only when the persisted theme is `glass` or `liquid`), `release_liquid_backdrop`
+- Native materials: `begin_liquid_backdrop`, `sync_liquid_backdrop`, `release_liquid_backdrop` (session/revision ordered). Legacy `capture_liquid_backdrop` is diagnostic only.
 
 ## Updater
 

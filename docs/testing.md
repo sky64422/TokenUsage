@@ -1,3 +1,22 @@
+## Native screenshot compatibility (2026-10-19)
+
+Current Glass/Liquid use Windows Composition host-backdrop blur with geometry-only
+IPC. Historical capture/cadence measurements below describe the previous renderer.
+`python scripts/liquid-renderer-smoke.py --port PORT` covers ordered geometry,
+delayed acknowledgements, release/reopen barriers, native failure recovery and
+visibility/destroy cleanup. `liquid-cadence-smoke.py` covers zero idle IPC and finite
+geometry animation synchronization; `theme-transition-smoke.py` covers physical
+geometry across themes and DPI/content scales. Unit tests cover the same ordering.
+
+On Windows run `python scripts/liquid-capture-smoke.py` against the isolated preview
+on CDP 9223. It requires a running native material, checks HWND affinity 0, then saves
+`tmp/liquid-capture-screen.png` using OS capture. Inspect foreground and backdrop;
+CDP screenshots alone cannot establish screenshot inclusion. Also exercise Glass,
+Liquid, both monitors, drag, fold/reveal, Dark and reload; confirm no stale native
+surfaces outside the visible shape. Materials no longer use GDI readback, capture
+leases, per-frame pixel buffers or Glass refraction maps. The legacy diagnostic
+capture command/frame tests do not prove material rendering.
+
 # Testing & coverage
 
 ## Theme-switch geometry regression (2026-10-17)

@@ -50,12 +50,11 @@ Quota rings, percentage text and detail bars share inclusive upper bounds: 0–5
 ### Glass and Liquid materials
 
 - Dark, Glass and Liquid are separate persisted choices. Old system/light values migrate to Dark without losing preferences.
-- Glass replaces the previous painted foil finish with the supplied lock-screen reference: neutral smoked translucency, a narrow white reflective edge, restrained refraction and no stacked label scrims. Adaptive neutral shading keeps bright backdrops legible.
-- Liquid uses an undistorted live backdrop with its existing blur, colored reflections and dark text scrims. Displacement is fixed at 0: skip the SVG refraction filter and distance/displacement-map generation. Glass retains its lens and neutral 3px reflective rim with a 0.7px specular edge.
-- Both capture only visible desktop rectangles in memory; foreground marks, rings, percentages and controls remain sharp. Native silhouette, hit regions and settings sizing are unchanged.
-- One serialized renderer batch uses a dedicated GDI worker with two reusable DIB surfaces. Raw RGBA packets replace per-frame BMP/image decoding. Identical pixels for the same region and generation skip IPC image payloads and painting. Legacy diagnostics may still request BMP.
-- Target intervals remain 30 Hz at rest, 60 Hz while dragging and 4 Hz with reduced motion. These intervals are not proof of presented FPS. Fold stops capture; explicit hide also releases frontend backing stores. Theme changes/reload/expired leases restore capture affinity after pending reads finish.
-- Windows excludes the HWND from OS capture/sharing while either live material is active to avoid recursion. Dark does not capture. Capture failures report an error and retain the tint fallback.
+- Glass uses neutral smoked translucency and a mirrored 3px rim with a 0.7px specular edge. Liquid retains its undistorted backdrop, colored reflections and dark text scrims.
+- Windows Composition supplies a HostBackdropBrush with native Gaussian blur behind the same WebView HWND. Foreground marks, rings, percentages and controls stay sharp. Both materials use native blur; Glass no longer uses a CPU refraction lens or adaptive pixel shading.
+- Physical notch/detail geometry is synchronized on layout changes and finite geometry animations. Native clips reproduce the tangent notch arcs and rounded detail; silhouette, hit regions and settings sizing are unchanged. Idle desktop updates require no JS capture or IPC loop.
+- Session/revision ordering prevents a delayed update from reviving a closed surface. Fold, hide, theme exit and navigation clear the native surfaces. Failures report an error and retain the tint fallback.
+- The HWND remains included in normal screenshots and screen sharing. No global display-affinity exclusion or desktop pixel readback is used by the materials. Legacy GDI capture IPC remains diagnostic only.
 - The tray contains Show and Quit. App-specific keyboard controls are removed; automatic mouse fold/reveal remains.
 
 ### Monitor-aware notch size

@@ -26,7 +26,18 @@ reqwest = { version = "0.12", default-features = false, features = ["blocking", 
 rusqlite = { version = "0.32", features = ["bundled"] }
 
 [target.'cfg(windows)'.dependencies]
+windows-core = "0.61"
 windows = { version = "0.61", features = [
+  "Graphics",
+  "Graphics_Effects",
+  "Win32_Graphics_Direct2D",
+  "Win32_Graphics_Direct2D_Common",
+  "Win32_System_WinRT_Graphics_Direct2D",
+  "System",
+  "UI_Composition",
+  "UI_Composition_Desktop",
+  "Win32_System_WinRT",
+  "Win32_System_WinRT_Composition",
   "Win32_Foundation",
   "Win32_Security",
   "Win32_System_Console",

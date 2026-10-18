@@ -4263,6 +4263,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "windows",
+ "windows-core 0.61.2",
 ]
 
 [[package]]
