@@ -224,14 +224,7 @@ pub fn apply(
             .map_err(|e| e.to_string())?;
         }
         let content_changed = match &rt.layout {
-            Some(prev) => {
-                prev.edge != layout.edge
-                    || prev.scale != layout.scale
-                    || prev.monitor != layout.monitor
-                    || prev.window.width != layout.window.width
-                    || prev.window.height != layout.window.height
-                    || prev.detail != layout.detail
-            }
+            Some(prev) => frontend_layout_changed(prev, &layout),
             None => true,
         };
         if content_changed || rt.drag.is_none() {
@@ -241,6 +234,23 @@ pub fn apply(
         rt.layout = Some(layout.clone());
     }
     Ok(layout)
+}
+
+fn frontend_layout_changed(prev: &NotchLayout, next: &NotchLayout) -> bool {
+    prev.edge != next.edge
+        || prev.anchor_x != next.anchor_x
+        || prev.anchor_y != next.anchor_y
+        || prev.scale != next.scale
+        || prev.monitor != next.monitor
+        || prev.window.width != next.window.width
+        || prev.window.height != next.window.height
+        // A full-height native canvas can stay fixed while the rail moves inside it.
+        // Only a shared native translation can skip updating frontend coordinates.
+        || prev.notch.x - prev.window.x != next.notch.x - next.window.x
+        || prev.notch.y - prev.window.y != next.notch.y - next.window.y
+        || prev.notch.width != next.notch.width
+        || prev.notch.height != next.notch.height
+        || prev.detail != next.detail
 }
 
 pub fn start(app: AppHandle) {
@@ -514,4 +524,60 @@ fn pump_drag(app: &AppHandle) -> Result<(), String> {
         return complete_drag(app, id, true, Some(e));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn drag_within_fixed_canvas_updates_frontend_before_release() {
+        let monitor = MonitorArea {
+            name: "main".into(),
+            bounds: Rect {
+                x: 0., y: 0., width: 2560., height: 1440.,
+            },
+            work: Rect {
+                x: 0., y: 0., width: 2560., height: 1392.,
+            },
+            scale: 1.,
+        };
+        for edge in [NotchEdge::Left, NotchEdge::Right] {
+            let initial = NotchPlacement {
+                edge, offset: 0.4, monitor_hint: None,
+            };
+            let moved = NotchPlacement {
+                offset: 0.6, ..initial.clone()
+            };
+            let before = calculate_layout(&monitor, &initial, 1, false, 100.).unwrap();
+            let after = calculate_layout(&monitor, &moved, 1, false, 100.).unwrap();
+            assert_eq!(before.window, after.window, "native canvas stays fixed");
+            assert_ne!(before.notch.y, after.notch.y);
+            assert!(
+                frontend_layout_changed(&before, &after),
+                "{edge:?} drag must repaint the rail inside the canvas"
+            );
+        }
+    }
+
+    #[test]
+    fn native_translation_with_unchanged_local_rail_needs_no_frontend_repaint() {
+        let monitor = MonitorArea {
+            name: "main".into(),
+            bounds: Rect {
+                x: 0., y: 0., width: 2560., height: 1440.,
+            },
+            work: Rect {
+                x: 0., y: 0., width: 2560., height: 1392.,
+            },
+            scale: 1.,
+        };
+        let before = calculate_layout(&monitor, &NotchPlacement::default(), 1, false, 100.).unwrap();
+        let mut after = before.clone();
+        after.notch.x += 20.;
+        after.notch.y += 30.;
+        after.window.x += 20.;
+        after.window.y += 30.;
+        assert!(!frontend_layout_changed(&before, &after));
+    }
 }
