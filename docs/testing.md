@@ -74,8 +74,9 @@ Windows validation uses isolated app profiles, existing desktop pixels and no fu
 With Vite running, `python scripts/token-details-smoke.py` checks Today / This
 week / This month, model metadata, persistent expansion/selection/focus, provider marks,
 zero/missing/partial/error states, escaping, three themes and scaled widths.
-It also checks model-share shades and matching dots/abbreviations on one legend
-line, including legend focus while numeric data changes, tab keyboard navigation
+It also checks model-share shades in the main quota bars, matching dots/abbreviations
+on one legend line, unchanged vendor width/percentage, stale-reset fallback,
+independence from calendar tab selection, legend focus while numeric data changes, tab keyboard navigation
 and the shared settings selection indicator under reduced motion. `python
 scripts/notch-ring-smoke.py` checks one continuous ring with no secondary ring,
 including unknown/zero/full/overage and running activity.
@@ -88,10 +89,26 @@ Rust token tests cover cumulative increments, copied/forked histories, replaceme
 partial writes, Monday/week/month boundaries, oversized lines, resumable discovery and fairness.
 Limits per background pass: 512 discovery entries, 8 MiB total reads, 1 MiB per
 file, 64 file attempts; at most 4096 files and 100000 retained metadata records.
-Retention includes the current month plus any preceding dates in the current week.
+Recent files, including unread sessions, share a reserved 2 MiB allowance while background paths
+keep rotating. Retained incomplete-line allocation is capped at 8 MiB total.
+Resource regressions cover deleted-file slot reuse, expired owner cleanup,
+discarded-buffer release, aggregate buffer limits, recent-file latency, idle
+summary reuse and activation/expiry/date/revision invalidation. A cold-start
+regression verifies current usage is admitted before the old archive drains.
+Fingerprints
+cover replacement detection without retaining raw samples, including appending
+to a short file without restarting its scan. No-change workers suppress extra
+refresh notifications.
+Retention includes the current month and preceding seven days for vendor quota windows.
 Excluded or uncertain coverage is partial; ongoing scans are loading. Large logs
 may take multiple passes. Preview mode disables real Codex token reads as well
 as direct quota reads.
+
+Vertical-edge detail expansion keeps its header anchor while there is room
+below and shifts upward only at the bottom work boundary. The notch/canvas must
+remain fixed. Drag regression coverage also verifies that rail-local changes
+inside a fixed full-height canvas emit frontend layout updates before release;
+a plain native translation with unchanged local coordinates needs no repaint.
 
 Controller regressions in `src/ui/notch-surface.test.ts`, `notch-drag.test.ts` and
 `update-controller.test.ts` exercise deferred native replies, failed begin/retry,

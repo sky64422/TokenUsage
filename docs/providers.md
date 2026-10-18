@@ -73,8 +73,33 @@ usage/model metadata on a bounded background worker. It attaches optional
 Today, current Monday-based week and calendar-month summaries are labeled `이 기기의 기록`; cumulative
 reports and copied sessions are deduplicated. Cache and reasoning are subsets,
 never extra quota or token totals. Partial scans/unknown fields remain explicit.
-No prompt, tool arguments, thinking or account identity is retained or emitted.
+Only numeric/model metadata is indexed or emitted. Incomplete file lines use
+bounded transient parsing buffers; rewrite detection retains length/hash
+fingerprints rather than raw transcript samples. No conversation content is
+written to the index or diagnostics.
+
+Codex main bars keep vendor quota width and percentage. Optional token `windows`
+summaries cover reset-minus-five-hours / reset-minus-seven-days through the summary
+timestamp, matched by kind and reset instant. Their model shares shade only the
+filled portion. Accessible labels identify local token shares; visible legends
+contain only matching color dots and short model names, as requested. These do
+not estimate model-specific quota consumption. Missing, expired or unmatched reset data leaves a plain quota
+bar. Calendar token tabs remain independent. Retention includes the preceding
+seven days across month boundaries so weekly quota periods remain available.
 Preview mode disables real reads. AGY and other token readers are deferred.
+
+Collection is incremental in memory, with one background worker. Per pass it
+discovers at most 512 entries, reads at most 8 MiB (1 MiB per file), and visits
+at most 64 files. Recent files, including unread sessions, receive a reserved 2 MiB allowance;
+background files continue in stable rotation. Retained incomplete-line
+allocations total at most 8 MiB; oversized/discarded buffers are released.
+Confirmed missing files release cursor slots while known numeric history stays
+until retention expiry; permission failures remain partial. Retention pruning
+runs only when its date advances. Summaries are cached until records, coverage,
+calendar boundaries or quota-window boundaries change. Timestamp-only updates
+do not request an extra quota refresh. Startup still rebuilds the metadata index
+from session files; there is no persistent token index, so large histories may
+need multiple bounded passes. These limits are not measured CPU/RAM savings.
 
 
 `src-tauri/src/infrastructure/activity.rs` owns the background loop and Tauri events.

@@ -120,3 +120,38 @@ Live Codex records populate model/cache data independently of official quota.
 Initial indexing is loading; excluded or uncertain records are partial. No
 release or installation was performed. Local screenshots and measurements stay
 in ignored `tmp/`.
+
+### User correction: model shading belongs in the main bars
+
+Move model composition/legend out of token detail and into the filled portions
+of the main 5h/weekly quota bars. Keep official width/% and risk hue. Add bounded
+metadata summaries for reset-minus-window through now; match reset instants in
+the UI, and retain seven preceding days across month boundaries. Visible
+accessible labeling identifies the local-token composition basis; visible legend
+prefixes were removed by subsequent user request. Missing/stale data uses a plain bar.
+Calendar token tabs keep their numeric detail and do not select main-bar periods.
+Verify reset-boundary accounting, unchanged quota width/%, legend/focus, no
+duplicate detail graph, empty-track pixels, and matching Windows preview.
+
+### Final follow-up validation
+
+- User refinements: main-bar model rectangles have 2px gaps and 1px corners;
+  nearby legends use 10px dots/names only. Vertical cards grow down first and
+  shift upward at the lower work boundary. Fixed-canvas drag updates rail-local
+  positions continuously and persists only on release.
+- Efficiency audit corrections: bounded aggregate parsing allocations, missing
+  cursor/history lifecycle, recent-first cold reads plus fair background
+  rotation, idle summary caching and notification dedup. Relative Codex resets
+  are anchored before HTTP caching. No persistent token index was added; source
+  logs remain on disk and the token index remains in memory across refreshes.
+- Final `npm test`: 207 passed, one opt-in live AGY test ignored. Build, Clippy
+  with warnings denied, and settings/detail/token/track browser checks passed.
+- Latest Windows preview: left/right panel top remains 382px during 193→697px
+  expansion; bottom-constrained fallback, all four edges, settings 440/440px,
+  click-through and nonactivating hover passed. Native drag followed five
+  intermediate positions over 240px; native canvas stayed fixed and placement
+  was saved only on release. Both live main quota bars showed model segments.
+- Review regressions were reproduced before correction: hot-budget starvation,
+  lost partial-coverage warnings on deleted tails and newest unread sessions
+  hidden behind cold archives. Their regression tests pass; final read-only
+  review found no remaining Critical or Important issues in the reviewed fixes.
