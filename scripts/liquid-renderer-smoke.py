@@ -21,6 +21,7 @@ with sync_playwright() as p:
       window.__TAURI_INTERNALS__={invoke:async(command,args)=>{
         window.calls.push({command,args});
         if(command==='begin_liquid_backdrop')return 7;
+        if(command==='capture_liquid_backdrop')return new ArrayBuffer(0);
         if(command==='release_liquid_backdrop')return;
         if(command!=='sync_liquid_backdrop')return;
         if(window.rejectNext){window.rejectNext=false;throw Error('synthetic material failure');}
@@ -66,9 +67,9 @@ with sync_playwright() as p:
     assert page.evaluate('window.calls.filter(c=>c.command==="begin_liquid_backdrop").length') == 1
     page.evaluate('document.getAnimations().forEach(a=>{if(a.effect?.getTiming().iterations!==Infinity)a.finish();})')
     page.clock.run_for(32)
-    before = page.evaluate('window.calls.length')
+    before = page.evaluate('window.calls.filter(c=>c.command!=="capture_liquid_backdrop").length')
     page.clock.run_for(1000)
-    assert page.evaluate('window.calls.length') == before, page.evaluate('(n)=>window.calls.slice(n)', before)
+    assert page.evaluate('window.calls.filter(c=>c.command!=="capture_liquid_backdrop").length') == before, page.evaluate('(n)=>window.calls.slice(n)', before)
     page.evaluate('window.rejectNext=true;document.querySelector(".notch").style.left="322px"')
     page.clock.run_for(64)
     assert page.locator('.notch-shell').get_attribute('data-liquid-status') == 'unavailable'
@@ -87,11 +88,11 @@ with sync_playwright() as p:
     assert page.locator('.liquid-layer').count() == 0
     assert not errors, errors
     commands = page.evaluate('window.calls')
-    revisions = [call['args']['revision'] for call in commands if call['command'] != 'begin_liquid_backdrop']
+    revisions = [call['args']['revision'] for call in commands if call['command'] in ['sync_liquid_backdrop', 'release_liquid_backdrop']]
     assert revisions == sorted(set(revisions)), revisions
-    assert all(call['command'] != 'capture_liquid_backdrop' for call in commands)
+    assert all(c['args']['width'] == 3 or c['args']['height'] == 3 for c in commands if c['command'] == 'capture_liquid_backdrop')
     result = {'physical_geometry':True,'delayed_ack_hidden_detail':True,'serialized_release_reopen':True,
-              'theme_blur_update':True,'idle_ipc':0,'failure_recovery':True,'hide_resume_destroy':True,'revisions':revisions}
+              'theme_blur_update':True,'idle_geometry_ipc':0,'failure_recovery':True,'hide_resume_destroy':True,'revisions':revisions}
     (ROOT/'tmp/liquid-renderer-results.json').write_text(json.dumps(result,indent=2))
     print(json.dumps(result))
     browser.close()

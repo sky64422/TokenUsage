@@ -130,7 +130,8 @@ fn valid_region(
     Ok(right <= canvas_width && bottom <= canvas_height)
 }
 
-// Retained diagnostic IPC only. Native materials never use desktop pixel readback.
+// Diagnostics and narrow foreground-contrast probes. Native material pixels are
+// composed by Windows and never sourced from this readback.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn capture_liquid_backdrop(window: WebviewWindow, state: State<'_, AppHandleState>,

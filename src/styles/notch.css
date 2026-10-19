@@ -238,6 +238,43 @@
 .notch-shell[data-theme="liquid"] .provider-detail-mark {
   filter: brightness(0) invert(1) drop-shadow(0 1px 2px rgba(9, 22, 34, .20));
 }
+.notch-shell[data-theme="liquid"] [data-contrast="light"] {
+  --foreground: #172a36;
+  --card-foreground: var(--foreground);
+  --secondary-foreground: var(--foreground);
+  --muted-foreground: #40545f;
+  --subtle-foreground: #50636d;
+  --ok: #176b36;
+  --caution: #795900;
+  --warn: #965000;
+  --critical: #b52530;
+  --reset: #a63038;
+  --border: rgba(24, 44, 58, .16);
+  --border-soft: rgba(24, 44, 58, .12);
+  color: var(--foreground);
+}
+.notch-shell[data-theme="liquid"] [data-contrast="light"] :is(.detail-body, .ring-pct) {
+  text-shadow: none;
+}
+.notch-shell[data-theme="liquid"] [data-contrast="light"] :is(.ring-wrap, .provider-detail-mark) {
+  filter: none;
+}
+.notch-shell[data-theme="liquid"] [data-contrast="light"] :is(.ring-wrap img, .provider-detail-mark) {
+  filter: brightness(0) opacity(.8) !important;
+}
+.notch-shell[data-theme="liquid"] [data-contrast="light"] .ring-track {
+  stroke: rgba(24, 44, 58, .20);
+}
+.notch-shell[data-theme="liquid"] [data-contrast="light"] .track {
+  background: rgba(24, 44, 58, .12);
+}
+.notch-shell[data-theme="liquid"] [data-contrast="light"] .quota-service-name {
+  color: var(--foreground);
+}
+.notch-shell[data-theme="liquid"] [data-contrast="light"] .settings-tab-btn.is-active,
+.notch-shell[data-theme="liquid"] [data-contrast="light"] .settings-tab-btn.is-active .tab-icon {
+  color: var(--foreground);
+}
 .notch-cells {
   position: absolute;
   top: var(--notch-inset);

@@ -1,3 +1,14 @@
+## Liquid adaptive foreground contrast (2026-10-19)
+
+`liquid-contrast.test.ts` covers bright/dark modes, hysteresis, isolated outliers,
+serialized reads and rejection of late results after disable. Material cadence
+smokes exclude the separate contrast probes from geometry IPC counts and require
+probe widths/heights to remain three physical pixels. Native verification switches
+blue -> white -> blue backgrounds and checks independent rail/detail contrast modes,
+foreground readability and unchanged screenshot affinity. The first probe is delayed
+120 ms for composition; subsequent probes occur at most once per second after completion.
+No sampled image is persisted or used as a material texture.
+
 ## Provider token details (2026-10-19)
 
 `python scripts/test-agy-token-hook.py` checks invocation boundaries, model switches,
@@ -29,7 +40,7 @@ Current Glass/Liquid use Windows Composition host-backdrop blur with geometry-on
 IPC. Historical capture/cadence measurements below describe the previous renderer.
 `python scripts/liquid-renderer-smoke.py --port PORT` covers ordered geometry,
 delayed acknowledgements, release/reopen barriers, native failure recovery and
-visibility/destroy cleanup. `liquid-cadence-smoke.py` covers zero idle IPC and finite
+visibility/destroy cleanup. `liquid-cadence-smoke.py` covers zero idle geometry IPC and finite
 geometry animation synchronization; `theme-transition-smoke.py` covers physical
 geometry across themes and DPI/content scales. Unit tests cover the same ordering.
 

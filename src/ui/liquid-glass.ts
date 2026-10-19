@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { mountLiquidContrast } from "./liquid-contrast";
 
 const MATERIAL_BLUR = { glass: [4, 10], liquid: [3, 10] } as const;
 const GEOMETRY_PROPERTY = /^(transform|translate|scale|width|height|left|right|top|bottom|inset|borderRadius|clipPath)/;
@@ -10,6 +11,7 @@ interface NativeSurface {
 /** The compositor owns live pixels; the web layer only synchronizes geometry and scrims. */
 export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: HTMLElement) {
   const notchSurface = rail.querySelector<HTMLElement>(".notch-surface") ?? rail;
+  const contrast = mountLiquidContrast(rail, notchSurface, detail);
   const entries = [rail, detail].map((surface, slot) => {
     const layer = document.createElement("div");
     layer.className = "liquid-layer";
@@ -24,6 +26,7 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
   let desired: NativeSurface[] = [], desiredKey = "[]", appliedKey = "[]", frame = 0;
 
   function hide() {
+    contrast.setActive(false);
     for (const entry of entries) entry.layer.hidden = true;
     delete shell.dataset.liquidStatus;
   }
@@ -54,6 +57,7 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
         if (!destroyed && key === desiredKey && !clearRequired && surfaces.length) {
           for (const entry of entries) entry.layer.hidden = !surfaces.some(s => s.slot === entry.slot);
           shell.dataset.liquidStatus = "ready";
+          contrast.setActive(shell.dataset.theme === "liquid");
         }
       }
     } catch (error) {
@@ -118,6 +122,7 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
         blur: MATERIAL_BLUR[theme][slot] * ratio });
     }
     request(surfaces);
+    contrast.setActive(theme === "liquid" && shell.dataset.liquidStatus === "ready");
   }
 
   function animatingGeometry() {
