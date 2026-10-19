@@ -15,6 +15,11 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 - Missing/auth-required values show a dash with explicit status, never a zero. Overage preserves the number while only the arc is clamped.
 - Provider icons identify Claude, Codex, Grok, and Antigravity. Source/license notices live in `src/assets/marks`.
 - Three themes: Dark retains the original surface; Glass uses a neutral translucent surface with a mirrored rim; Liquid uses an undistorted live backdrop, blur and colored edge reflections. Pretendard and tabular numbers remain.
+- Liquid clarity (2026-10-19): one light translucent wash over the native backdrop;
+  no stacked opaque panel/body fills while the material is ready. Bright edge
+  reflections define the surface. Local icon/ring shadows and a thin percentage
+  outline preserve foreground readability over bright backgrounds without
+  darkening the whole pane. Retain the opaque fallback when native material fails.
 
 ## Details and settings
 

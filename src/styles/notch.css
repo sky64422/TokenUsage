@@ -139,8 +139,8 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(145deg, rgba(230, 242, 253, .09), rgba(185, 209, 229, .025) 42%, rgba(4, 10, 18, .10)),
-    rgba(4, 8, 15, max(.50, calc(var(--panel-opacity) * .63)));
+    linear-gradient(145deg, rgba(255, 255, 255, .16), rgba(232, 245, 255, .025) 42%, rgba(255, 255, 255, .055)),
+    rgba(9, 15, 23, max(.05, calc(var(--panel-opacity) * .10)));
 }
 .notch .liquid-layer { clip-path: url(#notch-finish-clip); }
 .notch-shell[data-theme="liquid"] .notch-shape {
@@ -152,7 +152,7 @@
   fill: none;
   stroke: url(#notch-liquid-rim);
   stroke-width: calc(2.4px * var(--notch-rim-scale, 1));
-  opacity: .75;
+  opacity: .9;
   clip-path: url(#notch-finish-clip);
   vector-effect: non-scaling-stroke;
 }
@@ -160,7 +160,7 @@
 .notch-shell[data-theme="liquid"] .notch-liquid-edge {
   display: inline;
   fill: none;
-  stroke: rgba(232, 241, 249, .45);
+  stroke: rgba(246, 251, 255, .62);
   stroke-width: calc(0.7px * var(--notch-rim-scale, 1));
   vector-effect: non-scaling-stroke;
 }
@@ -174,8 +174,12 @@
   isolation: isolate;
   background: rgba(32, 43, 56, max(.80, var(--panel-opacity)));
   border-width: calc(1px * var(--notch-scale, 1));
-  border-color: rgba(225, 239, 251, .16);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, .5);
+  border-color: rgba(244, 250, 255, .3);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .18);
+}
+/* One translucent wash over the native backdrop, rather than stacked dark fills. */
+.notch-shell[data-theme="liquid"][data-liquid-status="ready"] .notch-detail {
+  background: transparent;
 }
 .notch-shell[data-theme="liquid"] .notch-detail::after {
   content: "";
@@ -191,12 +195,28 @@
 }
 .notch-detail > .liquid-layer { border-radius: inherit; z-index: -1; }
 .notch-detail > .liquid-layer::after {
-  background: linear-gradient(145deg, rgba(202, 226, 245, .10), transparent 55%),
-    rgba(5, 10, 18, max(.62, calc(var(--panel-opacity) * .78)));
+  background: linear-gradient(145deg, rgba(255, 255, 255, .13), transparent 45%, rgba(233, 245, 255, .035)),
+    rgba(9, 15, 23, max(.10, calc(var(--panel-opacity) * .18)));
 }
 .notch-shell[data-theme="liquid"] .detail-body {
-  background: rgba(5, 9, 15, .34);
-  box-shadow: 0 0 12px 12px rgba(5, 9, 15, .34);
+  background: transparent;
+  box-shadow: none;
+}
+.notch-shell[data-theme="liquid"] .detail-body,
+.notch-shell[data-theme="liquid"] .ring-pct {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .85), 0 0 5px rgba(0, 0, 0, .5);
+}
+/* Contrast belongs to the foreground, leaving the clear surface transparent. */
+.notch-shell[data-theme="liquid"] .ring-wrap {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .8)) drop-shadow(0 0 1px rgba(0, 0, 0, .65));
+}
+.notch-shell[data-theme="liquid"] .provider-detail-mark {
+  filter: brightness(0) invert(1) drop-shadow(0 1px 1px rgba(0, 0, 0, .8));
+}
+.notch-shell[data-theme="liquid"] .ring-pct,
+.notch-shell[data-theme="liquid"] .provider-pct {
+  -webkit-text-stroke: .35px rgba(0, 0, 0, .65);
+  paint-order: stroke fill;
 }
 .notch-cells {
   position: absolute;
