@@ -17,9 +17,15 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
 - Three themes: Dark retains the original surface; Glass uses a neutral translucent surface with a mirrored rim; Liquid uses an undistorted live backdrop, blur and colored edge reflections. Pretendard and tabular numbers remain.
 - Liquid clarity (2026-10-19): one light translucent wash over the native backdrop;
   no stacked opaque panel/body fills while the material is ready. Bright edge
-  reflections define the surface. Local icon/ring shadows and a thin percentage
-  outline preserve foreground readability over bright backgrounds without
+  reflections define the surface. High-alpha white labels and soft local shadows
+  preserve foreground readability over bright backgrounds without
   darkening the whole pane. Retain the opaque fallback when native material fails.
+- Liquid depth: use neutral alternating highlights/shade along the rim instead
+  of a uniform rainbow stroke, with soft inset reflections and a clear centre.
+  Native blur is 3 DIP on the rail and 10 DIP on details. Text retains higher
+  alpha floors with a soft shadow and no dark stroke to avoid an embossed appearance on bright
+  screens. This is compositor blur and painted edge reflection, not pixel-warp
+  refraction; do not reintroduce desktop capture exclusion for a lens effect.
 
 ## Details and settings
 

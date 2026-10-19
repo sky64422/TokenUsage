@@ -37,8 +37,8 @@ with sync_playwright() as p:
     assert page.locator('.liquid-layer canvas').count() == 0
     request = page.evaluate('window.calls.find(c=>c.command==="sync_liquid_backdrop").args')
     assert request['session'] == 7 and len(request['surfaces']) == 2, request
-    assert request['surfaces'][0] == {'slot':0,'x':640,'y':40,'width':128,'height':752,'edge':'right','radius':64,'blur':1.1}, request
-    assert request['surfaces'][1]['radius'] == 32 and request['surfaces'][1]['blur'] == 16, request
+    assert request['surfaces'][0] == {'slot':0,'x':640,'y':40,'width':128,'height':752,'edge':'right','radius':64,'blur':6}, request
+    assert request['surfaces'][1]['radius'] == 32 and request['surfaces'][1]['blur'] == 20, request
     # An obsolete acknowledgement cannot reveal a detail closed during native sync.
     page.evaluate('document.querySelector(".notch-detail").hidden=true')
     page.clock.run_for(32)

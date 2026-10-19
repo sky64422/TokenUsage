@@ -53,7 +53,7 @@ describe("native Liquid geometry lifecycle", () => {
     renderer.setEnabled(true); await settle();
     const update = invoke.mock.calls.find(([command]) => command === "sync_liquid_backdrop");
     expect(update?.[1].surfaces[0]).toEqual({ slot: 0, x: 22, y: 38, width: 141, height: 636,
-      edge: "right", radius: 67.84, blur: 1.1 });
+      edge: "right", radius: 67.84, blur: 6 });
     renderer.destroy(); await settle();
   });
   it("coalesces geometry behind a delayed sync and only acknowledges the latest shape", async () => {
@@ -69,8 +69,8 @@ describe("native Liquid geometry lifecycle", () => {
     const updates = invoke.mock.calls.filter(([command]) => command === "sync_liquid_backdrop");
     expect(updates).toHaveLength(2);
     expect(updates[1][1]).toMatchObject({ session: 7, revision: 2, surfaces: [
-      { slot: 0, x: 24, y: 40, width: 128, height: 600, edge: "right", radius: 0, blur: 1.1 },
-      { slot: 1, radius: 32, blur: 16 },
+      { slot: 0, x: 24, y: 40, width: 128, height: 600, edge: "right", radius: 0, blur: 6 },
+      { slot: 1, radius: 32, blur: 20 },
     ] });
     expect(shell.dataset.liquidStatus).toBeUndefined();
     pending[1](); await settle();

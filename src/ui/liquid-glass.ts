@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-const MATERIAL_BLUR = { glass: [4, 10], liquid: [.55, 8] } as const;
+const MATERIAL_BLUR = { glass: [4, 10], liquid: [3, 10] } as const;
 const GEOMETRY_PROPERTY = /^(transform|translate|scale|width|height|left|right|top|bottom|inset|borderRadius|clipPath)/;
 interface NativeSurface {
   slot: number; x: number; y: number; width: number; height: number;

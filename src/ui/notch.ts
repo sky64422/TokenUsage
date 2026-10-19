@@ -28,11 +28,12 @@ export function mountNotch(
             <stop offset="1" stop-color="#d2e3eb" stop-opacity=".5"/>
           </linearGradient>
           <linearGradient id="notch-liquid-rim" x1="0" y1="0" x2="1" y2="1">
-            <stop stop-color="#b4e5ee" stop-opacity=".82"/>
-            <stop offset=".28" stop-color="#c1b4ec" stop-opacity=".58"/>
-            <stop offset=".52" stop-color="#f1bed8" stop-opacity=".52"/>
-            <stop offset=".74" stop-color="#f2d5aa" stop-opacity=".66"/>
-            <stop offset="1" stop-color="#b9e5d2" stop-opacity=".64"/>
+            <stop stop-color="#ffffff" stop-opacity=".9"/>
+            <stop offset=".18" stop-color="#e9f7ff" stop-opacity=".4"/>
+            <stop offset=".36" stop-color="#0f2131" stop-opacity=".35"/>
+            <stop offset=".52" stop-color="#ffffff" stop-opacity=".12"/>
+            <stop offset=".78" stop-color="#f5fbff" stop-opacity=".78"/>
+            <stop offset="1" stop-color="#ffffff" stop-opacity=".5"/>
           </linearGradient>
         </defs>
         <use class="notch-glass-rim" href="#notch-outline"/>
