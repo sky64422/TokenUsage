@@ -10,6 +10,3 @@ pub mod activity;
 pub mod topmost;
 pub mod liquid_glass;
 pub mod liquid_capture;
-
-#[cfg(windows)]
-mod native_material;

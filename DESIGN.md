@@ -65,11 +65,10 @@ Quota rings, percentage text and detail bars share inclusive upper bounds: 0–5
 ### Glass and Liquid materials
 
 - Dark, Glass and Liquid are separate persisted choices. Old system/light values migrate to Dark without losing preferences.
-- Glass uses neutral smoked translucency and a mirrored 3px rim with a 0.7px specular edge. Liquid retains its undistorted backdrop, colored reflections and dark text scrims.
-- Windows Composition supplies a HostBackdropBrush with native Gaussian blur behind the same WebView HWND. Foreground marks, rings, percentages and controls stay sharp. Both materials use native blur; Glass no longer uses a CPU refraction lens or adaptive pixel shading.
-- Physical notch/detail geometry is synchronized on layout changes and finite geometry animations. Native clips reproduce the tangent notch arcs and rounded detail; silhouette, hit regions and settings sizing are unchanged. Idle desktop updates require no JS capture or IPC loop.
-- Session/revision ordering prevents a delayed update from reviving a closed surface. Fold, hide, theme exit and navigation clear the native surfaces. Failures report an error and retain the tint fallback.
-- The HWND remains included in normal screenshots and screen sharing. No global display-affinity exclusion is used. Native materials never render captured pixels. Liquid foreground contrast samples only empty three-pixel-wide surface margins at most four times per second, serialized after completion; bright backgrounds use dark ink and darker quota colors, with separate rail/detail modes and hysteresis. Sampling stops when hidden, folded with no detail, disabled or destroyed. Errors retain the last known mode and emit one diagnostic per activation.
+- Glass uses neutral smoked translucency and a mirrored 3px rim with a 0.7px specular edge. Liquid retains translucent chromatic dispersion, reflections, and dark text scrims.
+- Windows DWM disables `HostBackdropBrush` on inactive/unfocused windows (`WS_EX_NOACTIVATE`), which causes always-on-top monitors to render as opaque dark gray. Therefore, Glass and Liquid sample the desktop behind the notch via a high-efficiency background GDI worker with temporary `WDA_EXCLUDEFROMCAPTURE` leasing (auto-released after 750ms idle) and render blurred backdrops to dedicated surface canvas layers.
+- Frame capture uses adaptive throttling (1-4 Hz idle, 12 Hz drag, 24 Hz settling) taking <0.1% CPU. Unchanged frames skip re-rendering.
+- Liquid foreground contrast samples the background pixels to toggle adaptive dark/light contrast (`data-contrast="light"`) for legibility across light and dark wallpapers.
 - The tray contains Show and Quit. App-specific keyboard controls are removed; automatic mouse fold/reveal remains.
 
 ### Monitor-aware notch size
