@@ -39,4 +39,27 @@ describe("liquid foreground contrast", () => {
     expect(rail.dataset.contrast).toBeUndefined();
     expect(detail.dataset.contrast).toBeUndefined();
   });
+  it("bounds visible probes to four cycles per second and skips hidden surfaces", async () => {
+    vi.useFakeTimers();
+    const documentState = { hidden: false };
+    vi.stubGlobal("document", documentState);
+    vi.stubGlobal("devicePixelRatio", 1);
+    const surface = () => ({ dataset: {}, hidden: false,
+      classList: { contains: () => false },
+      getBoundingClientRect: () => ({ x: 10, y: 10, width: 64, height: 100 }) });
+    const rail = surface(), detail = surface();
+    invoke.mockResolvedValue(new ArrayBuffer(0));
+    const controller = mountLiquidContrast(rail as unknown as HTMLElement, rail as unknown as HTMLElement, detail as unknown as HTMLElement);
+    controller.setActive(true);
+    await vi.advanceTimersByTimeAsync(1119);
+    expect(invoke).toHaveBeenCalledTimes(8);
+    detail.hidden = true;
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(invoke).toHaveBeenCalledTimes(12);
+    documentState.hidden = true;
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(invoke).toHaveBeenCalledTimes(12);
+    controller.setActive(false);
+  });
+
 });

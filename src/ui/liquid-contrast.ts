@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { decodeLiquidFrame } from "./liquid-frame";
 
-const SAMPLE_INTERVAL_MS = 1000;
+const SAMPLE_INTERVAL_MS = 250;
 const FIRST_SAMPLE_DELAY_MS = 120;
 const STRIP_WIDTH = 3;
 const DETAIL_INSET = 8;
