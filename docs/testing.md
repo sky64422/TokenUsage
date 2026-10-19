@@ -1,5 +1,9 @@
 ## Provider token details (2026-10-19)
 
+`python scripts/test-agy-token-hook.py` checks invocation boundaries, model switches,
+metadata-only retention and the installed CLI's full-transcript path. Rust tests
+cover sidecar discovery and duplicate-free enrichment in either read order.
+
 `npm test` includes AGY/Claude/Grok parser normalization, response/turn deduplication,
 corrected/copied model maps, unknown fields, overflow, source mirror filtering and
 family/bucket isolation. Preview fixture tests ensure all providers avoid live reads.

@@ -471,7 +471,7 @@ fn agy_source_path(root: &std::path::Path, path: &std::path::Path, directory: bo
         3 => directory && parts[1] == "brain",
         4 => directory && parts[1] == "brain" && parts[3] == ".system_generated",
         5 => directory && parts[1] == "brain" && parts[3] == ".system_generated" && parts[4] == "logs",
-        6 => !directory && parts[1] == "brain" && parts[3] == ".system_generated" && parts[4] == "logs" && parts[5] == "transcript.jsonl",
+        6 => !directory && parts[1] == "brain" && parts[3] == ".system_generated" && parts[4] == "logs" && matches!(parts[5].as_ref(), "transcript.jsonl" | "tokenusage-models.jsonl"),
         _ => false,
     }
 }
@@ -611,6 +611,28 @@ mod tests {
         let offset = reader.files.values().next().unwrap().offset;
         assert_eq!(settle(&mut reader).today, first.today);
         assert_eq!(reader.files.values().next().unwrap().offset, offset);
+    }
+
+    #[test]
+    fn agy_hook_sidecar_enriches_steps_and_preserves_unknown_history() {
+        let dir = tempfile::tempdir().unwrap();
+        let logs = dir.path().join("antigravity-cli/brain/conversation/.system_generated/logs");
+        fs::create_dir_all(&logs).unwrap();
+        let mut record = json!({"type":"PLANNER_RESPONSE","source":"MODEL","status":"DONE",
+            "step_index":1,"created_at":now().to_rfc3339(),"input_tokens":20,"cache_read_tokens":80,"output_tokens":10});
+        let old = format!("{record}\n");
+        record["step_index"] = json!(2);
+        fs::write(logs.join("transcript.jsonl"), format!("{old}{record}\n")).unwrap();
+        record["model_name"] = json!("gemini-test");
+        fs::write(logs.join("tokenusage-models.jsonl"), format!("{record}\n{record}\n")).unwrap();
+        let mut reader = TokenReader::for_provider(ProviderId::Agy, dir.path().into());
+        let result = settle(&mut reader);
+        assert_eq!(result.today.totals.total(), Some(220));
+        assert_eq!(result.today.models.len(), 2);
+        assert!(result.today.models.iter().any(|row| row.model.as_deref() == Some("gemini-test")));
+        assert!(result.today.models.iter().any(|row| row.model.is_none()));
+        assert_eq!(reader.files.len(), 2);
+        assert_eq!(settle(&mut reader).today, result.today);
     }
 
     #[test]

@@ -156,7 +156,9 @@ fn agy(
         output: record.output_tokens,
         ..Default::default()
     })?;
-    ledger.upsert(owner, &key, at, model, counts);
+    // The hook sidecar and transcript describe the same step. Select a complete
+    // observation with an explicit model regardless of discovery/read order.
+    ledger.replace_event(owner, &key, at, vec![(model, counts)]);
     Ok(())
 }
 
@@ -439,6 +441,25 @@ mod tests {
             "cacheCreationTokens":10,"reasoningTokens":5,"modelCalls":1,
             "modelUsage":{"grok-4.7":{"inputTokens":100,"outputTokens":20,"totalTokens":120,
             "cachedReadTokens":80,"cacheCreationTokens":10,"reasoningTokens":5}}}}}})
+    }
+
+    #[test]
+    fn agy_hook_copy_enriches_without_double_counting_in_either_read_order() {
+        for reverse in [false, true] {
+            let mut ledger = TokenLedger::default();
+            let raw = agy_record();
+            let mut enriched = raw.clone();
+            enriched["model_name"] = json!("gemini-3.6-flash");
+            let mut records = vec![("transcript", raw), ("z-hook", enriched)];
+            if reverse { records.reverse(); }
+            for (owner, record) in records {
+                ingest(ProviderId::Agy, &serde_json::to_vec(&record).unwrap(), "conversation", owner, &mut ledger, now()).unwrap();
+            }
+            let period = snapshot(&ledger).today;
+            assert_eq!(period.totals.total(), Some(120));
+            assert_eq!(period.models.len(), 1);
+            assert_eq!(period.models[0].model.as_deref(), Some("gemini-3.6-flash"));
+        }
     }
 
     #[test]

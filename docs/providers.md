@@ -106,6 +106,31 @@ plain because their exact start boundary is not supplied to the token ledger.
 Tabs/panels have provider-specific ARIA IDs and retain selection/open state across
 refreshes. Missing numeric fields remain `null` and display an em dash.
 
+#### Optional AGY model hook (2026-10-19)
+
+Run `python scripts/install-agy-token-hook.py` to opt in on this machine. It copies
+the Python standard-library handler to `~/.gemini/config/tokenusage/` and merges
+the named `tokenusage-models` PostInvocation hook into `~/.gemini/config/hooks.json`.
+An existing config is backed up before adding the entry; other hooks are preserved.
+Python must remain installed at the registered executable path. New AGY sessions
+load the hook; restart an already-running session to ensure it is loaded.
+To stop collection, set this named hook's `enabled` to `false` in that file.
+
+The callback uses official `modelName` and `initialNumSteps`, reads at most the
+last 8 MiB of the completed compact transcript, and appends only exact numeric,
+timestamp, step and model metadata to sibling `tokenusage-models.jsonl`. Installed
+CLI payloads can name `transcript_full.jsonl`; the handler validates its location
+then reads the compact sibling. Original transcripts are never modified. No prompt,
+response text or workspace list is stored. Missing/oversized/not-yet-flushed records
+produce a content-free hook diagnostic and retain unknown model attribution.
+The token reader discovers the sidecar under its existing bounded budgets and
+deduplicates transcript/hook copies by conversation and step, preferring the explicit
+model observation. Historical steps before the hook remain unknown. Sidecars remain
+beside their conversations on disk; the in-memory index uses existing retention.
+Official quota collection is unchanged. A live Windows CLI invocation verified
+`gemini-3.8-flash-high` metadata capture; App/IDE hooks use the same documented
+global configuration but were not separately exercised.
+
 Schema references: [AGY transcript contract](https://www.antigravity.google/docs/hooks),
 [AGY token examples](https://www.antigravity.google/docs/cli/headless/),
 [Claude disjoint input buckets](https://platform.claude.com/docs/en/build-with-claude/prompt-caching),
