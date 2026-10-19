@@ -1,7 +1,7 @@
 # Release & in-app updates
 
 **Updated:** 2026-10-19
-**Current public tag:** v0.5.0
+**Current public tag:** v0.5.1
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,7 +12,8 @@
 
 | Tag | Highlights |
 |-----|------------|
-| **v0.5.0** | Independent recorded token usage across providers (Codex, AGY) with calendar tabs and model share bars; adaptive Liquid contrast for bright desktops; continuous notch ring; intrinsic detail height |
+| **v0.5.1** | Fix: restore live desktop capture for Liquid and Glass backdrops on Windows unfocused overlay; fix opaque notch silhouette |
+| v0.5.0 | Independent recorded token usage across providers (Codex, AGY) with calendar tabs and model share bars; adaptive Liquid contrast for bright desktops; continuous notch ring; intrinsic detail height |
 | v0.4.2 | Refined Glass mirror material and zero-refraction Liquid; reusable desktop capture with adaptive idle cadence; unchanged quote DOM reuse; removed custom keyboard controls, tray Hide and save notices |
 | v0.4.1 | Notch: robust multi-monitor placement persistence across restarts and Windows display renumbering; lenient completion validation preserves drag destination |
 | v0.4.0 | Dark/Glass/Liquid themes with live desktop refraction on Windows; monitor-aware notch and panel sizing; fixed settings height across tabs, including first opening; provider save locks |
