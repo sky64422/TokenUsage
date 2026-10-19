@@ -152,11 +152,22 @@
   fill: rgba(29, 39, 52, max(.55, calc(var(--panel-opacity) * .8)));
 }
 .notch-shell[data-theme="liquid"][data-liquid-status="ready"] .notch-shape { fill: none; z-index: 1; }
+.notch-liquid-volume { display: none; }
+.notch-shell[data-theme="liquid"] .notch-liquid-volume {
+  display: inline;
+  fill: none;
+  stroke: url(#notch-liquid-rim);
+  stroke-width: calc(12px * var(--notch-rim-scale, 1));
+  opacity: .32;
+  filter: blur(2px);
+  clip-path: url(#notch-finish-clip);
+  vector-effect: non-scaling-stroke;
+}
 .notch-shell[data-theme="liquid"] .notch-glass-rim {
   display: inline;
   fill: none;
   stroke: url(#notch-liquid-rim);
-  stroke-width: calc(2.4px * var(--notch-rim-scale, 1));
+  stroke-width: calc(4.4px * var(--notch-rim-scale, 1));
   opacity: .9;
   clip-path: url(#notch-finish-clip);
   vector-effect: non-scaling-stroke;
@@ -181,12 +192,12 @@
   border-width: calc(1px * var(--notch-scale, 1));
   border-color: rgba(244, 250, 255, .22);
   box-shadow: 0 10px 24px -10px rgba(0, 0, 0, .32),
-    inset 0 1px 1px rgba(255, 255, 255, .55),
-    inset 1px 0 1px rgba(255, 255, 255, .22),
-    inset 0 -1px 2px rgba(7, 19, 30, .24),
-    inset 2px 0 5px -2px rgba(119, 223, 231, .14),
-    inset -2px -1px 5px -2px rgba(227, 159, 201, .12),
-    inset 0 0 8px rgba(255, 255, 255, .06);
+    inset 0 1px 1px rgba(255, 255, 255, .65),
+    inset 2px 3px 7px -2px rgba(255, 255, 255, .30),
+    inset -1px -3px 6px -2px rgba(7, 19, 30, .30),
+    inset 4px 0 9px -3px rgba(97, 218, 234, .30),
+    inset -4px -1px 9px -3px rgba(232, 147, 201, .26),
+    inset 0 0 10px rgba(255, 255, 255, .08);
 }
 /* One translucent wash over the native backdrop, rather than stacked dark fills. */
 .notch-shell[data-theme="liquid"][data-liquid-status="ready"] .notch-detail {
@@ -196,13 +207,13 @@
   content: "";
   position: absolute;
   inset: 0;
-  padding: calc(1.5px * var(--notch-rim-scale, 1));
+  padding: calc(1.25px * var(--notch-rim-scale, 1));
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(135deg, rgba(255, 255, 255, .72), rgba(167, 238, 239, .30) 18%,
-    rgba(164, 198, 250, .18) 26%,
-    rgba(15, 33, 49, .20) 36%, rgba(255, 255, 255, .06) 52%,
-    rgba(236, 192, 220, .24) 70%, rgba(245, 251, 255, .48) 78%, rgba(255, 255, 255, .25));
+  background: linear-gradient(135deg, rgba(255, 255, 255, .82), rgba(116, 232, 239, .52) 18%,
+    rgba(132, 179, 250, .38) 26%,
+    rgba(15, 33, 49, .25) 36%, rgba(255, 255, 255, .06) 52%,
+    rgba(237, 163, 210, .46) 70%, rgba(245, 251, 255, .58) 78%, rgba(255, 255, 255, .30));
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
 }

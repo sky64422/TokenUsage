@@ -24,6 +24,8 @@ A calm personal quota monitor integrated with the physical screen edge. The conc
   of a uniform rainbow stroke, with soft inset reflections and a clear centre.
   User-approved prism accents are restrained cyan/blue/pink highlights confined
   to short rim segments and a faint inner edge; never a rainbow wash across content.
+  The convex edge combines a soft inner band with a sharper rim highlight;
+  detail panels use asymmetric inset light/shade without changing their geometry.
   Native blur is 3 DIP on the rail and 10 DIP on details. Text retains higher
   alpha floors with a soft shadow and no dark stroke to avoid an embossed appearance on bright
   screens. This is compositor blur and painted edge reflection, not pixel-warp
