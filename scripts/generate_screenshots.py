@@ -253,6 +253,24 @@ with sync_playwright() as p:
     )
     print("Generated quota-detail-codex.png")
 
+    # 2b. Quota Detail - Liquid Theme (Main Hero Screenshot)
+    page.evaluate("""() => {
+        const shell = document.querySelector('.notch-shell');
+        shell.dataset.theme = 'liquid';
+        document.body.style.background = 'radial-gradient(circle at 85% 45%, #193555 0%, #0c1826 50%, #060b12 100%)';
+    }""")
+    page.wait_for_timeout(300)
+    page.screenshot(
+        path=str(OUT_DIR / "quota-detail-liquid.png"),
+        clip={"x": 100, "y": 60, "width": 360, "height": 380}
+    )
+    print("Generated quota-detail-liquid.png")
+    page.evaluate("""() => {
+        const shell = document.querySelector('.notch-shell');
+        shell.dataset.theme = 'dark';
+        document.body.style.background = '#121214';
+    }""")
+
     # 3. Quota Detail - Antigravity (Grouped)
     page.evaluate("""() => {
         const detail = document.querySelector('.notch-detail');

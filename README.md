@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/screenshots/quota-detail-codex.png" alt="Token Usage Screen Notch & Quota Detail" width="400" />
+  <img src="docs/assets/screenshots/quota-detail-liquid.png" alt="Token Usage Screen Notch & Quota Detail (Liquid Glass Theme)" width="400" />
 </p>
 
 ---
