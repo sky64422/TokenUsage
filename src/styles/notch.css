@@ -109,6 +109,29 @@
     transform 340ms cubic-bezier(0.38, 0, 0.22, 1);
 }
 /* Center model icon steady luminous glow when running (no pulse, clean & distinct) */
+.activity-orbit {
+  display: none;
+  position: absolute;
+  inset: calc(6px * var(--notch-scale, 1));
+  box-sizing: border-box;
+  border: calc(1.5px * var(--notch-scale, 1)) solid transparent;
+  border-top-color: rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+}
+.notch-cell[data-activity="running"] .activity-orbit {
+  display: block;
+  animation: activity-turn 1.4s linear infinite;
+}
+.notch.is-folded .activity-orbit { animation-play-state: paused; }
+@keyframes activity-turn { to { transform: rotate(360deg); } }
+
+/* Appearance toggle overrides */
+.notch.hide-orbit .activity-orbit {
+  display: none !important;
+}
+
 .notch-cell[data-activity="running"] .ring-wrap img {
   opacity: 1;
   filter: brightness(0) invert(1) drop-shadow(0 0 2px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 5.5px rgba(255, 255, 255, 0.5));
@@ -736,6 +759,7 @@ body:has(.notch[data-edge="bottom"]) .notch-detail {
     transition: none !important;
     transform: none !important;
   }
+  .activity-orbit,
   .activity-pulse-dot {
     animation: none !important;
   }

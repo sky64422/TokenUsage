@@ -24,7 +24,8 @@ with sync_playwright() as p:
         await document.fonts.ready;
     }""")
     assert page.locator('[data-id=codex] .ring-fill').count() == 1
-    assert page.locator('.ring-segments, .activity-orbit, mask[id^=ring-segments]').count() == 0
+    assert page.locator('.ring-segments, mask[id^=ring-segments]').count() == 0
+    assert page.locator('[data-id=codex] .activity-orbit').is_visible()
     for value in [None, 0, 25, 50, 100, 120]:
         page.evaluate('value=>window.publish(value)', value)
         fill = page.locator('[data-id=codex] .ring-fill')

@@ -54,7 +54,7 @@ export function mountNotch(
     b.innerHTML = `<span class="ring-wrap"><svg viewBox="0 0 44 44" aria-hidden="true">
       <circle class="ring-track" cx="22" cy="22" r="19"/>
       <circle class="ring-fill" cx="22" cy="22" r="19" pathLength="100" visibility="hidden"/>
-      </svg><img src="${PROVIDER_CATALOG[id].mark}" alt="" draggable="false"/><span class="ring-status" hidden>!</span></span><span class="ring-meta"><span class="ring-pct">—</span></span>`;
+      </svg><img src="${PROVIDER_CATALOG[id].mark}" alt="" draggable="false"/><span class="activity-orbit" aria-hidden="true"></span><span class="ring-status" hidden>!</span></span><span class="ring-meta"><span class="ring-pct">—</span></span>`;
     b.addEventListener("pointerenter", () => callbacks.hover(id));
     b.addEventListener("click", () => callbacks.pin(id));
     cells.append(b);

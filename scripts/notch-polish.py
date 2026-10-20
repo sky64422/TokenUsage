@@ -78,12 +78,12 @@ with sync_playwright() as p:
     expect(page.locator('.detail-settings')).to_be_hidden()
     hover_rest(layout)
     page.evaluate('async()=>window.__TAURI__.event.emit("provider-activity",[{provider_id:"codex",state:"running",observed_at:null},{provider_id:"claude",state:"recent",observed_at:null}])')
-    assert page.locator('.activity-orbit').count() == 0
+    assert page.locator('[data-id=codex] .activity-orbit').is_visible()
     expect(page.locator('[data-id=codex]')).to_have_attribute('data-activity', 'running')
     assert 'drop-shadow' in page.locator('[data-id=codex] .ring-wrap img').evaluate('(e)=>getComputedStyle(e).filter')
     expect(page.locator('[data-id=claude]')).to_have_attribute('data-activity', 'recent')
     page.emulate_media(reduced_motion='reduce')
-    assert page.locator('.activity-orbit').count() == 0
+    assert page.locator('[data-id=codex] .activity-orbit').evaluate('el => getComputedStyle(el).animationName') == 'none'
     page.emulate_media(reduced_motion='no-preference')
     page.screenshot(path='tmp/polish-activity.png', omit_background=True)
     page.evaluate('async()=>window.__TAURI__.event.emit("provider-activity",[{provider_id:"codex",state:"idle",observed_at:null}])')
