@@ -121,7 +121,7 @@ fn risk_legacy_fields_ignored() {
 #[test]
 fn risk_theme_migration_preserves_existing_preferences() {
     for (legacy_theme, expected) in [
-        (None, "dark"),
+        (None, "liquid"),
         (Some("system"), "dark"),
         (Some("light"), "dark"),
         (Some("future-theme"), "dark"),
@@ -152,7 +152,7 @@ fn risk_theme_migration_preserves_existing_preferences() {
 fn risk_theme_selection_survives_restart() {
     let dir = tempdir().unwrap();
     let core = AppCore::new(default_state(), dir.path().to_path_buf());
-    assert_eq!(core.get_state().settings.theme, AppTheme::Dark);
+    assert_eq!(core.get_state().settings.theme, AppTheme::Liquid);
     for theme in [AppTheme::Glass, AppTheme::Liquid, AppTheme::Dark] {
         core.set_theme(theme).unwrap();
         assert_eq!(core.get_state().settings.theme, theme);
@@ -312,7 +312,7 @@ fn risk_failed_settings_write_preserves_memory() {
         |core| core.set_always_show_notch(true),
         |core| core.set_show_animation(false),
         |core| core.set_theme(AppTheme::Glass),
-        |core| core.set_theme(AppTheme::Liquid),
+        |core| core.set_theme(AppTheme::Dark),
     ];
     for (index, mutate) in mutations.into_iter().enumerate() {
         let core = AppCore::new(initial.clone(), blocked.clone());

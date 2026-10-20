@@ -112,6 +112,9 @@ struct Contribution {
 
 const MAX_RETAINED_RECORDS: usize = 100_000;
 const MAX_LINEAGE_DEPTH: usize = 64;
+pub fn recent_30d_start(now: DateTime<Local>) -> NaiveDate {
+    now.date_naive() - chrono::Duration::days(29)
+}
 pub fn month_start(now: DateTime<Local>) -> NaiveDate {
     now.date_naive().with_day(1).expect("first day of month")
 }
@@ -119,7 +122,7 @@ pub fn week_start(now: DateTime<Local>) -> NaiveDate {
     now.date_naive() - chrono::Duration::days(now.weekday().num_days_from_monday() as i64)
 }
 pub fn retention_start(now: DateTime<Local>) -> NaiveDate {
-    month_start(now).min((now - chrono::Duration::weeks(1)).date_naive())
+    recent_30d_start(now)
 }
 
 pub struct TokenLedger {
@@ -307,7 +310,7 @@ impl TokenLedger {
     ) -> TokenUsageSnapshot {
         let requested_status = status;
         let oldest = retention_start(now);
-        let first_month_date = month_start(now);
+        let first_30d_date = recent_30d_start(now);
         let first_week_date = week_start(now);
         let mut today = BTreeMap::<Option<String>, TokenCounts>::new();
         let mut yesterday = BTreeMap::<Option<String>, TokenCounts>::new();
@@ -381,10 +384,10 @@ impl TokenLedger {
                 status = TokenUsageStatus::Partial;
                 continue;
             }
-            if r.at.date_naive() >= first_month_date && !merge(&mut month, r) {
+            if r.at.date_naive() >= first_30d_date && !merge(&mut month, r) {
                 status = TokenUsageStatus::Partial;
             }
-            if r.at.date_naive() >= first_month_date
+            if r.at.date_naive() >= first_30d_date
                 && !merge(daily.entry(r.at.date_naive()).or_default(), r)
             {
                 status = TokenUsageStatus::Partial;
@@ -411,8 +414,8 @@ impl TokenLedger {
         if !today_ok || !yesterday_ok || !month_ok || !week_ok {
             status = TokenUsageStatus::Partial;
         }
-        let daily = (0..now.day()).map(|offset| {
-            let date = first_month_date + chrono::Duration::days(i64::from(offset));
+        let daily = (0..30).map(|offset| {
+            let date = first_30d_date + chrono::Duration::days(i64::from(offset));
             let (usage, valid) = period(daily.remove(&date).unwrap_or_default());
             if !valid { status = TokenUsageStatus::Partial; }
             DailyTokenUsage { date, totals: usage.totals }
@@ -530,15 +533,17 @@ mod tests {
         ledger.prune(retention_start(now));
         let json = serde_json::to_value(ledger.summarize(now, TokenUsageStatus::Ready, &[])).unwrap();
         assert_eq!(json["yesterday"]["totals"]["input"], 100);
-        assert_eq!(json["month"]["totals"]["input"], 200);
-        assert_eq!(json["daily"].as_array().unwrap().len(), 1);
-        assert_eq!(json["daily"][0]["date"], "2026-11-01");
-        assert_eq!(json["daily"][0]["totals"]["input"], 200);
+        assert_eq!(json["month"]["totals"]["input"], 300);
+        assert_eq!(json["daily"].as_array().unwrap().len(), 30);
+        assert_eq!(json["daily"][28]["date"], "2026-10-31");
+        assert_eq!(json["daily"][28]["totals"]["input"], 100);
+        assert_eq!(json["daily"][29]["date"], "2026-11-01");
+        assert_eq!(json["daily"][29]["totals"]["input"], 200);
         let later = now + chrono::Duration::days(2);
         let json = serde_json::to_value(ledger.summarize(later, TokenUsageStatus::Ready, &[])).unwrap();
-        assert_eq!(json["daily"].as_array().unwrap().len(), 3);
-        assert_eq!(json["daily"][1]["totals"]["input"], 900);
-        assert!(json["daily"][2]["totals"]["input"].is_null());
+        assert_eq!(json["daily"].as_array().unwrap().len(), 30);
+        assert_eq!(json["daily"][28]["totals"]["input"], 900);
+        assert!(json["daily"][29]["totals"]["input"].is_null());
     }
 
     #[test]
@@ -601,7 +606,7 @@ mod tests {
         let tomorrow = now + chrono::Duration::hours(12);
         let snapshot = ledger.summarize(tomorrow, TokenUsageStatus::Ready, &[]);
         assert_eq!(snapshot.today.totals.total(), None);
-        assert_eq!(snapshot.month.totals.total(), None);
+        assert_eq!(snapshot.month.totals.total(), Some(55));
         assert_eq!(snapshot.week.totals.total(), Some(55));
         assert_eq!(
             ledger
@@ -700,7 +705,7 @@ mod tests {
         assert_eq!(snapshot.windows[1].usage.totals.total(), Some(1500));
         assert_eq!(snapshot.windows[0].resets_at, reset.to_rfc3339());
         assert_eq!(snapshot.today.totals.total(), Some(1200));
-        assert_eq!(snapshot.month.totals.total(), Some(1200));
+        assert_eq!(snapshot.month.totals.total(), Some(1500));
         assert_eq!(snapshot.week.totals.total(), Some(1200));
         let mut expired = windows;
         expired[0].resets_at = Some(now.to_rfc3339());
@@ -796,15 +801,15 @@ mod tests {
             ("today", now),
             ("yesterday", now - chrono::Duration::seconds(2)),
             (
-                "month_start",
+                "recent_30d_start",
                 Local
-                    .from_local_datetime(&month_start(now).and_hms_opt(0, 0, 0).unwrap())
+                    .from_local_datetime(&recent_30d_start(now).and_hms_opt(0, 0, 0).unwrap())
                     .unwrap(),
             ),
             (
                 "too_old",
                 Local
-                    .from_local_datetime(&month_start(now).and_hms_opt(0, 0, 0).unwrap())
+                    .from_local_datetime(&recent_30d_start(now).and_hms_opt(0, 0, 0).unwrap())
                     .unwrap()
                     - chrono::Duration::seconds(1),
             ),
@@ -985,6 +990,6 @@ mod tests {
         let summary = ledger.summarize(now, TokenUsageStatus::Ready, &[]);
         assert_eq!(summary.today.totals.total(), Some(11));
         assert_eq!(summary.week.totals.total(), Some(22));
-        assert_eq!(summary.month.totals.total(), Some(11));
+        assert_eq!(summary.month.totals.total(), Some(33));
     }
 }

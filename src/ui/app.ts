@@ -100,7 +100,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   const liquidGlass = mountLiquidGlass(shell, rail, detail);
   unlisteners.push(await listen<boolean>("widget-visibility", ({payload}) => liquidGlass.setVisible(payload)));
   function applyAppearanceClasses(st: AppSettings) {
-    shell.dataset.theme = st.theme ?? "dark";
+    shell.dataset.theme = st.theme ?? "liquid";
 
     liquidGlass.setEnabled(st.theme === "glass" || st.theme === "liquid");
     const showAnim = st.show_orbit !== false || st.show_icon_glow !== false;

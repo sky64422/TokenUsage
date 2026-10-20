@@ -132,7 +132,7 @@ export function formatPct(
 export function formatWindowLabel(labelOrKind: string | null | undefined): string {
   if (!labelOrKind) return "";
   const label = labelOrKind.replace(/\s*·\s*over$/i, "").trim();
-  if (label === "rolling_5h") return "5h";
+  if (label === "rolling_5h" || label === "rolling5h") return "5h";
   if (label === "weekly") return "Week";
   if (label === "monthly") return "Month";
   return label;
@@ -146,7 +146,42 @@ export function formatTokenPercent(value: number | null): string {
 }
 const DARKEST_MODEL = 48;
 const MODEL_LIGHTNESS_RANGE = 32;
-const MODEL_LABEL_LIMIT = 13;
+const MODEL_LABEL_LIMIT = 24;
+
+function titleWord(word: string): string {
+  if (!word) return "";
+  if (/^8b$/i.test(word)) return "8B";
+  return `${word[0].toUpperCase()}${word.slice(1).toLowerCase()}`;
+}
+
+export function formatModelLabel(model: string): string {
+  let s = model.trim();
+  if (!s) return MODEL_MISSING;
+
+  if (/^claude-/i.test(s)) {
+    s = s.replace(/^claude-/i, "").replace(/-(?:latest|preview|\d{8})$/i, "");
+    s = s.replace(/^(\d+)-(\d+)-(sonnet|haiku|opus)/i, (_, v1, v2, family) => `${v1}.${v2} ${titleWord(family)}`);
+    s = s.replace(/^(\d+)-(sonnet|haiku|opus)/i, (_, v1, family) => `${v1} ${titleWord(family)}`);
+  } else if (/^gemini-/i.test(s)) {
+    s = s.replace(/^gemini-/i, "").replace(/-(?:latest|preview|exp(?:erimental)?|\d{8})$/i, "");
+    s = s.replace(
+      /^(\d+(?:\.\d+)?)-(pro|flash|ultra)(?:-(thinking|high|low|medium|lite|8b))?/i,
+      (_, ver, tier, variant) => {
+        const parts = [ver, titleWord(tier)];
+        if (variant) parts.push(titleWord(variant));
+        return parts.join(" ");
+      },
+    );
+  } else if (/^gpt-/i.test(s)) {
+    s = s.replace(/^gpt-/i, "").replace(/-(?:latest|preview|\d{8})$/i, "");
+    s = s.replace(/^(\d+(?:\.\d+)?)-(sol|astra|codex)/i, (_, ver, family) => `${ver} ${titleWord(family)}`);
+    s = s.replace(/-mini$/i, " Mini");
+  }
+
+  s = s.replace(/-/g, " ");
+
+  return s.length > MODEL_LABEL_LIMIT ? `${s.slice(0, MODEL_LABEL_LIMIT - 1)}…` : s;
+}
 const isCount = (n: number | null): n is number => n !== null && Number.isSafeInteger(n) && n >= 0;
 
 export function tokenTotal(c: TokenCounts): number | null {
@@ -163,8 +198,8 @@ export function modelSegments(data: TokenPeriod): { model: string; label: string
   const maximum = models[0]?.total ?? 0;
   return models.map(row => {
     const lightness = DARKEST_MODEL + (1 - row.total! / maximum) * MODEL_LIGHTNESS_RANGE;
-    const short = row.model.replace(/^gpt-/i, "").replace(/-(sol|astra|codex)$/i, (_, family: string) => ` ${family[0].toUpperCase()}${family.slice(1)}`);
-    return { model: row.model, label: short.length > MODEL_LABEL_LIMIT ? `${short.slice(0, MODEL_LABEL_LIMIT - 1)}…` : short,
+    const label = formatModelLabel(row.model);
+    return { model: row.model, label,
       share: row.total! / total * 100, lightness, color: `color-mix(in srgb, var(--model-base-color) ${100 - (lightness - DARKEST_MODEL) / MODEL_LIGHTNESS_RANGE * 60}%, white)` };
   });
 }

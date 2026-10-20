@@ -55,7 +55,7 @@ export function mountProviders(root: HTMLElement, onResize: () => void = () => {
         const legends = [...entry.quota.querySelectorAll<HTMLElement>(".token-model-legend")];
         const focused = legends.indexOf(document.activeElement as HTMLElement);
         const scrolls = legends.map(el => el.scrollLeft);
-        entry.quota.innerHTML = cardHtml(snap, running); entry.key = key;
+        entry.quota.innerHTML = cardHtml(snap, running); entry.key = key; onResize();
         entry.quota.querySelectorAll<HTMLElement>(".token-model-legend").forEach((el, index) => {
           el.scrollLeft = scrolls[index] ?? 0;
           if (index === focused) el.focus({ preventScroll: true });
@@ -137,15 +137,17 @@ function cardHtml(s: ProviderSnapshot, isRunning: boolean): string {
   `;
 }
 
+const isRolling5h = (k?: string | null) => k === "rolling_5h" || k === "rolling5h";
 function sameWindow(candidate: Pick<UsageWindow, "kind" | "resets_at" | "group">, window: UsageWindow): boolean {
-  return candidate.kind === window.kind && window.resets_at !== null
+  const kindMatch = candidate.kind === window.kind || (isRolling5h(candidate.kind) && isRolling5h(window.kind));
+  return kindMatch && window.resets_at !== null
     && Date.parse(candidate.resets_at ?? "") === Date.parse(window.resets_at)
     && (candidate.group ?? null) === (window.group ?? null);
 }
 
 export function tokenModelsForWindow(snapshot: ProviderSnapshot, window: UsageWindow): TokenPeriod | undefined {
   if (snapshot.token_usage?.status === "unavailable"
-    || (window.kind !== "rolling_5h" && window.kind !== "weekly")) return undefined;
+    || (!isRolling5h(window.kind) && window.kind !== "weekly")) return undefined;
   const candidates = snapshot.token_usage?.windows?.filter(period => sameWindow(period, window)) ?? [];
   const labeled = candidates.filter(period => period.label != null && period.label === window.label);
   if (labeled.length === 1) return labeled[0].usage;

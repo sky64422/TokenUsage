@@ -18,10 +18,16 @@ class MockElement extends EventTarget {
   children: MockElement[] = [];
   style: Record<string, any> = {
     setProperty: (k: string, v: string) => { (this.style as Record<string, any>)[k] = v; },
+    getPropertyValue: (k: string) => (this.style as Record<string, any>)[k] ?? "",
   };
   width = 0;
   height = 0;
   rect = { x: 10, y: 20, width: 64, height: 300 };
+  offsetWidth = 0;
+  offsetHeight = 0;
+  offsetLeft = 0;
+  offsetTop = 0;
+  offsetParent: MockElement | null = null;
   setAttribute() {}
   append(...nodes: MockElement[]) { this.children.push(...nodes); }
   prepend(...nodes: MockElement[]) { this.children.unshift(...nodes); }
@@ -130,6 +136,144 @@ describe("Liquid desktop capture lifecycle", () => {
 
     renderer.setVisible(false);
     await settle();
+
+    renderer.destroy();
+  });
+
+  it("releases capture lease when static and pixels are unchanged", async () => {
+    let now = 1000;
+    vi.stubGlobal("performance", { now: () => now });
+    let frameCb: ((time: number) => void) | null = null;
+    vi.stubGlobal("requestAnimationFrame", vi.fn(cb => {
+      frameCb = cb;
+      return 1;
+    }));
+
+    invoke.mockImplementation((command: string) => {
+      if (command === "capture_liquid_backdrop") {
+        return Promise.resolve(new ArrayBuffer(0));
+      }
+      return Promise.resolve();
+    });
+
+    const { renderer } = fixture();
+    renderer.setEnabled(true);
+
+    expect(frameCb).toBeTruthy();
+    frameCb!(now);
+    await settle();
+
+    // Advance beyond STATIC_AFTER_MS (2000ms)
+    now += 2500;
+    frameCb!(now);
+    await settle();
+
+    const released = invoke.mock.calls.some(([cmd]) => cmd === "release_liquid_backdrop");
+    expect(released).toBe(true);
+
+    renderer.destroy();
+  });
+
+  it("refreshes capture immediately on pointer interaction", async () => {
+    let now = 1000;
+    vi.stubGlobal("performance", { now: () => now });
+    let frameCb: ((time: number) => void) | null = null;
+    vi.stubGlobal("requestAnimationFrame", vi.fn(cb => {
+      frameCb = cb;
+      return 1;
+    }));
+
+    invoke.mockImplementation((command: string) => {
+      if (command === "capture_liquid_backdrop") {
+        return Promise.resolve(new ArrayBuffer(0));
+      }
+      return Promise.resolve();
+    });
+
+    const { renderer, rail } = fixture();
+    renderer.setEnabled(true);
+    frameCb!(now);
+    await settle();
+
+    now += 2500;
+    frameCb!(now);
+    await settle();
+
+    invoke.mockClear();
+
+    // User moves pointer over rail
+    rail.dispatchEvent(new Event("pointerenter"));
+    expect(frameCb).toBeTruthy();
+    frameCb!(now);
+    await settle();
+
+    let capturedAgain = invoke.mock.calls.some(([cmd]) => cmd === "capture_liquid_backdrop");
+    expect(capturedAgain).toBe(true);
+
+    // Let it settle again and test pointerdown on window
+    now += 2500;
+    frameCb!(now);
+    await settle();
+
+    invoke.mockClear();
+    window.dispatchEvent(new Event("pointerdown"));
+    expect(frameCb).toBeTruthy();
+    frameCb!(now);
+    await settle();
+
+    capturedAgain = invoke.mock.calls.some(([cmd]) => cmd === "capture_liquid_backdrop");
+    expect(capturedAgain).toBe(true);
+
+    renderer.destroy();
+  });
+
+  it("uses layout dimensions instead of transformed rect to prevent canvas flash during drop animation", async () => {
+    let now = 1000;
+    vi.stubGlobal("performance", { now: () => now });
+    let frameCb: ((time: number) => void) | null = null;
+    vi.stubGlobal("requestAnimationFrame", vi.fn(cb => {
+      frameCb = cb;
+      return 1;
+    }));
+
+    invoke.mockImplementation((command: string) => {
+      if (command === "capture_liquid_backdrop") {
+        return Promise.resolve(new ArrayBuffer(0));
+      }
+      return Promise.resolve();
+    });
+
+    const { renderer, detail } = fixture();
+    detail.offsetWidth = 260;
+    detail.offsetHeight = 400;
+    detail.offsetLeft = 1600;
+    detail.offsetTop = 100;
+    detail.offsetParent = {} as any;
+    detail.rect = { x: 1614, y: 100, width: 213, height: 400 };
+
+    renderer.setEnabled(true);
+    expect(frameCb).toBeTruthy();
+    frameCb!(now);
+    await settle();
+
+    const firstCall = invoke.mock.calls.find(([cmd, args]) => cmd === "capture_liquid_backdrop" && args?.surface === 1);
+    expect(firstCall).toBeTruthy();
+    expect(firstCall![1].width).toBe(520);
+    expect(firstCall![1].height).toBe(800);
+    expect(firstCall![1].generation).toBe(2);
+
+    invoke.mockClear();
+
+    now += 50;
+    detail.rect = { x: 1608, y: 100, width: 240, height: 400 };
+    frameCb!(now);
+    await settle();
+
+    const secondCall = invoke.mock.calls.find(([cmd, args]) => cmd === "capture_liquid_backdrop" && args?.surface === 1);
+    expect(secondCall).toBeTruthy();
+    expect(secondCall![1].width).toBe(520);
+    expect(secondCall![1].height).toBe(800);
+    expect(secondCall![1].generation).toBe(2);
 
     renderer.destroy();
   });

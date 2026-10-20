@@ -197,7 +197,7 @@ body {
   margin-right: 2px;
   height: 7px;
   align-self: center;
-  border-radius: 9999px;
+  border-radius: 1px;
   background: var(--track);
   box-shadow: inset 0 1px 2px var(--track-inset);
   overflow: hidden;
@@ -208,13 +208,13 @@ body {
 .track-fill {
   position: relative;
   height: 100%;
-  border-radius: 9999px;
+  border-radius: 1px;
   width: 0%;
   max-width: 100%;
   background: var(--ok);
   overflow: hidden;
   /* Keep fill shadows and sheen inside the measured usage, including while running. */
-  clip-path: inset(0 round 9999px);
+  clip-path: inset(0 round 1px);
   box-shadow:
     0 0 0 0.5px rgba(255, 255, 255, calc(0.14 * var(--accent-opacity))) inset,
     0 0 10px rgba(var(--ok-rgb), calc(0.22 * var(--accent-opacity)));
@@ -276,7 +276,7 @@ body {
   right: 0;
   width: 7px;
   height: 100%;
-  border-radius: 0 9999px 9999px 0;
+  border-radius: 0 1px 1px 0;
   background: linear-gradient(
     90deg,
     transparent 0%,

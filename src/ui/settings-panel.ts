@@ -114,13 +114,13 @@ export function mountSettingsPanel(
         <div class="settings-section">
           <span class="settings-label">테마</span>
           <div class="settings-theme-picker" role="group" aria-label="테마">
-            <button type="button" class="settings-theme-option" data-theme-option="dark" aria-pressed="true">
+            <button type="button" class="settings-theme-option" data-theme-option="dark" aria-pressed="false">
               <span class="theme-swatch theme-swatch-dark" aria-hidden="true"></span>다크
             </button>
             <button type="button" class="settings-theme-option" data-theme-option="glass" aria-pressed="false">
               <span class="theme-swatch theme-swatch-glass" aria-hidden="true"></span>글라스
             </button>
-            <button type="button" class="settings-theme-option" data-theme-option="liquid" aria-pressed="false">
+            <button type="button" class="settings-theme-option" data-theme-option="liquid" aria-pressed="true">
               <span class="theme-swatch theme-swatch-liquid" aria-hidden="true"></span>리퀴드
             </button>
           </div>
@@ -288,7 +288,7 @@ export function mountSettingsPanel(
   tabGeneral.addEventListener("click", () => switchTab("general"));
   switchTab("appearance");
 
-  let activeTheme: AppTheme = settings.theme ?? "dark";
+  let activeTheme: AppTheme = settings.theme ?? "liquid";
   let themeSaving = false;
   const themePicker = root.querySelector<HTMLElement>(".settings-theme-picker")!;
   const themeButtons = root.querySelectorAll<HTMLButtonElement>("[data-theme-option]");

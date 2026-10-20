@@ -15,6 +15,7 @@ const REDUCED_FRAME_MS = 250;
 const SETTLING_FRAME_MS = 100;
 const SETTLING_AFTER_MS = 500;
 const STATIC_AFTER_MS = 2000;
+const STATIC_FRAME_MS = 2000;
 
 interface SurfaceLayer {
   surface: HTMLElement;
@@ -108,7 +109,7 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
       if (rail.classList.contains("is-dragging")) return DRAG_FRAME_MS;
       const unchangedFor = now - lastChangedAt;
       return unchangedFor >= STATIC_AFTER_MS
-        ? REDUCED_FRAME_MS
+        ? STATIC_FRAME_MS
         : unchangedFor >= SETTLING_AFTER_MS
           ? SETTLING_FRAME_MS
           : IDLE_FRAME_MS;
@@ -145,6 +146,8 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
       if (painted) {
         lastChangedAt = now;
         shell.dataset.liquidStatus = "ready";
+      } else if (now - lastChangedAt >= STATIC_AFTER_MS) {
+        void invoke("release_liquid_backdrop");
       }
     },
     dispose: frames => {
@@ -184,6 +187,8 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
   });
   observer.observe(rail, { attributes: true, attributeFilter: ["class"] });
   observer.observe(detail, { attributes: true, attributeFilter: ["hidden"] });
+  window.addEventListener("pointerdown", () => { lastChangedAt = performance.now(); loop.refresh(); }, { signal: events.signal });
+  rail.addEventListener("pointerenter", () => { lastChangedAt = performance.now(); loop.refresh(); }, { signal: events.signal });
 
   function mapFor(entry: SurfaceLayer, width: number, height: number) {
     entry.canvas.style.filter = entry.effect;
@@ -257,7 +262,8 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
       for (const entry of entries) {
         if (entry.surface.hidden || (entry.surface === rail && rail.classList.contains("is-folded"))) continue;
         const rect = entry.surface.getBoundingClientRect();
-        const width = Math.round(rect.width), height = Math.round(rect.height);
+        const width = Math.round(entry.surface.offsetWidth || rect.width);
+        const height = Math.round(entry.surface.offsetHeight || rect.height);
         if (!width || !height) continue;
         const ratio = devicePixelRatio || 1;
         const key = `${width}:${height}:${rail.dataset.edge}:${ratio}:${shell.style.getPropertyValue("--notch-scale")}`;
@@ -267,8 +273,14 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
           entry.generation++;
         }
         const generation = entry.generation;
-        const x = Math.max(0, Math.round(rect.x * ratio));
-        const y = Math.max(0, Math.round(rect.y * ratio));
+        const surfaceX = typeof entry.surface.offsetLeft === "number" && entry.surface.offsetParent
+          ? entry.surface.offsetLeft
+          : rect.x;
+        const surfaceY = typeof entry.surface.offsetTop === "number" && entry.surface.offsetParent
+          ? entry.surface.offsetTop
+          : rect.y;
+        const x = Math.max(0, Math.round(surfaceX * ratio));
+        const y = Math.max(0, Math.round(surfaceY * ratio));
         const w = Math.min(Math.round(width * ratio), Math.round(innerWidth * ratio) - x);
         const h = Math.min(Math.round(height * ratio), Math.round(innerHeight * ratio) - y);
         if (w <= 0 || h <= 0) continue;

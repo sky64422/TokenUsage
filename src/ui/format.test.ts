@@ -8,6 +8,7 @@ import {
   isOver,
   levelClass,
   formatProviderStatus,
+  formatModelLabel,
 } from "./format";
 
 describe("provider status summaries", () => {
@@ -117,11 +118,31 @@ describe("formatWindowReset", () => {
 describe("formatWindowLabel", () => {
   it("normalizes internal window kind names to glanceable labels", () => {
     expect(formatWindowLabel("rolling_5h")).toBe("5h");
+    expect(formatWindowLabel("rolling5h")).toBe("5h");
     expect(formatWindowLabel("weekly")).toBe("Week");
     expect(formatWindowLabel("monthly")).toBe("Month");
     expect(formatWindowLabel("5h · over")).toBe("5h");
     expect(formatWindowLabel("Custom Window")).toBe("Custom Window");
     expect(formatWindowLabel(null)).toBe("");
+  });
+});
+
+describe("formatModelLabel", () => {
+  it("formats OpenAI, Claude and Gemini model names into concise glanceable labels", () => {
+    expect(formatModelLabel("gpt-6-astra")).toBe("6 Astra");
+    expect(formatModelLabel("gpt-6.1-sol")).toBe("6.1 Sol");
+    expect(formatModelLabel("gpt-4o")).toBe("4o");
+    expect(formatModelLabel("claude-3-5-sonnet-20241022")).toBe("3.5 Sonnet");
+    expect(formatModelLabel("claude-3-opus-20240229")).toBe("3 Opus");
+    expect(formatModelLabel("gemini-1.5-pro")).toBe("1.5 Pro");
+    expect(formatModelLabel("gemini-2.0-flash")).toBe("2.0 Flash");
+    expect(formatModelLabel("gemini-3.8-flash-high")).toBe("3.8 Flash High");
+    expect(formatModelLabel("gemini-3.8-flash-low")).toBe("3.8 Flash Low");
+    expect(formatModelLabel("gemini-2.0-flash-thinking-exp")).toBe("2.0 Flash Thinking");
+    expect(formatModelLabel("gemini-1.5-flash-8b")).toBe("1.5 Flash 8B");
+    expect(formatModelLabel("gemini-2.0-flash-lite")).toBe("2.0 Flash Lite");
+    expect(formatModelLabel("gpt-4o-mini")).toBe("4o Mini");
+    expect(formatModelLabel("super-extra-long-unknown-model-exceeding-limit")).toBe("super extra long unknow…");
   });
 });
 

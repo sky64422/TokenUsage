@@ -119,8 +119,8 @@ impl Default for ProviderConfig {
 #[serde(rename_all = "snake_case")]
 pub enum AppTheme {
     Glass,
-    Liquid,
     #[default]
+    Liquid,
     #[serde(other)]
     Dark,
 }

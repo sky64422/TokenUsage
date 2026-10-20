@@ -7,8 +7,8 @@ use std::time::{Duration, Instant};
 use tauri::{Manager, State, WebviewWindow};
 
 const MAX_CAPTURE_PIXELS: u64 = 1_048_576;
-const CAPTURE_LEASE: Duration = Duration::from_millis(750);
-const LEASE_CHECK: Duration = Duration::from_millis(250);
+const CAPTURE_LEASE: Duration = Duration::from_millis(80);
+const LEASE_CHECK: Duration = Duration::from_millis(20);
 
 #[derive(Default)]
 pub struct LiquidBackdrop(Mutex<BackdropState>, CaptureWorker);
@@ -276,5 +276,11 @@ mod tests {
         ] {
             assert!(valid_region(x, y, w, h, 324, 1120).is_err());
         }
+    }
+
+    #[test]
+    fn capture_lease_duration_is_bounded_to_prevent_screenshot_exclusion() {
+        assert!(super::CAPTURE_LEASE <= std::time::Duration::from_millis(100));
+        assert!(super::LEASE_CHECK < super::CAPTURE_LEASE);
     }
 }

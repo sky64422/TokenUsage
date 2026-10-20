@@ -2,7 +2,7 @@ export type ProviderId = "claude" | "codex" | "grok" | "agy";
 export const PROVIDER_IDS: ProviderId[] = ["claude", "codex", "grok", "agy"];
 
 export type WindowKind =
-  "rolling_5h" | "weekly" | "daily" | "monthly" | "session" | "unknown";
+  "rolling5h" | "rolling_5h" | "weekly" | "daily" | "monthly" | "session" | "unknown";
 export type SnapshotStatus =
   "ok" | "degraded" | "unavailable" | "auth_required";
 export type DataSource = "vendor" | "unavailable";
