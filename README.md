@@ -10,7 +10,12 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/screenshots/quota-detail-liquid.png" alt="Token Usage Screen Notch & Quota Detail (Liquid Glass Theme)" width="400" />
+  <img src="docs/assets/screenshots/quota-detail-codex.png" alt="Token Usage Screen Notch & Quota Detail (Dark Theme)" width="380" />
+  &nbsp;
+  <img src="docs/assets/screenshots/quota-detail-liquid.png" alt="Token Usage Screen Notch & Quota Detail (Liquid Glass Theme)" width="380" />
+</p>
+<p align="center">
+  <em>▲ 다크 테마 (좌) &nbsp;·&nbsp; 리퀴드 글라스 테마 (우)</em>
 </p>
 
 ---
