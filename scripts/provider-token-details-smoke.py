@@ -43,12 +43,11 @@ with sync_playwright() as p:
         return page.locator(f'.provider-entry:has(.provider-card[data-provider="{provider}"])')
     assert page.locator('.token-details-root').count() == 3, 'Every provider with recorded metadata needs its own detail'
     for provider in ['claude','codex','grok']:
-        entry(provider).locator('summary').click()
-    codex_month = entry('codex').locator('[data-period=month]')
-    codex_month.click()
-    expect(entry('codex').locator('.token-totals')).to_contain_text('300')
-    expect(entry('grok').locator('.token-totals')).to_contain_text('100')
-    codex_month.focus()
+        entry(provider).locator('.token-details > summary').click()
+    codex_toggle = entry('codex').locator('.token-details > summary')
+    expect(entry('codex').locator('.token-overview')).to_contain_text('300')
+    expect(entry('grok').locator('.token-overview')).to_contain_text('100')
+    codex_toggle.focus()
     page.evaluate('''()=>{
       window.codexPanel=document.querySelector('.provider-card[data-provider=codex]').closest('.provider-entry').querySelector('details');
       window.snaps[3].token_usage=window.tokens(null);
@@ -57,25 +56,13 @@ with sync_playwright() as p:
       window.publish();
     }''')
     assert page.locator('.token-details-root').count() == 4
-    expect(codex_month).to_be_focused()
-    expect(codex_month).to_have_attribute('aria-selected','true')
+    expect(codex_toggle).to_be_focused()
     assert page.evaluate('window.codexPanel===document.querySelector(".provider-card[data-provider=codex]").closest(".provider-entry").querySelector("details")')
     ids = page.locator('[id]').evaluate_all('(els)=>els.map(el=>el.id)')
     assert len(ids) == len(set(ids)), ids
-    assert page.locator('.token-periods [data-period=week]').count() == 0
-    assert page.locator('[role=tab]').evaluate_all('''buttons=>buttons.every(button=>{
-      const panel=document.getElementById(button.getAttribute('aria-controls'));
-      return panel&&panel.closest('.token-details-root')===button.closest('.token-details-root');
-    })''')
-    assert page.locator('[role=tabpanel]').evaluate_all('''panels=>panels.every(panel=>{
-      const tab=document.getElementById(panel.getAttribute('aria-labelledby'));
-      return tab&&tab.getAttribute('aria-selected')==='true'&&tab.closest('.token-details-root')===panel.closest('.token-details-root');
-    })''')
-    entry('agy').locator('summary').click()
-    expect(entry('agy').locator('.token-model-heading')).to_contain_text('모델 미제공')
-    for label in ['CacheWrite','추론']:
-        expect(entry('agy').locator('.token-metric').filter(has_text=label).locator('strong')).to_have_text('—')
-    expect(entry('agy').locator('.token-totals')).to_contain_text('50%')
+    entry('agy').locator('.token-details > summary').click()
+    expect(entry('agy').locator('.token-overview')).to_contain_text('50%')
+    expect(entry('agy').locator('.token-overview tbody tr').nth(1)).to_contain_text('—')
     assert entry('agy').locator('.track-models').count() == 0, 'Unknown AGY models cannot be assigned to quota families'
     assert entry('claude').locator('.usage-row').nth(0).locator('.token-legend-item').get_attribute('title') == 'claude-opus-test'
     assert entry('claude').locator('.usage-row').nth(1).locator('.token-legend-item').get_attribute('title') == 'claude-sonnet-test'
@@ -98,14 +85,13 @@ with sync_playwright() as p:
     }''')
     assert entry('claude').locator('.track-models').count() == 0
     assert entry('grok').locator('.track-models').count() == 0
-    expect(codex_month).to_have_attribute('aria-selected','true')
-    expect(entry('codex').locator('details')).to_have_attribute('open','')
-    expect(entry('codex').locator('.token-totals')).to_contain_text('900')
-    expect(entry('grok').locator('.token-totals')).to_contain_text('100')
+    expect(entry('codex').locator('.token-details')).to_have_attribute('open','')
+    expect(entry('codex').locator('.token-overview')).to_contain_text('900')
+    expect(entry('grok').locator('.token-overview')).to_contain_text('100')
     assert page.locator('.token-provenance,.token-status,.token-note,.token-legend-percent').count() == 0
     page.screenshot(path=str(ROOT/'tmp/provider-token-details.png'),full_page=True)
     assert not errors, errors
-    result={'providers':4,'late_arrival':True,'unique_aria_ids':True,'independent_tabs_and_refresh':True,
+    result={'providers':4,'late_arrival':True,'unique_aria_ids':True,'independent_summaries_and_refresh':True,
             'unknown_fields_dash':True,'group_and_label_collisions_isolated':True,'vendor_quota_width_preserved':True}
     (ROOT/'tmp/provider-token-details-results.json').write_text(json.dumps(result,indent=2))
     print(json.dumps(result));browser.close()

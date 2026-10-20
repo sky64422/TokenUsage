@@ -72,7 +72,9 @@ usage/model metadata for Codex, AGY, Claude and Grok. Independent bounded backgr
 workers and ledgers attach optional `token_usage` after vendor fetching, including
 quota failures. Vendor quotas still come exclusively from their existing official
 OAuth/CLI sources; recorded tokens never replace or estimate a vendor quota.
-The UI exposes Today and calendar-month summaries without visible provenance,
+The UI exposes Today, Yesterday and calendar-month summaries with total tokens and
+cache-read share (cache-read / inclusive input), followed by a blue daily chart
+for the current calendar month. Future and unrecorded days show faint baseline slots, distinct from the brighter baseline for recorded zero. No bottom model breakdown or period tabs are shown. The UI has no visible provenance,
 update time, status copy or explanatory footnotes (user request 2026-10-19); the
 internal Monday-based week summary remains available for compatibility. Cumulative
 reports and copied sessions are deduplicated. Cache and reasoning are subsets,
@@ -88,7 +90,7 @@ timestamp, matched by kind, reset instant, group and label. Their model shares s
 filled portion. Visible legends contain only matching color dots and short model
 names; model percentages were removed at user request (2026-10-19). Accessible
 labels identify local token composition, not a vendor-reported model quota. Missing, expired or unmatched reset data leaves a plain quota
-bar. Calendar token tabs remain independent. Retention includes the preceding
+bar. Calendar token summaries remain independent. Retention includes the preceding
 seven days across month boundaries so weekly quota periods remain available.
 Preview fixture mode disables real reads for every provider.
 
@@ -103,8 +105,7 @@ AGY's unknown historical model is never inferred from today's selected model or
 attributed to a Gemini/Claude quota family. Claude Opus/Sonnet weekly buckets are
 filtered independently even when resets match. Daily/monthly credit bars remain
 plain because their exact start boundary is not supplied to the token ledger.
-Tabs/panels have provider-specific ARIA IDs and retain selection/open state across
-refreshes. Missing numeric fields remain `null` and display an em dash.
+Token disclosures retain open state and focus across refreshes. Missing numeric fields remain `null` and display an em dash.
 
 #### Optional AGY model hook (2026-10-19)
 

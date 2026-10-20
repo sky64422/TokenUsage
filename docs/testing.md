@@ -19,10 +19,10 @@ cover sidecar discovery and duplicate-free enrichment in either read order.
 corrected/copied model maps, unknown fields, overflow, source mirror filtering and
 family/bucket isolation. Preview fixture tests ensure all providers avoid live reads.
 `python scripts/provider-token-details-smoke.py --port PORT` uses synthetic metadata
-to verify four simultaneous panels, late data, unique ARIA IDs, independent tabs,
+to verify four simultaneous panels, late data, independent calendar summaries,
 open/focus preservation, missing-field dashes and precise group/label/reset matching.
 Run the existing Codex smoke as well. Native verification must open each provider's
-detail and Today/Month tabs, inspect intrinsic sizing and screenshot inclusion, and
+detail and Today/Yesterday/Month rows, inspect intrinsic sizing and screenshot inclusion, and
 restore isolated-preview preferences afterwards. No real conversation fixtures are
 committed.
 
@@ -126,13 +126,12 @@ Windows validation uses isolated app profiles, existing desktop pixels and no fu
 
 ### Codex token details and quota-track regression (2026-10-18)
 
-With Vite running, `python scripts/token-details-smoke.py` checks Today / This month, model metadata, persistent expansion/selection/focus, provider marks,
+With Vite running, `python scripts/token-details-smoke.py` checks Today / Yesterday / This month summary rows, blue daily trend with faint date slots (unknown/zero/future), inline summary/trend alignment, persistent expansion/focus, provider marks,
 zero/missing/partial/error data, absence of provenance/status/footnote copy,
 escaping, three themes and scaled widths.
 It also checks model-share shades in the main quota bars, matching dots/abbreviations without model percentages
 on one legend line, unchanged vendor width/percentage, stale-reset fallback,
-independence from calendar tab selection, legend focus while numeric data changes, tab keyboard navigation
-and the two-tab selection indicator width under reduced motion. Tiny 1% quota
+legend focus while numeric data changes and unknown versus zero cache share. Tiny 1% quota
 fills with three models must retain positive segment widths and the vendor percentage. `python
 scripts/notch-ring-smoke.py` checks one continuous ring with no secondary ring,
 including unknown/zero/full/overage and running activity.
@@ -143,6 +142,8 @@ metadata, never live transcripts or OS preferences.
 
 Rust token tests cover cumulative increments, copied/forked histories, replacement,
 partial writes, Monday/week/month boundaries, oversized lines, resumable discovery and fairness.
+The calendar summary regression also checks yesterday across a month boundary,
+deduplicated daily totals, delayed future records and unknown days.
 Regression cases cover events written just after scan time (also across a month
 boundary), activation without replay or double-counting, and record-limit coverage
 expiry/cache invalidation without falsely clearing same-period warnings.

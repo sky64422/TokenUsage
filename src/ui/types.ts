@@ -48,8 +48,10 @@ export interface TokenUsageSnapshot {
   as_of: string;
   status: "loading" | "ready" | "partial" | "unavailable";
   today: TokenPeriod;
+  yesterday?: TokenPeriod;
   week: TokenPeriod;
   month: TokenPeriod;
+  daily?: { date: string; totals: TokenCounts }[];
   windows?: { kind: WindowKind; resets_at: string; group?: string | null; label?: string | null; usage: TokenPeriod }[];
 }
 

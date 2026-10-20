@@ -74,10 +74,20 @@ pub struct TokenUsageSnapshot {
     pub as_of: String,
     pub status: TokenUsageStatus,
     pub today: TokenPeriod,
+    #[serde(default)]
+    pub yesterday: TokenPeriod,
     pub week: TokenPeriod,
     pub month: TokenPeriod,
+    #[serde(default)]
+    pub daily: Vec<DailyTokenUsage>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub windows: Vec<TokenWindowUsage>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DailyTokenUsage {
+    pub date: NaiveDate,
+    pub totals: TokenCounts,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -300,6 +310,9 @@ impl TokenLedger {
         let first_month_date = month_start(now);
         let first_week_date = week_start(now);
         let mut today = BTreeMap::<Option<String>, TokenCounts>::new();
+        let mut yesterday = BTreeMap::<Option<String>, TokenCounts>::new();
+        let yesterday_date = now.date_naive() - chrono::Duration::days(1);
+        let mut daily = BTreeMap::<NaiveDate, BTreeMap<Option<String>, TokenCounts>>::new();
         let mut week = BTreeMap::<Option<String>, TokenCounts>::new();
         let mut month = BTreeMap::<Option<String>, TokenCounts>::new();
         let mut window_models: Vec<_> = windows
@@ -371,6 +384,14 @@ impl TokenLedger {
             if r.at.date_naive() >= first_month_date && !merge(&mut month, r) {
                 status = TokenUsageStatus::Partial;
             }
+            if r.at.date_naive() >= first_month_date
+                && !merge(daily.entry(r.at.date_naive()).or_default(), r)
+            {
+                status = TokenUsageStatus::Partial;
+            }
+            if r.at.date_naive() == yesterday_date && !merge(&mut yesterday, r) {
+                status = TokenUsageStatus::Partial;
+            }
             if r.at.date_naive() >= first_week_date && !merge(&mut week, r) {
                 status = TokenUsageStatus::Partial;
             }
@@ -384,11 +405,18 @@ impl TokenLedger {
             }
         }
         let (today, today_ok) = period(today);
+        let (yesterday, yesterday_ok) = period(yesterday);
         let (month, month_ok) = period(month);
         let (week, week_ok) = period(week);
-        if !today_ok || !month_ok || !week_ok {
+        if !today_ok || !yesterday_ok || !month_ok || !week_ok {
             status = TokenUsageStatus::Partial;
         }
+        let daily = (0..now.day()).map(|offset| {
+            let date = first_month_date + chrono::Duration::days(i64::from(offset));
+            let (usage, valid) = period(daily.remove(&date).unwrap_or_default());
+            if !valid { status = TokenUsageStatus::Partial; }
+            DailyTokenUsage { date, totals: usage.totals }
+        }).collect();
         if self.excluded_through.is_some_and(|date| date >= oldest)
             && status != TokenUsageStatus::Loading
         {
@@ -415,8 +443,10 @@ impl TokenLedger {
             as_of: now.to_rfc3339(),
             status,
             today,
+            yesterday,
             week,
             month,
+            daily,
             windows,
         };
         *self.summary_cache.borrow_mut() = Some(SummaryCache {
@@ -487,6 +517,28 @@ mod tests {
         );
         ledger.prune(retention_start(now));
         assert!(ledger.files.is_empty());
+    }
+
+    #[test]
+    fn calendar_summary_keeps_yesterday_across_month_boundary_and_daily_gaps_unknown() {
+        let now = Local.with_ymd_and_hms(2026, 11, 1, 12, 0, 0).unwrap();
+        let mut ledger = TokenLedger::default();
+        ledger.upsert("a", "yesterday", now - chrono::Duration::days(1), None, counts(100, 50, 20));
+        ledger.upsert("a", "today", now, None, counts(200, 100, 40));
+        ledger.upsert("copy", "today", now, None, counts(200, 100, 40));
+        ledger.upsert("a", "future", now + chrono::Duration::days(1), None, counts(900, 0, 10));
+        ledger.prune(retention_start(now));
+        let json = serde_json::to_value(ledger.summarize(now, TokenUsageStatus::Ready, &[])).unwrap();
+        assert_eq!(json["yesterday"]["totals"]["input"], 100);
+        assert_eq!(json["month"]["totals"]["input"], 200);
+        assert_eq!(json["daily"].as_array().unwrap().len(), 1);
+        assert_eq!(json["daily"][0]["date"], "2026-11-01");
+        assert_eq!(json["daily"][0]["totals"]["input"], 200);
+        let later = now + chrono::Duration::days(2);
+        let json = serde_json::to_value(ledger.summarize(later, TokenUsageStatus::Ready, &[])).unwrap();
+        assert_eq!(json["daily"].as_array().unwrap().len(), 3);
+        assert_eq!(json["daily"][1]["totals"]["input"], 900);
+        assert!(json["daily"][2]["totals"]["input"].is_null());
     }
 
     #[test]

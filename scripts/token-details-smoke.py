@@ -25,46 +25,45 @@ with sync_playwright() as p:
         const counts = {input:1000,cache_read:750,cache_write:null,output:200,reasoning:50};
         const period = {models:[{model:'gpt-example',counts}],totals:counts};
         window.snap = {provider_id:'codex',display_name:'Codex',status:'ok',source:'vendor',message:null,
-            as_of:'2026-10-18T00:00:00Z',primary_used_percent:40,primary_resets_at:null,
+            as_of:'2026-10-03T00:00:00Z',primary_used_percent:40,primary_resets_at:null,
             windows:[{kind:'rolling_5h',label:'5h',used:40,limit:100,unit:'percent',used_percent:40,resets_at:null}],
-            token_usage:{source:'local_records',as_of:'2026-10-18T00:00:00Z',status:'ready',today:period,week:period,month:period}};
+            token_usage:{source:'local_records',as_of:'2026-10-03T00:00:00Z',status:'ready',today:period,yesterday:period,week:period,month:period,daily:[{date:"2026-10-01",totals:counts},{date:"2026-10-02",totals:{...counts,input:0,output:0}},{date:"2026-10-03",totals:{...counts,input:null}}]}};
         window.ui.setSnapshots([window.snap]); await document.fonts.ready;
+        const yesterdayCounts = {...counts,input:2000,output:400,cache_read:500};
+        window.snap.token_usage.yesterday={models:[{model:'yesterday-model',counts:yesterdayCounts}],totals:yesterdayCounts};
+        window.ui.setSnapshots([structuredClone(window.snap)]);
     }""")
     assert page.locator(".provider-name img").count() == 1
     assert "invert(1)" in page.locator(".provider-name img").evaluate("el => getComputedStyle(el).filter")
-    assert page.locator('[data-period]').count() == 2
-    assert page.locator('[data-period=week]').count() == 0
-    page.locator("summary").click()
-    expect(page.locator("details")).to_have_attribute("open", "")
-    indicator = page.locator('.token-periods').evaluate("el=>({width:parseFloat(getComputedStyle(el,'::before').width),tab:el.querySelector('button').getBoundingClientRect().width})")
-    assert abs(indicator['width']-indicator['tab']) < 1, indicator
-    expect(page.locator(".token-totals")).to_contain_text("1,200")
-    expect(page.locator(".token-totals")).to_contain_text("75%")
-    expect(page.locator(".token-metrics")).to_contain_text("CacheWrite—")
-    month = page.locator('[data-period="month"]')
-    month.click()
-    assert page.locator('.token-periods').evaluate("el => getComputedStyle(el,'::before').transform") != 'none'
-    month.press('ArrowLeft')
-    expect(page.locator('[data-period=today]')).to_have_attribute('aria-selected', 'true')
-    page.locator('[data-period=today]').press('End')
-    expect(month).to_have_attribute('aria-selected', 'true')
-    month.focus()
-    page.evaluate("""() => {
-        window.snap.token_usage.as_of='2026-10-18T00:00:05Z';
-        window.ui.setSnapshots([structuredClone(window.snap)]);
+    assert page.locator('[data-period],.token-breakdown').count() == 0
+    toggle = page.locator('.token-details > summary')
+    toggle.click()
+    expect(page.locator('.token-details')).to_have_attribute('open', '')
+    rows = page.locator('.token-overview tbody tr')
+    expect(rows).to_have_count(3)
+    for index,label in enumerate(['오늘','어제','이번 달']):
+        expect(rows.nth(index)).to_contain_text(label)
+    expect(rows.nth(0)).to_contain_text('1,200')
+    expect(rows.nth(0)).to_contain_text('캐시 75%')
+    expect(rows.nth(1)).to_contain_text('2,400')
+    expect(rows.nth(1)).to_contain_text('캐시 25%')
+    expect(page.locator('.token-trend-day')).to_have_count(31)
+    assert page.locator('.token-trend-day[data-state=future]').count() == 28
+    assert page.locator('.token-trend-day[data-state=unknown]').count() == 1
+    assert page.locator('.token-trend-day[data-state=zero]').count() == 1
+    trend_layout = page.locator('.token-trend').evaluate("""el=>{
+        const label=el.querySelector('.token-trend-label').getBoundingClientRect();
+        const chart=el.querySelector('.token-trend-chart').getBoundingClientRect();
+        return {labelRight:label.right,chartLeft:chart.left,
+          labelCenter:label.y+label.height/2,chartCenter:chart.y+chart.height/2};
     }""")
-    expect(month).to_be_focused()
-    expect(month).to_have_attribute("aria-selected", "true")
-    page.evaluate("""() => {
-        const other={...window.snap,provider_id:'agy',display_name:'Antigravity',token_usage:null,
-          windows:[{...window.snap.windows[0],group:'Gemini'},{...window.snap.windows[0],group:'Claude'}]};
-        window.ui.setSnapshots([other]);
-    }""")
-    assert page.locator(".quota-service-name:visible img").count() == 1
-    assert page.locator(".provider-entry:visible .provider-name img").count() == 0
-    page.evaluate("window.ui.setSnapshots([window.snap])")
-    expect(month).to_have_attribute("aria-selected", "true")
-    expect(page.locator("details:visible")).to_have_attribute("open", "")
+    assert trend_layout['chartLeft'] > trend_layout['labelRight'], trend_layout
+    assert abs(trend_layout['labelCenter']-trend_layout['chartCenter']) < 1, trend_layout
+    toggle.focus()
+    page.evaluate("window.snap.token_usage.as_of='2026-10-03T00:00:05Z';window.ui.setSnapshots([structuredClone(window.snap)]);")
+    expect(toggle).to_be_focused()
+    expect(page.locator('.token-details')).to_have_attribute('open','')
+    page.screenshot(path='tmp/token-overview.png')
 
     page.evaluate("""() => {
         const a={input:1000,cache_read:750,cache_write:0,output:200,reasoning:50};
@@ -105,11 +104,6 @@ with sync_playwright() as p:
     }""")
     expect(page.locator('.token-model-legend')).to_be_focused()
     page.screenshot(path='tmp/token-model-shades.png')
-    # Calendar tabs change the numeric drilldown, never the main bar's quota-period mix.
-    colors = page.locator('.track-models').inner_html()
-    page.locator('[data-period=today]').click()
-    assert page.locator('.track-models').inner_html() == colors
-    month.click()
     page.evaluate("window.snap.windows[0].resets_at='2099-10-18T10:00:00Z';window.ui.setSnapshots([structuredClone(window.snap)]);")
     assert page.locator('.track-models').count() == 0, 'Stale period must not color a new quota cycle'
     page.evaluate("window.snap.windows[0].resets_at=window.snap.token_usage.windows[0].resets_at;window.ui.setSnapshots([structuredClone(window.snap)]);")
@@ -141,9 +135,8 @@ with sync_playwright() as p:
         window.snap.token_usage.month={models:[{model:null,counts}],totals:counts};
         window.ui.setSnapshots([structuredClone(window.snap)]);
     }""")
-    expect(page.locator(".token-model-heading")).to_contain_text("모델 미제공")
-    expect(page.locator(".token-totals")).to_contain_text("0")
-    expect(page.locator(".token-totals")).to_contain_text("—")
+    expect(page.locator('.token-overview tbody tr').nth(2)).to_contain_text('0')
+    expect(page.locator('.token-overview tbody tr').nth(2)).to_contain_text('—')
     page.evaluate("""() => {
         const counts={input:1000000,cache_read:800000,cache_write:500,output:100000,reasoning:100};
         window.snap.token_usage.status='partial';
@@ -171,6 +164,10 @@ with sync_playwright() as p:
     page.evaluate("window.ui.setSnapshots([{...window.snap,windows:[],token_usage:null,status:'auth_required'}])")
     assert page.locator(".provider-name:visible img").count() == 1
     assert page.locator(".token-details-root:visible").count() == 0
+    resize_before_restore = page.evaluate("window.resizeCalls")
+    page.evaluate("window.ui.setSnapshots([structuredClone(window.snap)])")
+    expect(page.locator(".token-details-root:visible")).to_have_count(1)
+    assert page.evaluate("window.resizeCalls") > resize_before_restore, "Restored token detail must resize even when counters match"
     for provider in ["claude", "grok"]:
         page.evaluate("id => window.ui.setSnapshots([{...window.snap,provider_id:id,display_name:id,token_usage:null}])", provider)
         assert page.locator(".provider-name:visible img").count() == 1

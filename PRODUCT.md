@@ -55,7 +55,7 @@ A screen-edge **usage monitor notch** that shows personal vendor quota (Claude /
 - Perfect parity with every vendor subscription UI
 - Per-product Grok breakdown (GrokBuild / GrokChat) in the widget
 - Token ledger (input / output / cache read / cache write) — quota APIs do not return it
-- Exception expanded 2026-10-19 after Codex feedback: token details may aggregate exact recorded CLI usage/model metadata for Codex, AGY, Claude and Grok. Show today/calendar-month tabs using the approved Codex styling; keep official quota independent. Preserve unavailable models/counts and do not infer them from current settings, text or quota percentages. Visible provenance/status/footer copy was removed at user request.
+- Exception expanded 2026-10-19 after Codex feedback: token details may aggregate exact recorded CLI usage/model metadata for Codex, AGY, Claude and Grok. Show today/yesterday/calendar-month summary rows with tokens and cache-read share, a blue current-month daily trend, with inline labels and values (2026-10-20). No bottom model breakdown, cost, change percentage or warning color. Keep official quota independent. Preserve unavailable models/counts and do not infer them from current settings, text or quota percentages. Visible provenance/status/footer copy was removed at user request.
 - Subscription-tier chips (vendors may send `plan_type` / `subscription_type`; often omitted)
 
 ## Surfaces

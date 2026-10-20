@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cacheReadPercent, formatTokens, modelShare } from "./token-details";
+import { cacheReadPercent, formatTokens } from "./token-details";
 import { tokenTotal, modelSegments, formatTokenPercent } from "./format";
 
 describe("recorded token display", () => {
@@ -13,7 +13,6 @@ describe("recorded token display", () => {
   it("does not double-count cached input or reasoning output", () => {
     expect(tokenTotal(counts)).toBe(1200);
     expect(cacheReadPercent(counts)).toBe(75);
-    expect(modelShare(counts, { ...counts, input: 2000, output: 400 })).toBe(50);
   });
   it("distinguishes omitted, explicit zero and inconsistent values", () => {
     expect(formatTokens(null)).toBe("—");

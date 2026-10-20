@@ -45,7 +45,7 @@ export function mountProviders(root: HTMLElement, onResize: () => void = () => {
       }
       if (!entry.tokens && (snap.token_usage || snap.provider_id === "codex")) {
         const tokenRoot = document.createElement("div"); entry.element.append(tokenRoot);
-        entry.tokens = mountTokenDetails(tokenRoot, onResize, snap.provider_id);
+        entry.tokens = mountTokenDetails(tokenRoot, onResize);
       }
       entry.element.hidden = false;
       const { token_usage: _tokens, as_of: _asOf, ...quota } = snap;
