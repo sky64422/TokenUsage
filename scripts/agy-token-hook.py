@@ -92,6 +92,9 @@ def main():
             raise ValueError("oversized hook payload")
         collect(json.loads(raw))
     except (OSError, ValueError, KeyError, TypeError) as error:
+        if isinstance(error, ValueError) and str(error) == "completed invocation not present in transcript yet":
+            print("{}")
+            return 0
         # Never echo the payload, path, content, or a provider error message.
         reason = str(error) if type(error) is ValueError else type(error).__name__
         print("TokenUsage: model metadata capture failed (" + reason + ")", file=sys.stderr)
