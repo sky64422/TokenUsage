@@ -68,24 +68,19 @@ struct InFlight(WebviewWindow);
 impl Drop for InFlight {
     fn drop(&mut self) {
         let state = self.0.state::<LiquidBackdrop>();
-        let lease_to_restore = match state.0.lock() {
+        let pending = match state.0.lock() {
             Ok(mut guard) => {
                 guard.in_flight = guard.in_flight.saturating_sub(1);
-                if guard.in_flight == 0 {
-                    guard.release_pending = false;
-                    guard.lease.take()
-                } else {
-                    None
-                }
+                guard.release_pending && guard.in_flight == 0
             }
             Err(error) => {
                 eprintln!("Liquid completion: {error}");
-                None
+                false
             }
         };
-        if let Some(lease) = lease_to_restore {
-            if let Err(error) = set_affinity(lease.hwnd, lease.original) {
-                eprintln!("Liquid affinity restore: {error}");
+        if pending {
+            if let Err(error) = release_liquid_backdrop(self.0.clone()) {
+                eprintln!("Liquid deferred release: {error}");
             }
         }
     }
@@ -189,10 +184,9 @@ pub async fn capture_liquid_backdrop(
     }
     #[cfg(windows)]
     {
-        use windows::Win32::Foundation::HWND;
         use windows::Win32::Graphics::Dwm::DwmFlush;
         use windows::Win32::UI::WindowsAndMessaging::{
-            GetWindowDisplayAffinity, WDA_EXCLUDEFROMCAPTURE,
+            WDA_EXCLUDEFROMCAPTURE,
         };
         let hwnd = window.hwnd().map_err(|e| e.to_string())?;
         let pos = window.inner_position().map_err(|e| e.to_string())?;
@@ -200,16 +194,11 @@ pub async fn capture_liquid_backdrop(
         {
             let mut guard = backdrop.0.lock().map_err(|e| e.to_string())?;
             if guard.lease.is_none() {
-                let mut original = 0;
-                unsafe {
-                    GetWindowDisplayAffinity(HWND(hwnd.0), &mut original)
-                        .map_err(|e| e.to_string())?;
-                }
                 set_affinity(hwnd.0 as usize, WDA_EXCLUDEFROMCAPTURE.0)
                     .inspect_err(|e| state.core.note_diag(e.clone()))?;
                 guard.lease = Some(Lease {
                     hwnd: hwnd.0 as usize,
-                    original,
+                    original: 0,
                     renewed: Instant::now(),
                 });
                 if !guard.watching {

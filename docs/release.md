@@ -1,7 +1,7 @@
 # Release & in-app updates
 
 **Updated:** 2026-10-24
-**Current public tag:** v0.5.5
+**Current public tag:** v0.5.6
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,7 +12,8 @@
 
 | Tag | Highlights |
 |-----|------------|
-| **v0.5.5** | Liquid/Glass screenshot fix: per-frame RAII display affinity restoration, eliminate continuous pointermove hover loop, and fast settle-to-sleep |
+| **v0.5.6** | Fix drag capture conflict: release pointer capture on blur (ESC cancels Snipping Tool), prevent hall-of-mirrors blur during drag |
+| v0.5.5 | Liquid/Glass screenshot fix: per-frame RAII display affinity restoration, eliminate continuous pointermove hover loop, and fast settle-to-sleep |
 | v0.5.4 | Liquid/Glass screenshot fix: preserve desktop capture frame cache, eliminate continuous 30 FPS polling on settled state, restore Display Affinity to 0 during sleep, and wake immediately on interaction |
 | v0.5.3 | Liquid theme default; sparkline top floating tooltip; compact 'Tok' and '% Hit' units; slim minimal collapse chevron; square bar styling; 0ms liquid flicker fix and performance audit suite |
 | v0.5.2 | Token details: today/yesterday/month summary rows with cache share and 30-day daily trend bar chart; UI: restore live activity orbit rotation during Codex/AGY execution |

@@ -96,4 +96,17 @@ describe("notch drag lifecycle", () => {
     await f.drag.settled();
     expect(f.finished).toEqual([[id, true]]);
   });
+
+  it("cancels active drag and releases pointer capture on blur/cancel", async () => {
+    const f = fixture();
+    f.start();
+    const id = f.drag.sessionId!;
+    expect(f.captured.has(7)).toBe(true);
+    f.drag.cancel();
+    expect(f.captured.size).toBe(0);
+    expect(f.drag.sessionId).toBeNull();
+    expect(f.drag.dragging).toBe(false);
+    await f.drag.settled();
+    expect(f.finished).toEqual([[id, true]]);
+  });
 });
