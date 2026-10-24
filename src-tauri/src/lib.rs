@@ -88,6 +88,7 @@ pub fn run() {
             commands::finish_notch_drag,
             commands::yield_notch_focus,
             commands::set_notch_surface,
+            commands::set_notch_toast,
             commands::get_snapshots,
             commands::set_opacity,
             commands::set_theme,
@@ -105,6 +106,7 @@ pub fn run() {
             commands::quit_app,
             commands::get_diagnostics,
             commands::check_for_updates,
+            commands::get_pending_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running TokenUsage");

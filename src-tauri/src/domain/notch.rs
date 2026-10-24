@@ -13,6 +13,8 @@ pub const DETAIL_WIDTH: f64 = 260.;
 pub const DETAIL_HEIGHT: f64 = 560.;
 pub const MIN_DETAIL_HEIGHT: f64 = 48.;
 pub const GAP: f64 = 8.;
+pub const TOAST_WIDTH: f64 = 210.;
+pub const TOAST_HEIGHT: f64 = 72.;
 const CONTENT_REFERENCE_SHORT_SIDE: f64 = 1440.;
 pub const MIN_CONTENT_SCALE: f64 = 0.92;
 
@@ -175,6 +177,7 @@ pub struct NotchLayout {
     pub anchor_y: AnchorY,
     pub notch: Rect,
     pub detail: Option<Rect>,
+    pub toast: Option<Rect>,
     pub window: Rect,
     pub scale: f64,
     pub monitor: String,
@@ -240,6 +243,49 @@ impl NotchLayout {
                 return true;
             }
         }
+        if let Some(t) = self.toast {
+            if t.contains(x, y) {
+                let r = (DETAIL_RADIUS * self.scale)
+                    .min(t.width / 2.)
+                    .min(t.height / 2.);
+                let dx = x - x.clamp(t.x + r, t.x + t.width - r);
+                let dy = y - y.clamp(t.y + r, t.y + t.height - r);
+                if dx * dx + dy * dy <= r * r {
+                    return true;
+                }
+            }
+            let n = self.notch;
+            let gap = (GAP * self.scale).round();
+            let toast_bridge = if self.edge.vertical() {
+                Rect {
+                    x: n.x.min(t.x + t.width),
+                    y: n.y.max(t.y),
+                    width: gap,
+                    height: (n.y + n.height).min(t.y + t.height) - n.y.max(t.y),
+                }
+            } else {
+                Rect {
+                    x: n.x.max(t.x),
+                    y: n.y.min(t.y + t.height),
+                    width: (n.x + n.width).min(t.x + t.width) - n.x.max(t.x),
+                    height: gap,
+                }
+            };
+            let toast_bridge = match self.edge {
+                NotchEdge::Left => Rect {
+                    x: n.x + n.width,
+                    ..toast_bridge
+                },
+                NotchEdge::Top => Rect {
+                    y: n.y + n.height,
+                    ..toast_bridge
+                },
+                _ => toast_bridge,
+            };
+            if toast_bridge.contains(x, y) {
+                return true;
+            }
+        }
         if !self.notch.contains(x, y) {
             return false;
         }
@@ -288,6 +334,18 @@ pub fn calculate_layout_target(
     expanded: bool,
     detail_height: f64,
     target: Option<f64>,
+) -> Result<NotchLayout, String> {
+    calculate_layout_full(m, p, count, expanded, detail_height, target, false)
+}
+
+pub fn calculate_layout_full(
+    m: &MonitorArea,
+    p: &NotchPlacement,
+    count: usize,
+    expanded: bool,
+    detail_height: f64,
+    target: Option<f64>,
+    toast_active: bool,
 ) -> Result<NotchLayout, String> {
     p.validate()?;
     if !m.scale.is_finite() || m.scale <= 0. || count == 0 || count > super::types::ProviderId::all().len() {
@@ -419,6 +477,45 @@ pub fn calculate_layout_target(
     } else {
         None
     };
+    let toast = if toast_active {
+        let tw = ((TOAST_WIDTH * content_scale) * s)
+            .ceil()
+            .min(w.width - if edge.vertical() { depth + gap } else { 0. });
+        let th = ((TOAST_HEIGHT * content_scale) * s).ceil();
+        if tw <= 0. || th <= 0. {
+            None
+        } else {
+            let (tx, ty) = if edge.vertical() {
+                let x = match edge {
+                    NotchEdge::Right => notch.x - gap - tw,
+                    NotchEdge::Left => notch.x + depth + gap,
+                    _ => unreachable!(),
+                };
+                let center = notch.y + notch.height / 2.0;
+                let ideal = center - th / 2.0;
+                let y = ideal.clamp(w.y, (w.y + w.height - th).max(w.y));
+                (x, y)
+            } else {
+                let y = match edge {
+                    NotchEdge::Top => notch.y + depth + gap,
+                    NotchEdge::Bottom => notch.y - gap - th,
+                    _ => unreachable!(),
+                };
+                let center = notch.x + notch.width / 2.0;
+                let ideal = center - tw / 2.0;
+                let x = ideal.clamp(w.x, (w.x + w.width - tw).max(w.x));
+                (x, y)
+            };
+            Some(Rect {
+                x: tx.round(),
+                y: ty.round(),
+                width: tw,
+                height: th,
+            })
+        }
+    } else {
+        None
+    };
     // A stable transparent canvas prevents HWND moves racing the WebView's local
     // notch offset when a taller provider card extends above the rail.
     let window = surface_canvas(notch, w, edge, s, content_scale);
@@ -428,6 +525,7 @@ pub fn calculate_layout_target(
         anchor_y,
         notch,
         detail,
+        toast,
         window,
         scale: s,
         monitor: m.name.clone(),

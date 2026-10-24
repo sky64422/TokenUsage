@@ -33,6 +33,7 @@ struct Runtime {
     expanded: bool,
     height: f64,
     target: Option<f64>,
+    toast_active: bool,
     layout: Option<NotchLayout>,
     ignoring: bool,
     drag: Option<DragSession>,
@@ -77,6 +78,19 @@ impl Drop for Runtime {
     fn drop(&mut self) {
         self.stop_timer_period();
     }
+}
+
+pub fn set_toast(app: &AppHandle, active: bool) -> Result<NotchLayout, String> {
+    let controller = app.state::<NotchController>();
+    let mut rt = controller.0.lock().map_err(|_| "Notch lock poisoned")?;
+    rt.toast_active = active;
+    if active {
+        if let Some(shown) = rt.reveal.open() {
+            app.emit("notch-reveal", shown).map_err(|e| e.to_string())?;
+        }
+    }
+    drop(rt);
+    apply(app, None)
 }
 
 pub fn get_reveal(app: &AppHandle) -> Result<bool, String> {
@@ -174,7 +188,7 @@ pub fn apply(
     let monitor = crate::domain::notch::find_monitor(&areas, placement.monitor_hint.as_deref())
         .ok_or("No monitor available")?;
     let count = settings.enabled_provider_ids().len();
-    let layout = calculate_layout_target(
+    let layout = calculate_layout_full(
         monitor,
         placement,
         count,
@@ -183,6 +197,7 @@ pub fn apply(
             && state.core.is_visible(),
         rt.height,
         rt.target,
+        rt.toast_active && state.core.is_visible(),
     )?;
     let changed = rt.layout.as_ref() != Some(&layout);
     if changed {
@@ -328,7 +343,7 @@ pub fn start(app: AppHandle) {
                         .try_state::<AppHandleState>()
                         .map(|s| s.core.get_state().settings.always_show_notch)
                         .unwrap_or(false);
-                    let held = rt.expanded || rt.focused || rt.drag.is_some() || always_show;
+                    let held = rt.expanded || rt.focused || rt.drag.is_some() || rt.toast_active || always_show;
                     if let Some(shown) = rt.reveal.update(started.elapsed(), inside, held) {
                         app.emit("notch-reveal", shown).map_err(|e| e.to_string())?;
                     }

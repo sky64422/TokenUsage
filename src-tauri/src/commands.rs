@@ -56,6 +56,14 @@ pub fn yield_notch_focus(
 }
 
 #[tauri::command]
+pub fn set_notch_toast(
+    app: AppHandle,
+    active: bool,
+) -> Result<crate::domain::notch::NotchLayout, String> {
+    crate::infrastructure::notch_window::set_toast(&app, active)
+}
+
+#[tauri::command]
 pub fn set_notch_surface(
     app: AppHandle,
     revision: u64,
@@ -172,6 +180,11 @@ pub fn get_diagnostics(state: State<'_, AppHandleState>) -> DiagnosticsSnapshot 
 #[tauri::command]
 pub async fn check_for_updates(app: AppHandle) -> Result<bool, String> {
     crate::infrastructure::updater::check_and_install_update(&app).await
+}
+
+#[tauri::command]
+pub fn get_pending_update(app: AppHandle) -> Option<crate::infrastructure::updater::UpdateInfo> {
+    crate::infrastructure::updater::get_pending_update_info(&app)
 }
 
 pub fn show_from_handle(app: &AppHandle) {

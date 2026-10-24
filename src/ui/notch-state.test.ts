@@ -38,7 +38,16 @@ describe("notch interaction", () => {
     s = reduceNotchState(s, { type: "settings" });
     expect(reduceNotchState(s, { type: "leave" }).settings).toBe(true);
   });
-  it("cancels pending close on re-entry", () => {
+  it("switches cleanly between update and provider", () => {
+    let s = reduceNotchState(initialNotchState(), { type: "update" });
+    expect(s.update).toBe(true);
+    expect(s.provider).toBe(null);
+
+    s = reduceNotchState(s, { type: "hover", id: "claude" });
+    expect(s.update).toBe(false);
+    expect(s.provider).toBe("claude");
+  });
+    it("cancels pending close on re-entry", () => {
     vi.useFakeTimers();
     const closed = vi.fn();
     const delay = createCloseDelay(closed);

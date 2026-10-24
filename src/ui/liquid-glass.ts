@@ -16,6 +16,7 @@ const REDUCED_FRAME_MS = 250;
 const SETTLING_FRAME_MS = 100;
 const SETTLING_AFTER_MS = 150;
 const STATIC_AFTER_MS = 400;
+const STATIC_HEARTBEAT_MS = 1000;
 
 interface SurfaceLayer {
   surface: HTMLElement;
@@ -109,7 +110,7 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
       if (rail.classList.contains("is-dragging")) return DRAG_FRAME_MS;
       const unchangedFor = now - lastChangedAt;
       return unchangedFor >= STATIC_AFTER_MS
-        ? Infinity
+        ? STATIC_HEARTBEAT_MS
         : unchangedFor >= SETTLING_AFTER_MS
           ? SETTLING_FRAME_MS
           : IDLE_FRAME_MS;
@@ -147,9 +148,11 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
         shell.dataset.liquidStatus = "ready";
       }
       if (!rail.classList.contains("is-dragging")) {
-        void invoke("release_liquid_backdrop");
-        if (!painted && now - lastChangedAt >= SETTLING_AFTER_MS) {
-          lastChangedAt = 0;
+        if (!painted) {
+          void invoke("release_liquid_backdrop");
+          if (now - lastChangedAt >= SETTLING_AFTER_MS) {
+            lastChangedAt = 0;
+          }
         }
       }
     },
@@ -204,9 +207,17 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
     logCaptureEvent("FOCUS", "liquid window blur");
     lastChangedAt = 0;
     void invoke("release_liquid_backdrop");
+    setTimeout(() => {
+      if (enabled && nativeVisible && !document.hidden) {
+        lastChangedAt = performance.now();
+        loop.refresh();
+      }
+    }, 800);
   }, { signal: events.signal });
   window.addEventListener("focus", () => {
     logCaptureEvent("FOCUS", "liquid window focus");
+    lastChangedAt = performance.now();
+    loop.refresh();
   }, { signal: events.signal });
 
   function mapFor(entry: SurfaceLayer, width: number, height: number) {
@@ -292,14 +303,8 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
           entry.generation++;
         }
         const generation = entry.generation;
-        const surfaceX = typeof entry.surface.offsetLeft === "number" && entry.surface.offsetParent
-          ? entry.surface.offsetLeft
-          : rect.x;
-        const surfaceY = typeof entry.surface.offsetTop === "number" && entry.surface.offsetParent
-          ? entry.surface.offsetTop
-          : rect.y;
-        const x = Math.max(0, Math.round(surfaceX * ratio));
-        const y = Math.max(0, Math.round(surfaceY * ratio));
+        const x = Math.max(0, Math.round(rect.x * ratio));
+        const y = Math.max(0, Math.round(rect.y * ratio));
         const w = Math.min(Math.round(width * ratio), Math.round(innerWidth * ratio) - x);
         const h = Math.min(Math.round(height * ratio), Math.round(innerHeight * ratio) - y);
         if (w <= 0 || h <= 0) continue;
@@ -321,6 +326,14 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
   }
 
   return {
+    relayout() {
+      entries.forEach(entry => {
+        entry.key = "";
+        entry.generation++;
+      });
+      lastChangedAt = performance.now();
+      loop.refresh();
+    },
     setVisible(value: boolean) {
       nativeVisible = value;
       sync();

@@ -9,6 +9,7 @@ import { mountNotch, position } from "./notch";
 import { createNotchSurface } from "./notch-surface";
 import { mountNotchDrag } from "./notch-drag";
 import { mountLiquidGlass } from "./liquid-glass";
+import { mountUpdateCard } from "./update-card";
 import { logCaptureEvent } from "./capture-log";
 import type { DragNotice } from "./notch-drag";
 import {
@@ -25,11 +26,12 @@ import type {
   ProviderActivity,
   NotchLayout,
   DiagnosticsSnapshot,
+  UpdateInfo,
 } from "./types";
 
 const SURFACE_PADDING = 36; // 16px padding and 1px border on both sides + 2px headroom.
 export async function mountApp(root: HTMLElement): Promise<void> {
-  root.innerHTML = `<div class="notch-shell"><nav class="notch" aria-label="AI usage"></nav><section class="notch-detail" aria-label="Usage detail" hidden><div class="detail-body"><div class="detail-quota"><div class="quota-root"></div></div><div class="detail-settings" hidden><div class="settings-root"></div></div><p class="notch-error" role="status" hidden></p></div></section></div>`;
+  root.innerHTML = `<div class="notch-shell"><nav class="notch" aria-label="AI usage"></nav><section class="notch-detail" aria-label="Usage detail" hidden><div class="detail-body"><div class="detail-quota"><div class="quota-root"></div></div><div class="detail-settings" hidden><div class="settings-root"></div></div><div class="detail-update" hidden><div class="update-root"></div></div><p class="notch-error" role="status" hidden></p></div></section></div>`;
   const shell = root.querySelector<HTMLElement>(".notch-shell")!;
   const rail = root.querySelector<HTMLElement>(".notch")!;
   const detail = root.querySelector<HTMLElement>(".notch-detail")!;
@@ -80,7 +82,36 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     if (drag.sessionId === null)
       dispatch({ type: "leave" });
   });
-  const notch = mountNotch(rail, {
+  let latestUpdateInfo: UpdateInfo | null = null;
+  let dismissedVersion: string | null = null;
+  function onUpdateReady(info: UpdateInfo) {
+    latestUpdateInfo = info;
+    if (dismissedVersion !== null && dismissedVersion === info.version) {
+      return;
+    }
+    if (dismissedVersion !== null && dismissedVersion !== info.version) {
+      dismissedVersion = null;
+    }
+    updateCard.setUpdate(info);
+    notch.setUpdateReady(true, info.version);
+  }
+
+  const updateArea = root.querySelector<HTMLElement>(".detail-update")!;
+  const updateCard = mountUpdateCard(
+    root.querySelector<HTMLElement>(".update-root")!,
+    {
+      onConfirm: () => {
+        dispatch({ type: "reset" });
+      },
+      onDismiss: () => {
+        dismissedVersion = latestUpdateInfo?.version ?? null;
+        notch.setUpdateReady(false);
+        dispatch({ type: "reset" });
+      },
+    },
+  );
+  let notch!: ReturnType<typeof mountNotch>;
+  notch = mountNotch(rail, {
     hover: (id) => {
       if (drag.dragging || !persisted.settings.hover_detail) return;
       closeDelay.cancel();
@@ -93,6 +124,19 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         dispatch({ type: "pin", id });
       }
     },
+    hoverUpdate: () => {
+      if (drag.dragging || !persisted.settings.hover_detail) return;
+      closeDelay.cancel();
+      dispatch({ type: "update" });
+    },
+    clickUpdate: () => {
+      closeDelay.cancel();
+      if (interaction.update) {
+        dispatch({ type: "reset" });
+      } else {
+        dispatch({ type: "update" });
+      }
+    },
   });
   const providers = mountProviders(
     root.querySelector<HTMLElement>(".quota-root")!,
@@ -100,10 +144,13 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   );
   const liquidGlass = mountLiquidGlass(shell, rail, detail);
   unlisteners.push(await listen<boolean>("widget-visibility", ({payload}) => liquidGlass.setVisible(payload)));
+  let readyToCapture = false;
   function applyAppearanceClasses(st: AppSettings) {
     shell.dataset.theme = st.theme ?? "liquid";
 
-    liquidGlass.setEnabled(st.theme === "glass" || st.theme === "liquid");
+    if (readyToCapture) {
+      liquidGlass.setEnabled(st.theme === "glass" || st.theme === "liquid");
+    }
     const showAnim = st.show_orbit !== false || st.show_icon_glow !== false;
     rail.classList.toggle("hide-orbit", !showAnim);
     rail.classList.toggle("hide-icon-glow", !showAnim);
@@ -194,6 +241,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     const currentScale = next.metrics.content_scale ?? 1;
     shell.style.setProperty("--notch-scale", String(currentScale));
     if (next.detail) position(detail, next.detail, next);
+    if (readyToCapture) liquidGlass.relayout();
 
     const scaleChanged =
       (lastContentScale !== -1 && Math.abs(lastContentScale - currentScale) > 0.001) ||
@@ -205,13 +253,16 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     }
   }
   function requestSurface() {
-    const expanded = !drag.dragging && (interaction.settings || interaction.provider !== null);
+    const expanded = !drag.dragging && (interaction.settings || interaction.update || interaction.provider !== null);
     const scale = layout?.metrics.content_scale ?? 1;
     const height = interaction.settings
       ? settings.getContentHeight(scale)
       : Math.ceil(Math.max(body.offsetHeight, body.scrollHeight) + SURFACE_PADDING * scale);
     let target: number | null = null;
-    if (interaction.provider && !interaction.settings) {
+    if (interaction.update) {
+      const inset = layout?.metrics.inset ?? 44;
+      target = inset / 2;
+    } else if (interaction.provider && !interaction.settings) {
       const cell = root.querySelector<HTMLElement>(
         `.notch-cell[data-id="${interaction.provider}"]`,
       );
@@ -234,12 +285,13 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   }
 
   function render() {
-    notch.select(interaction.settings || drag.dragging ? null : interaction.provider, interaction.pinned);
-    detail.hidden = drag.dragging || (!interaction.settings && !interaction.provider);
+    notch.select(interaction.settings || drag.dragging || interaction.update ? null : interaction.provider, interaction.pinned);
+    detail.hidden = drag.dragging || (!interaction.settings && !interaction.provider && !interaction.update);
     settingsArea.hidden = !interaction.settings;
     detail.classList.toggle("is-settings", interaction.settings);
-    quota.hidden = interaction.settings;
-    if (interaction.provider && !interaction.settings) {
+    quota.hidden = interaction.settings || Boolean(interaction.update);
+    updateArea.hidden = !interaction.update;
+    if (interaction.provider && !interaction.settings && !interaction.update) {
       const snap = snaps.find((s) => s.provider_id === interaction.provider);
       const act = latestActivities.find((a) => a.provider_id === interaction.provider)?.state;
       const key = `${JSON.stringify(snap)}:${act}`;
@@ -298,12 +350,17 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     snaps = ev.payload;
     refreshView();
   }));
+  unlisteners.push(await listen<UpdateInfo>("update-ready", (ev) => {
+    onUpdateReady(ev.payload);
+  }));
   unlisteners.push(await win.onFocusChanged(({ payload }) => {
     logCaptureEvent("FOCUS", `onFocusChanged payload=${payload}`);
     if (!payload) {
       drag.cancel();
       (document.activeElement as HTMLElement | null)?.blur();
       closeDelay.schedule();
+    } else {
+      liquidGlass.relayout();
     }
   }));
   snaps = await invoke("get_snapshots");
@@ -312,6 +369,13 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   refreshView();
   await surface.settled();
   await win.show();
+  readyToCapture = true;
+  liquidGlass.setEnabled(persisted.settings.theme === "glass" || persisted.settings.theme === "liquid");
+  liquidGlass.relayout();
+  const pendingUpdate = await invoke<UpdateInfo | null>("get_pending_update").catch(() => null);
+  if (pendingUpdate) {
+    onUpdateReady(pendingUpdate);
+  }
   const observer = new ResizeObserver(() => {
     if (!detail.hidden && !interaction.settings) requestSurface();
   });
@@ -322,6 +386,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     events.abort();
     surface.destroy();
     drag.destroy();
+    updateCard.destroy();
     liquidGlass.destroy();
     settings.destroy();
     for (const unlisten of unlisteners) unlisten();

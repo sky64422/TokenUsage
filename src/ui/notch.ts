@@ -9,6 +9,8 @@ export function mountNotch(
   callbacks: {
     hover: (id: ProviderId) => void;
     pin: (id: ProviderId) => void;
+    hoverUpdate?: () => void;
+    clickUpdate?: () => void;
   },
 ) {
   root.setAttribute("aria-label", "AI usage. Drag to move; right-click for settings.");
@@ -37,6 +39,11 @@ export function mountNotch(
             <stop offset=".78" stop-color="#f5fbff" stop-opacity=".68"/>
             <stop offset="1" stop-color="#ffffff" stop-opacity=".5"/>
           </linearGradient>
+          <linearGradient id="notch-star-gold" x1="0" y1="0" x2="1" y2="1">
+            <stop stop-color="#fff2a8"/>
+            <stop offset=".4" stop-color="#ffd043"/>
+            <stop offset="1" stop-color="#fa8c16"/>
+          </linearGradient>
         </defs>
         <use class="notch-liquid-volume" href="#notch-outline"/>
         <use class="notch-glass-rim" href="#notch-outline"/>
@@ -44,8 +51,33 @@ export function mountNotch(
       </svg>
       <div class="notch-finish" aria-hidden="true"></div>
       <div class="notch-cells"></div>
+      <button type="button" class="notch-update-star" hidden aria-label="새 버전 업데이트">
+        <svg class="notch-star-svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <defs>
+            <linearGradient id="notch-star-gold-twin" x1="0" y1="0" x2="1" y2="1">
+              <stop stop-color="#fff4c2"/>
+              <stop offset=".45" stop-color="#ffd043"/>
+              <stop offset="1" stop-color="#fa8c16"/>
+            </linearGradient>
+          </defs>
+          <!-- Main star -->
+          <path d="M 9 4.5 C 9 9.1, 10.9 11, 15.5 11 C 10.9 11, 9 12.9, 9 17.5 C 9 12.9, 7.1 11, 2.5 11 C 7.1 11, 9 9.1, 9 4.5 Z" fill="url(#notch-star-gold-twin)"/>
+          <circle cx="9" cy="11" r="1.3" fill="#ffffff" opacity="0.95"/>
+          <!-- Companion smaller star -->
+          <path d="M 18.5 1 C 18.5 3.5, 19.5 4.5, 22 4.5 C 19.5 4.5, 18.5 5.5, 18.5 8 C 18.5 5.5, 17.5 4.5, 15 4.5 C 17.5 4.5, 18.5 3.5, 18.5 1 Z" fill="url(#notch-star-gold-twin)"/>
+          <circle cx="18.5" cy="4.5" r="0.8" fill="#ffffff" opacity="0.9"/>
+        </svg>
+      </button>
     </div>`;
   const cells = root.querySelector<HTMLElement>(".notch-cells")!;
+  const updateStar = root.querySelector<HTMLButtonElement>(".notch-update-star")!;
+  updateStar.addEventListener("click", (e) => {
+    e.stopPropagation();
+    callbacks.clickUpdate?.();
+  });
+  updateStar.addEventListener("pointerenter", () => {
+    callbacks.hoverUpdate?.();
+  });
   const buttons = new Map<ProviderId, HTMLButtonElement>();
   for (const id of PROVIDER_IDS) {
     const b = document.createElement("button");
@@ -158,6 +190,13 @@ export function mountNotch(
       for (const [key, b] of buttons) {
         b.dataset.detailOpen = String(key === id);
         b.setAttribute("aria-pressed", String(pinned && key === id));
+      }
+    },
+    setUpdateReady(ready: boolean, version?: string) {
+      updateStar.hidden = !ready;
+      if (ready && version) {
+        updateStar.setAttribute("aria-label", `v${version} 업데이트`);
+        updateStar.removeAttribute("title");
       }
     },
   };

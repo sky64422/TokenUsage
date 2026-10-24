@@ -182,7 +182,7 @@ pub async fn capture_liquid_backdrop(
     height: u32,
     surface: Option<u8>,
     generation: Option<u64>,
-    dragging: Option<bool>,
+    _dragging: Option<bool>,
 ) -> Result<tauri::ipc::Response, String> {
     if !state.core.is_visible()
         || !matches!(
@@ -250,9 +250,6 @@ pub async fn capture_liquid_backdrop(
             &format!("frame captured in {:?} (bytes={})", capture_start.elapsed(), bytes.len()),
         );
         drop(_flight);
-        if !dragging.unwrap_or(false) {
-            let _ = release_liquid_backdrop(window.clone());
-        }
         Ok(tauri::ipc::Response::new(bytes))
     }
     #[cfg(not(windows))]

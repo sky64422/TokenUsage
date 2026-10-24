@@ -111,6 +111,7 @@ export interface NotchLayout {
   anchor_y: AnchorY;
   notch: Rect;
   detail: Rect | null;
+  toast?: Rect | null;
   window: Rect;
   scale: number;
   monitor: string;
@@ -134,4 +135,9 @@ export interface ProviderActivity {
   provider_id: ProviderId;
   state: "unknown" | "idle" | "running" | "recent";
   observed_at: string | null;
+}
+
+export interface UpdateInfo {
+  current_version: string;
+  version: string;
 }

@@ -8,7 +8,8 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
-const UPDATE_CHECK_DELAY: Duration = Duration::from_secs(30);
+const UPDATE_CHECK_DELAY: Duration = Duration::from_millis(500);
+const PERIODIC_CHECK_INTERVAL: Duration = Duration::from_secs(6 * 3600);
 
 /// Payload for frontend badge / tooltip.
 #[derive(Debug, Clone, Serialize)]
@@ -61,6 +62,12 @@ impl PendingUpdateState {
     }
 }
 
+pub fn get_pending_update_info(app: &AppHandle) -> Option<UpdateInfo> {
+    let pending = app.try_state::<PendingUpdateState>()?;
+    let guard = pending.ready.lock().ok()?;
+    guard.as_ref().map(|pkg| pkg.info.clone())
+}
+
 /// Release builds only: check, notify UI, download in background, then mark ready.
 pub fn spawn_update_check(app: AppHandle) {
     if cfg!(debug_assertions) {
@@ -69,9 +76,12 @@ pub fn spawn_update_check(app: AppHandle) {
 
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(UPDATE_CHECK_DELAY).await;
-        if let Err(err) = prepare_update(&app).await {
-            note(&app, format!("updater prepare failed: {err}"));
-            let _ = app.emit("update-failed", err);
+        loop {
+            if let Err(err) = prepare_update(&app).await {
+                note(&app, format!("updater prepare failed: {err}"));
+                let _ = app.emit("update-failed", err);
+            }
+            tokio::time::sleep(PERIODIC_CHECK_INTERVAL).await;
         }
     });
 }

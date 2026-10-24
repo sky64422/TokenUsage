@@ -6,15 +6,18 @@ export interface NotchState {
   provider: ProviderId | null;
   pinned: boolean;
   settings: boolean;
+  update?: boolean;
 }
 export type NotchEvent =
   | { type: "providers"; ids: ProviderId[] }
   | { type: "hover" | "pin"; id: ProviderId }
+  | { type: "update" }
   | { type: "leave" | "escape" | "settings" | "reset" };
 export const initialNotchState = (): NotchState => ({
   provider: null,
   pinned: false,
   settings: false,
+  update: false,
 });
 export function reduceNotchState(s: NotchState, e: NotchEvent): NotchState {
   switch (e.type) {
@@ -23,16 +26,19 @@ export function reduceNotchState(s: NotchState, e: NotchEvent): NotchState {
         ? { ...s, provider: null, pinned: false }
         : s;
     case "hover":
-      return s.pinned || s.settings ? s : { ...s, provider: e.id };
+      return s.pinned || s.settings ? s : { ...s, provider: e.id, update: false };
     case "pin":
       return {
         ...s,
         settings: false,
+        update: false,
         provider: e.id,
         pinned: !(s.pinned && s.provider === e.id),
       };
     case "settings":
-      return { ...s, settings: !s.settings };
+      return { ...s, settings: !s.settings, update: false };
+    case "update":
+      return s.pinned || s.settings ? s : { ...s, update: true, provider: null };
     case "escape":
       return s.settings ? { ...s, settings: false } : initialNotchState();
     case "leave":
