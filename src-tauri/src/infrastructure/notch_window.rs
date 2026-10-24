@@ -530,6 +530,14 @@ fn pump_drag(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+pub fn is_companion_widget_title(title: &str) -> bool {
+    let lower = title.to_lowercase();
+    lower.contains("token usage")
+        || lower.contains("tokenusage")
+        || lower.contains("economy war room")
+        || lower.contains("economywarroom")
+}
+
 #[cfg(windows)]
 pub fn yield_focus(window: &WebviewWindow, forward_escape: bool) -> Result<(), String> {
     use windows::core::BOOL;
@@ -579,12 +587,7 @@ pub fn yield_focus(window: &WebviewWindow, forward_escape: bool) -> Result<(), S
                 let mut title_buf = [0u16; 128];
                 let len = GetWindowTextW(h, &mut title_buf);
                 let title = String::from_utf16_lossy(&title_buf[..len as usize]);
-                let title_lower = title.to_lowercase();
-                if title_lower.contains("token usage")
-                    || title_lower.contains("tokenusage")
-                    || title_lower.contains("economy war room")
-                    || title_lower.contains("economywarroom")
-                {
+                if is_companion_widget_title(&title) {
                     return BOOL(1);
                 }
                 search.target = Some(h);
@@ -607,12 +610,7 @@ pub fn yield_focus(window: &WebviewWindow, forward_escape: bool) -> Result<(), S
                 let mut title_buf = [0u16; 128];
                 let len = GetWindowTextW(fg, &mut title_buf);
                 let title = String::from_utf16_lossy(&title_buf[..len as usize]);
-                let title_lower = title.to_lowercase();
-                if title_lower.contains("token usage")
-                    || title_lower.contains("tokenusage")
-                    || title_lower.contains("economy war room")
-                    || title_lower.contains("economywarroom")
-                {
+                if is_companion_widget_title(&title) {
                     None
                 } else {
                     Some(fg)
@@ -737,5 +735,23 @@ mod tests {
         after.window.x += 20.;
         after.window.y += 30.;
         assert!(!frontend_layout_changed(&before, &after));
+    }
+
+    #[test]
+    fn test_companion_widget_title_filtering() {
+        assert!(is_companion_widget_title("Token Usage"));
+        assert!(is_companion_widget_title("TokenUsage - Floating Notch"));
+        assert!(is_companion_widget_title("token usage"));
+        assert!(is_companion_widget_title("Economy War Room"));
+        assert!(is_companion_widget_title("EconomyWarRoom"));
+        assert!(is_companion_widget_title("economy war room"));
+
+        // Normal apps / capture tools must NOT be identified as companion widgets
+        assert!(!is_companion_widget_title("Snipping Tool"));
+        assert!(!is_companion_widget_title("ShareX"));
+        assert!(!is_companion_widget_title("Visual Studio Code"));
+        assert!(!is_companion_widget_title("Google Chrome"));
+        assert!(!is_companion_widget_title("Slack"));
+        assert!(!is_companion_widget_title(""));
     }
 }
