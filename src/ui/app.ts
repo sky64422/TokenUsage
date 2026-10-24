@@ -9,6 +9,7 @@ import { mountNotch, position } from "./notch";
 import { createNotchSurface } from "./notch-surface";
 import { mountNotchDrag } from "./notch-drag";
 import { mountLiquidGlass } from "./liquid-glass";
+import { logCaptureEvent } from "./capture-log";
 import type { DragNotice } from "./notch-drag";
 import {
   createCloseDelay,
@@ -298,7 +299,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     refreshView();
   }));
   unlisteners.push(await win.onFocusChanged(({ payload }) => {
-    if (!payload && drag.sessionId === null) {
+    logCaptureEvent("FOCUS", `onFocusChanged payload=${payload}`);
+    if (!payload) {
+      drag.cancel();
       (document.activeElement as HTMLElement | null)?.blur();
       closeDelay.schedule();
     }
