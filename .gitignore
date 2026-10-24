@@ -8,3 +8,5 @@ tmp/
 .superpowers/
 .tmp-ui*.png
 __pycache__/
+
+.opencode/

@@ -93,6 +93,7 @@ pub fn run() {
             infrastructure::liquid_glass::begin_liquid_backdrop,
             infrastructure::liquid_glass::sync_liquid_backdrop,
             infrastructure::liquid_glass::release_liquid_backdrop,
+            infrastructure::liquid_glass::destroy_liquid_backdrop,
             infrastructure::liquid_glass::capture_liquid_backdrop,
             commands::set_autostart,
             commands::set_hover_detail,

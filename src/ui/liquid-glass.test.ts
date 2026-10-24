@@ -277,4 +277,15 @@ describe("Liquid desktop capture lifecycle", () => {
 
     renderer.destroy();
   });
+
+  it("releases liquid backdrop when window blurs to allow screen capture", async () => {
+    const { renderer } = fixture();
+    renderer.setEnabled(true);
+    invoke.mockClear();
+
+    window.dispatchEvent(new Event("blur"));
+    expect(invoke).toHaveBeenCalledWith("release_liquid_backdrop");
+
+    renderer.destroy();
+  });
 });

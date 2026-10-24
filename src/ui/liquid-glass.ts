@@ -15,7 +15,6 @@ const REDUCED_FRAME_MS = 250;
 const SETTLING_FRAME_MS = 100;
 const SETTLING_AFTER_MS = 500;
 const STATIC_AFTER_MS = 2000;
-const STATIC_FRAME_MS = 2000;
 
 interface SurfaceLayer {
   surface: HTMLElement;
@@ -109,7 +108,7 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
       if (rail.classList.contains("is-dragging")) return DRAG_FRAME_MS;
       const unchangedFor = now - lastChangedAt;
       return unchangedFor >= STATIC_AFTER_MS
-        ? STATIC_FRAME_MS
+        ? Infinity
         : unchangedFor >= SETTLING_AFTER_MS
           ? SETTLING_FRAME_MS
           : IDLE_FRAME_MS;
@@ -189,6 +188,8 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
   observer.observe(detail, { attributes: true, attributeFilter: ["hidden"] });
   window.addEventListener("pointerdown", () => { lastChangedAt = performance.now(); loop.refresh(); }, { signal: events.signal });
   rail.addEventListener("pointerenter", () => { lastChangedAt = performance.now(); loop.refresh(); }, { signal: events.signal });
+  rail.addEventListener("pointermove", () => { lastChangedAt = performance.now(); loop.refresh(); }, { signal: events.signal });
+  window.addEventListener("blur", () => { void invoke("release_liquid_backdrop"); }, { signal: events.signal });
 
   function mapFor(entry: SurfaceLayer, width: number, height: number) {
     entry.canvas.style.filter = entry.effect;
@@ -329,6 +330,7 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
       clear(true);
       entries.forEach(entry => entry.layer.remove());
       defs.remove();
+      void invoke("destroy_liquid_backdrop");
     },
   };
 }

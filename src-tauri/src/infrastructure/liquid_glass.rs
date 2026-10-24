@@ -49,6 +49,14 @@ pub fn release_liquid_backdrop(window: WebviewWindow) -> Result<(), String> {
             guard.lease = None;
         }
         guard.release_pending = false;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn destroy_liquid_backdrop(window: WebviewWindow) -> Result<(), String> {
+    release_liquid_backdrop(window.clone())?;
+    if let Some(state) = window.try_state::<LiquidBackdrop>() {
         state.1.reset()?;
     }
     Ok(())
@@ -126,9 +134,6 @@ fn watch_lease(window: WebviewWindow) {
                 }
             }
             guard.lease = None;
-        }
-        if let Err(error) = state.1.reset() {
-            eprintln!("Liquid reset: {error}");
         }
         guard.watching = false;
         break;
