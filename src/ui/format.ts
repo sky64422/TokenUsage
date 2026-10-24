@@ -158,14 +158,19 @@ export function formatModelLabel(model: string): string {
   let s = model.trim();
   if (!s) return MODEL_MISSING;
 
+  // Reasoning effort suffixes (low, medium, high, xhigh, max) are execution settings, not distinct models.
+  s = s.replace(/-(?:low|medium|high|xhigh|max)$/i, "");
+
   if (/^claude-/i.test(s)) {
     s = s.replace(/^claude-/i, "").replace(/-(?:latest|preview|\d{8})$/i, "");
     s = s.replace(/^(\d+)-(\d+)-(sonnet|haiku|opus)/i, (_, v1, v2, family) => `${v1}.${v2} ${titleWord(family)}`);
     s = s.replace(/^(\d+)-(sonnet|haiku|opus)/i, (_, v1, family) => `${v1} ${titleWord(family)}`);
+    s = s.replace(/^(sonnet|haiku|opus)-(\d+)-(\d+)/i, (_, family, v1, v2) => `${v1}.${v2} ${titleWord(family)}`);
+    s = s.replace(/^(sonnet|haiku|opus)-(\d+)/i, (_, family, v1) => `${v1} ${titleWord(family)}`);
   } else if (/^gemini-/i.test(s)) {
     s = s.replace(/^gemini-/i, "").replace(/-(?:latest|preview|exp(?:erimental)?|\d{8})$/i, "");
     s = s.replace(
-      /^(\d+(?:\.\d+)?)-(pro|flash|ultra)(?:-(thinking|high|low|medium|lite|8b))?/i,
+      /^(\d+(?:\.\d+)?)-(pro|flash|ultra|argon)(?:-(thinking|lite|8b))?/i,
       (_, ver, tier, variant) => {
         const parts = [ver, titleWord(tier)];
         if (variant) parts.push(titleWord(variant));
@@ -191,15 +196,35 @@ export function tokenTotal(c: TokenCounts): number | null {
 }
 export function modelSegments(data: TokenPeriod): { model: string; label: string; share: number; color: string; lightness: number }[] {
   const total = tokenTotal(data.totals);
-  const models = data.models.map(row => ({ model: row.model || MODEL_MISSING, total: tokenTotal(row.counts) }));
-  if (total === null || total <= 0 || models.some(row => row.total === null)
-    || models.reduce((sum, row) => sum + (row.total ?? 0), 0) !== total) return [];
-  models.sort((a, b) => b.total! - a.total! || a.model.localeCompare(b.model));
+  if (total === null || total <= 0) return [];
+
+  // Group by formatted model label so reasoning effort variants (high/medium/low) merge into their parent model.
+  const grouped = new Map<string, { model: string; label: string; total: number }>();
+  for (const row of data.models) {
+    const rowTotal = tokenTotal(row.counts);
+    if (rowTotal === null) return [];
+    const model = row.model || MODEL_MISSING;
+    const label = formatModelLabel(model);
+    const existing = grouped.get(label);
+    if (existing) {
+      existing.total += rowTotal;
+    } else {
+      grouped.set(label, { model, label, total: rowTotal });
+    }
+  }
+
+  const models = [...grouped.values()];
+  if (models.reduce((sum, row) => sum + row.total, 0) !== total) return [];
+  models.sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
   const maximum = models[0]?.total ?? 0;
   return models.map(row => {
-    const lightness = DARKEST_MODEL + (1 - row.total! / maximum) * MODEL_LIGHTNESS_RANGE;
-    const label = formatModelLabel(row.model);
-    return { model: row.model, label,
-      share: row.total! / total * 100, lightness, color: `color-mix(in srgb, var(--model-base-color) ${100 - (lightness - DARKEST_MODEL) / MODEL_LIGHTNESS_RANGE * 60}%, white)` };
+    const lightness = DARKEST_MODEL + (1 - row.total / maximum) * MODEL_LIGHTNESS_RANGE;
+    return {
+      model: row.model,
+      label: row.label,
+      share: (row.total / total) * 100,
+      lightness,
+      color: `color-mix(in srgb, var(--model-base-color) ${100 - ((lightness - DARKEST_MODEL) / MODEL_LIGHTNESS_RANGE) * 60}%, white)`,
+    };
   });
 }

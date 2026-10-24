@@ -285,7 +285,8 @@ describe("provider card DOM rendering and model legends", () => {
     const quotaHtml = entry.children[0].innerHTML;
 
     expect(quotaHtml).toContain("token-model-legend");
-    expect(quotaHtml).toContain("3.8 Flash High");
+    expect(quotaHtml).toContain("3.8 Flash");
+    expect(quotaHtml).not.toContain("3.8 Flash High");
     expect(quotaHtml).not.toContain("3.8 Flash-H…");
   });
 
@@ -304,5 +305,40 @@ describe("provider card DOM rendering and model legends", () => {
     const quotaHtml = entry.children[0].innerHTML;
 
     expect(quotaHtml).not.toContain("token-model-legend");
+  });
+
+  it("renders multi-group AGY snapshot including Gemini, Claude, and Argon groups", () => {
+    const onResize = vi.fn();
+    const root = new MockElement("div");
+    const mounted = mountProviders(root as unknown as HTMLElement, onResize);
+
+    const gemini5h = quota({ kind: "rolling5h", label: "5h", used_percent: 30, group: "Gemini" });
+    const geminiWeek = quota({ kind: "weekly", label: "Week", used_percent: 25, group: "Gemini" });
+    const claude5h = quota({ kind: "rolling5h", label: "5h", used_percent: 0, group: "Claude" });
+    const claudeWeek = quota({ kind: "weekly", label: "Week", used_percent: 0, group: "Claude" });
+    const argonWeek = quota({ kind: "weekly", label: "Week", used_percent: 100, group: "Argon" });
+
+    const snap: ProviderSnapshot = {
+      provider_id: "agy",
+      display_name: "Antigravity",
+      windows: [gemini5h, geminiWeek, claude5h, claudeWeek, argonWeek],
+      status: "ok",
+      source: "vendor",
+      as_of: reset,
+      message: null,
+      primary_resets_at: reset,
+      primary_used_percent: 30,
+    };
+
+    mounted.setSnapshots([snap]);
+
+    const list = root.querySelector<MockElement>(".provider-list")!;
+    const entry = list.children[0];
+    const quotaHtml = entry.children[0].innerHTML;
+
+    expect(quotaHtml).toContain("Gemini");
+    expect(quotaHtml).toContain("Claude");
+    expect(quotaHtml).toContain("Argon");
+    expect(quotaHtml).toContain("Antigravity");
   });
 });

@@ -12,6 +12,7 @@
 
 | Tag | Highlights |
 |-----|------------|
+| **v0.5.13** | Antigravity: support dedicated Argon model quota window, separate token ledger attribution, and clean model labels without reasoning effort suffixes |
 | **v0.5.6** | Fix drag capture conflict: release pointer capture on blur (ESC cancels Snipping Tool), prevent hall-of-mirrors blur during drag |
 | v0.5.5 | Liquid/Glass screenshot fix: per-frame RAII display affinity restoration, eliminate continuous pointermove hover loop, and fast settle-to-sleep |
 | v0.5.4 | Liquid/Glass screenshot fix: preserve desktop capture frame cache, eliminate continuous 30 FPS polling on settled state, restore Display Affinity to 0 during sleep, and wake immediately on interaction |

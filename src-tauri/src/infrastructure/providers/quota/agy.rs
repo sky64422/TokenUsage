@@ -157,11 +157,11 @@ fn parse_reset_time(raw: &str) -> Result<chrono::DateTime<Utc>, String> {
 
 fn parse_quota(text: &str) -> Result<Vec<UsageWindow>, String> {
     let clean = agy_cli::sanitize_terminal_output(text);
-    if !clean.contains("Limit Remaining") && !clean.lines().any(|line| line.trim() == "Quota:") {
+    if !clean.contains("Limit") && !clean.lines().any(|line| line.trim() == "Quota:") {
         return Err("No Antigravity quota report; check agy sign-in".into());
     }
     let mut windows = Vec::new();
-    for line in clean.lines().filter(|line| line.contains("Limit Remaining")) {
+    for line in clean.lines().filter(|line| line.contains("Limit") && line.contains('%')) {
         let (left, reset) = line.rsplit_once('%').ok_or("Invalid Antigravity quota row")?;
         let (label, value) = left.trim().rsplit_once(char::is_whitespace).ok_or("Missing Antigravity percentage")?;
         let remaining: f64 = value.parse().map_err(|_| "Invalid Antigravity percentage")?;
@@ -170,29 +170,60 @@ fn parse_quota(text: &str) -> Result<Vec<UsageWindow>, String> {
         }
         let reset = parse_reset_time(reset)?;
         let label = label.split_whitespace().collect::<Vec<_>>().join(" ");
-        let (family, kind, period) = if let Some(family) = label.strip_suffix(" Five Hour Limit Remaining") {
+        let (family, kind, period) = if let Some(family) = label
+            .strip_suffix(" Five Hour Limit Remaining")
+            .or_else(|| label.strip_suffix(" Five Hour Limit"))
+        {
             (family, WindowKind::Rolling5h, "5h")
-        } else if let Some(family) = label.strip_suffix(" Weekly Limit Remaining") {
+        } else if let Some(family) = label
+            .strip_suffix(" Weekly Limit Remaining")
+            .or_else(|| label.strip_suffix(" Weekly Limit"))
+        {
             (family, WindowKind::Weekly, "Week")
-        } else { return Err("Unrecognized Antigravity quota period".into()); };
-        let group = family.replace(" Models", "").replace(" models", "").replace(" and ", "/");
-        let group = if group == "Claude/GPT" || group == "Claude and GPT" {
-            "Claude".to_string()
         } else {
-            group
+            return Err("Unrecognized Antigravity quota period".into());
+        };
+        let group = if family.to_ascii_lowercase().contains("argon") {
+            "Argon".to_string()
+        } else {
+            let group = family.replace(" Models", "").replace(" models", "").replace(" and ", "/");
+            if group == "Claude/GPT" || group == "Claude and GPT" {
+                "Claude".to_string()
+            } else {
+                group
+            }
         };
         let used = 100. - remaining;
         let window = UsageWindow {
-            group: Some(group), kind, used, limit: Some(100.), unit: UsageUnit::Percent,
-            resets_at: Some(reset.to_rfc3339()), used_percent: Some(used), label: Some(period.into()),
+            group: Some(group),
+            kind,
+            used,
+            limit: Some(100.),
+            unit: UsageUnit::Percent,
+            resets_at: Some(reset.to_rfc3339()),
+            used_percent: Some(used),
+            label: Some(period.into()),
         };
         // Terminal redraws may repeat a row; the last complete observation wins.
         if let Some(previous) = windows.iter_mut().find(|w: &&mut UsageWindow| w.group == window.group && w.kind == window.kind) {
             *previous = window;
-        } else { windows.push(window); }
+        } else {
+            windows.push(window);
+        }
     }
-    if windows.is_empty() { return Err("Antigravity returned no recognized quota windows".into()); }
-    windows.sort_by_key(|w| (if w.group.as_deref() == Some("Gemini") { 0 } else { 1 }, w.group.clone(), if w.kind == WindowKind::Rolling5h { 0 } else { 1 }));
+    if windows.is_empty() {
+        return Err("Antigravity returned no recognized quota windows".into());
+    }
+    windows.sort_by_key(|w| (
+        match w.group.as_deref() {
+            Some("Gemini") => 0,
+            Some("Claude") => 1,
+            Some("Argon") => 2,
+            _ => 3,
+        },
+        w.group.clone(),
+        if w.kind == WindowKind::Rolling5h { 0 } else { 1 },
+    ));
     Ok(windows)
 }
 
@@ -285,5 +316,47 @@ Claude and GPT models\tFive Hour Limit Remaining\t100%\t2026-10-03T06:25:35Z\n";
         assert_eq!(windows[0].group.as_deref(), Some("Gemini"));
         assert_eq!(windows[0].kind, WindowKind::Rolling5h);
         assert_eq!(windows[0].used_percent, Some(80.));
+    }
+
+    #[test]
+    fn parses_quota_with_argon_weekly_limit() {
+        const REPORT_WITH_ARGON: &str = "\
+Quota:\n\
+Gemini Models          Weekly Limit Remaining       71%   2026-10-31 10:52 KST\n\
+Gemini Models          Five Hour Limit Remaining    65%   2026-10-24 21:44 KST\n\
+Claude and GPT models  Weekly Limit Remaining       100%  2026-10-31 19:30 KST\n\
+Claude and GPT models  Five Hour Limit Remaining    100%  2026-10-25 00:30 KST\n\
+Gemini 4 Argon         Gemini 4 Argon Weekly Limit  0%    2026-10-30 20:59 KST\n";
+
+        let windows = parse_quota(REPORT_WITH_ARGON).expect("parse report with argon");
+        assert_eq!(windows.len(), 5);
+        assert_eq!(windows[0].group.as_deref(), Some("Gemini"));
+        assert_eq!(windows[0].kind, WindowKind::Rolling5h);
+        assert_eq!(windows[1].group.as_deref(), Some("Gemini"));
+        assert_eq!(windows[1].kind, WindowKind::Weekly);
+        assert_eq!(windows[2].group.as_deref(), Some("Claude"));
+        assert_eq!(windows[2].kind, WindowKind::Rolling5h);
+        assert_eq!(windows[3].group.as_deref(), Some("Claude"));
+        assert_eq!(windows[3].kind, WindowKind::Weekly);
+        assert_eq!(windows[4].group.as_deref(), Some("Argon"));
+        assert_eq!(windows[4].kind, WindowKind::Weekly);
+        assert_eq!(windows[4].used_percent, Some(100.));
+        assert_eq!(windows[4].label.as_deref(), Some("Week"));
+    }
+
+    #[test]
+    fn parses_pipe_output_with_argon() {
+        const PIPE_ARGON: &str = "\
+Gemini Models\tWeekly Limit Remaining\t72%\t2026-10-31T01:52:20Z\n\
+Gemini Models\tFive Hour Limit Remaining\t67%\t2026-10-24T12:44:29Z\n\
+Claude and GPT models\tWeekly Limit Remaining\t100%\t2026-10-31T10:24:50Z\n\
+Claude and GPT models\tFive Hour Limit Remaining\t100%\t2026-10-24T15:24:50Z\n\
+Gemini 4 Argon\tGemini 4 Argon Weekly Limit\t0%\t2026-10-30T11:59:19Z\n";
+
+        let windows = parse_quota(PIPE_ARGON).expect("parse pipe argon report");
+        assert_eq!(windows.len(), 5);
+        assert_eq!(windows[4].group.as_deref(), Some("Argon"));
+        assert_eq!(windows[4].kind, WindowKind::Weekly);
+        assert_eq!(windows[4].used_percent, Some(100.));
     }
 }

@@ -9,6 +9,7 @@ import {
   levelClass,
   formatProviderStatus,
   formatModelLabel,
+  modelSegments,
 } from "./format";
 
 describe("provider status summaries", () => {
@@ -136,13 +137,33 @@ describe("formatModelLabel", () => {
     expect(formatModelLabel("claude-3-opus-20240229")).toBe("3 Opus");
     expect(formatModelLabel("gemini-1.5-pro")).toBe("1.5 Pro");
     expect(formatModelLabel("gemini-2.0-flash")).toBe("2.0 Flash");
-    expect(formatModelLabel("gemini-3.8-flash-high")).toBe("3.8 Flash High");
-    expect(formatModelLabel("gemini-3.8-flash-low")).toBe("3.8 Flash Low");
+    expect(formatModelLabel("gemini-3.8-flash-high")).toBe("3.8 Flash");
+    expect(formatModelLabel("gemini-3.8-flash-low")).toBe("3.8 Flash");
+    expect(formatModelLabel("gemini-4-argon-high")).toBe("4 Argon");
+    expect(formatModelLabel("gemini-4-argon-low")).toBe("4 Argon");
+    expect(formatModelLabel("claude-opus-5-5-high")).toBe("5.5 Opus");
+    expect(formatModelLabel("claude-sonnet-5-5-low")).toBe("5.5 Sonnet");
     expect(formatModelLabel("gemini-2.0-flash-thinking-exp")).toBe("2.0 Flash Thinking");
     expect(formatModelLabel("gemini-1.5-flash-8b")).toBe("1.5 Flash 8B");
     expect(formatModelLabel("gemini-2.0-flash-lite")).toBe("2.0 Flash Lite");
     expect(formatModelLabel("gpt-4o-mini")).toBe("4o Mini");
     expect(formatModelLabel("super-extra-long-unknown-model-exceeding-limit")).toBe("super extra long unknow…");
+  });
+
+  it("merges reasoning effort variants (high/medium/low) of the same model into a single segment", () => {
+    const countsHigh = { input: 600, output: 200, cache_read: null, cache_write: null, reasoning: null };
+    const countsLow = { input: 300, output: 100, cache_read: null, cache_write: null, reasoning: null };
+    const data = {
+      models: [
+        { model: "gemini-4-argon-high", counts: countsHigh },
+        { model: "gemini-4-argon-low", counts: countsLow },
+      ],
+      totals: { input: 900, output: 300, cache_read: null, cache_write: null, reasoning: null },
+    };
+    const segments = modelSegments(data);
+    expect(segments.length).toBe(1);
+    expect(segments[0].label).toBe("4 Argon");
+    expect(segments[0].share).toBe(100);
   });
 });
 

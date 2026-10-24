@@ -158,7 +158,8 @@ impl RecordedWindow {
         let model = model.unwrap_or("").to_ascii_lowercase();
         let label = self.label.as_deref().unwrap_or("").to_ascii_lowercase();
         match self.group.as_deref().map(str::to_ascii_lowercase).as_deref() {
-            Some("gemini") => model.starts_with("gemini-"),
+            Some("gemini") => model.starts_with("gemini-") && !model.contains("argon"),
+            Some("argon") => model.contains("argon"),
             Some("claude" | "claude/gpt" | "claude and gpt") => model.starts_with("claude-") || model.starts_with("gpt-"),
             Some(_) => false,
             None if label.starts_with("opus ") => model.starts_with("claude-") && model.contains("opus"),
@@ -749,14 +750,17 @@ mod tests {
         windows[2].label = Some("Sonnet week".into());
         windows[3].group = Some("Gemini".into());
         windows[4].group = Some("Claude".into());
+        let mut argon_win = base.clone();
+        argon_win.group = Some("Argon".into());
+        windows.push(argon_win);
         let mut ledger = TokenLedger::default();
         for (model, amount) in [(Some("claude-opus-4-7"), 100), (Some("claude-sonnet-4-6"), 200),
-            (Some("gemini-3.6-pro"), 300), (None, 400)] {
+            (Some("gemini-3.6-pro"), 300), (Some("gemini-4-argon-high"), 500), (None, 400)] {
             ledger.upsert("file", &format!("{model:?}"), now, model.map(String::from), counts(amount, 0, 0));
         }
         let result = ledger.summarize(now, TokenUsageStatus::Ready, &windows);
         let amounts: Vec<_> = result.windows.iter().map(|w| w.usage.totals.total()).collect();
-        assert_eq!(amounts, vec![Some(1000), Some(100), Some(200), Some(300), Some(300)]);
+        assert_eq!(amounts, vec![Some(1500), Some(100), Some(200), Some(300), Some(300), Some(500)]);
         assert_eq!(result.windows[1].label.as_deref(), Some("Opus week"));
         assert_eq!(result.windows[3].group.as_deref(), Some("Gemini"));
         windows[0].label = Some("Sonnet week".into());
