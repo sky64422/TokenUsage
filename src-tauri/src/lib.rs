@@ -86,6 +86,7 @@ pub fn run() {
             commands::set_notch_placement,
             commands::begin_notch_drag,
             commands::finish_notch_drag,
+            commands::yield_notch_focus,
             commands::set_notch_surface,
             commands::get_snapshots,
             commands::set_opacity,

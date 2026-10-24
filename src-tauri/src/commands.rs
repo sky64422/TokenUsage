@@ -4,7 +4,7 @@ use crate::domain::types::{
 use crate::infrastructure::window_ctl;
 use crate::state::AppHandleState;
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
 
 #[tauri::command]
 pub fn get_provider_activity(app: AppHandle) -> Vec<crate::domain::activity::ProviderActivity> {
@@ -45,6 +45,14 @@ pub fn begin_notch_drag(app: AppHandle, id: u64) -> Result<(), String> {
 #[tauri::command]
 pub fn finish_notch_drag(app: AppHandle, id: u64, cancel: bool) -> Result<(), String> {
     crate::infrastructure::notch_window::finish_drag(&app, id, cancel)
+}
+
+#[tauri::command]
+pub fn yield_notch_focus(
+    window: WebviewWindow,
+    forward_escape: Option<bool>,
+) -> Result<(), String> {
+    crate::infrastructure::notch_window::yield_focus(&window, forward_escape.unwrap_or(false))
 }
 
 #[tauri::command]

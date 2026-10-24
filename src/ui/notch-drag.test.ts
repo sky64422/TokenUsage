@@ -123,4 +123,12 @@ describe("notch drag lifecycle", () => {
     expect(f.captured.size).toBe(0);
     expect(f.drag.sessionId).toBeNull();
   });
+
+  it("yields focus on drag cancel and notices", async () => {
+    const f = fixture();
+    invoke.mockClear();
+    f.start();
+    f.drag.cancel();
+    expect(invoke).toHaveBeenCalledWith("yield_notch_focus", { forwardEscape: false });
+  });
 });
