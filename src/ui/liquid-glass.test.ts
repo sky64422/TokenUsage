@@ -288,4 +288,71 @@ describe("Liquid desktop capture lifecycle", () => {
 
     renderer.destroy();
   });
+
+  it("releases liquid backdrop on 0-byte settling cache-hit frame when not dragging", async () => {
+    let now = 1000;
+    vi.stubGlobal("performance", { now: () => now });
+    let frameCb: ((time: number) => void) | null = null;
+    vi.stubGlobal("requestAnimationFrame", vi.fn(cb => {
+      frameCb = cb;
+      return 1;
+    }));
+
+    invoke.mockImplementation((command: string) => {
+      if (command === "capture_liquid_backdrop") {
+        return Promise.resolve(new ArrayBuffer(0));
+      }
+      return Promise.resolve();
+    });
+
+    const { renderer, rail } = fixture();
+    expect(rail.classList.contains("is-dragging")).toBe(false);
+    renderer.setEnabled(true);
+    invoke.mockClear();
+
+    frameCb!(now);
+    await settle();
+
+    expect(invoke).toHaveBeenCalledWith(
+      "capture_liquid_backdrop",
+      expect.objectContaining({ dragging: false }),
+    );
+    expect(invoke).toHaveBeenCalledWith("release_liquid_backdrop");
+
+    renderer.destroy();
+  });
+
+  it("passes dragging: true to capture_liquid_backdrop while actively dragging", async () => {
+    let now = 1000;
+    vi.stubGlobal("performance", { now: () => now });
+    let frameCb: ((time: number) => void) | null = null;
+    vi.stubGlobal("requestAnimationFrame", vi.fn(cb => {
+      frameCb = cb;
+      return 1;
+    }));
+
+    invoke.mockImplementation((command: string) => {
+      if (command === "capture_liquid_backdrop") {
+        return Promise.resolve(new ArrayBuffer(0));
+      }
+      return Promise.resolve();
+    });
+
+    const { renderer, rail } = fixture();
+    rail.classList.toggle("is-dragging", true);
+    renderer.setEnabled(true);
+    invoke.mockClear();
+
+    frameCb!(now);
+    await settle();
+
+    expect(invoke).toHaveBeenCalledWith(
+      "capture_liquid_backdrop",
+      expect.objectContaining({ dragging: true }),
+    );
+    // While dragging, release_liquid_backdrop is NOT called per-frame
+    expect(invoke).not.toHaveBeenCalledWith("release_liquid_backdrop");
+
+    renderer.destroy();
+  });
 });

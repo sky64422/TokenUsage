@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+const { invoke } = vi.hoisted(() => ({ invoke: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 import { createNotchDrag } from "./notch-drag";
 import type { DragNotice } from "./notch-drag";
 
@@ -99,6 +101,7 @@ describe("notch drag lifecycle", () => {
 
   it("cancels active drag and releases pointer capture on blur/cancel", async () => {
     const f = fixture();
+    invoke.mockClear();
     f.start();
     const id = f.drag.sessionId!;
     expect(f.captured.has(7)).toBe(true);
@@ -106,7 +109,18 @@ describe("notch drag lifecycle", () => {
     expect(f.captured.size).toBe(0);
     expect(f.drag.sessionId).toBeNull();
     expect(f.drag.dragging).toBe(false);
+    expect(invoke).toHaveBeenCalledWith("release_liquid_backdrop");
     await f.drag.settled();
     expect(f.finished).toEqual([[id, true]]);
+  });
+
+  it("releases liquid backdrop when drag notice finishes", async () => {
+    const f = fixture();
+    invoke.mockClear();
+    f.start();
+    const id = f.drag.sessionId!;
+    f.drag.notice(f.notice(id, true, true));
+    expect(f.captured.size).toBe(0);
+    expect(f.drag.sessionId).toBeNull();
   });
 });
