@@ -44,9 +44,8 @@ pub fn release_liquid_backdrop(window: WebviewWindow) -> Result<(), String> {
             guard.release_pending = true;
             return Ok(());
         }
-        if let Some(lease) = &guard.lease {
+        if let Some(lease) = guard.lease.take() {
             set_affinity(lease.hwnd, lease.original)?;
-            guard.lease = None;
         }
         guard.release_pending = false;
     }
@@ -69,19 +68,24 @@ struct InFlight(WebviewWindow);
 impl Drop for InFlight {
     fn drop(&mut self) {
         let state = self.0.state::<LiquidBackdrop>();
-        let pending = match state.0.lock() {
+        let lease_to_restore = match state.0.lock() {
             Ok(mut guard) => {
                 guard.in_flight = guard.in_flight.saturating_sub(1);
-                guard.release_pending && guard.in_flight == 0
+                if guard.in_flight == 0 {
+                    guard.release_pending = false;
+                    guard.lease.take()
+                } else {
+                    None
+                }
             }
             Err(error) => {
                 eprintln!("Liquid completion: {error}");
-                false
+                None
             }
         };
-        if pending {
-            if let Err(error) = release_liquid_backdrop(self.0.clone()) {
-                eprintln!("Liquid deferred release: {error}");
+        if let Some(lease) = lease_to_restore {
+            if let Err(error) = set_affinity(lease.hwnd, lease.original) {
+                eprintln!("Liquid affinity restore: {error}");
             }
         }
     }
@@ -126,14 +130,13 @@ fn watch_lease(window: WebviewWindow) {
         {
             continue;
         }
-        if let Some(lease) = &guard.lease {
+        if let Some(lease) = guard.lease.take() {
             if let Err(error) = set_affinity(lease.hwnd, lease.original) {
                 window.state::<AppHandleState>().core.note_diag(error);
                 if live_window(lease.hwnd) {
                     continue;
                 }
             }
-            guard.lease = None;
         }
         guard.watching = false;
         break;
