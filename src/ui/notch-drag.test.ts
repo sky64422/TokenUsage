@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 const { invoke } = vi.hoisted(() => ({ invoke: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
-import { createNotchDrag } from "./notch-drag";
+import { createNotchDrag, mountNotchDrag } from "./notch-drag";
 import type { DragNotice } from "./notch-drag";
 
 function fixture(begin: (id: number) => Promise<void> = async () => {}) {
@@ -129,6 +129,43 @@ describe("notch drag lifecycle", () => {
     invoke.mockClear();
     f.start();
     f.drag.cancel();
+    expect(invoke).toHaveBeenCalledWith("yield_notch_focus", { forwardEscape: false });
+  });
+
+  it("yields focus on Escape and PrintScreen keydown in mountNotchDrag", () => {
+    invoke.mockClear();
+    const windowListeners: Array<{ type: string; handler: (e: any) => void }> = [];
+    vi.stubGlobal("window", {
+      addEventListener: (type: string, handler: (e: any) => void) => {
+        windowListeners.push({ type, handler });
+      },
+    });
+    const railListeners: Array<{ type: string; handler: (e: any) => void }> = [];
+    const rail = {
+      addEventListener: (type: string, handler: (e: any) => void) => {
+        railListeners.push({ type, handler });
+      },
+      classList: { toggle: vi.fn(), remove: vi.fn(), add: vi.fn() },
+    } as unknown as HTMLElement;
+
+    mountNotchDrag(rail, () => undefined, {
+      begin: async () => {},
+      finish: async () => {},
+      onStart: () => {},
+      onNotice: () => {},
+      fail: () => {},
+    });
+
+    const keydown = windowListeners.find(l => l.type === "keydown")?.handler;
+    expect(keydown).toBeDefined();
+
+    // Escape
+    keydown!({ key: "Escape" });
+    expect(invoke).toHaveBeenCalledWith("yield_notch_focus", { forwardEscape: true });
+
+    // PrintScreen
+    invoke.mockClear();
+    keydown!({ key: "PrintScreen" });
     expect(invoke).toHaveBeenCalledWith("yield_notch_focus", { forwardEscape: false });
   });
 });
