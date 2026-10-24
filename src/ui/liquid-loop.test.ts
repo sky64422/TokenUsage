@@ -60,4 +60,31 @@ describe("Liquid capture lifecycle", () => {
     await vi.waitFor(() => { tick(32); expect(fail).toHaveBeenCalledTimes(2); });
     loop.destroy();
   });
+
+  it("pauses animation frame requests when interval is Infinity and wakes up on refresh", async () => {
+    let requests = 0;
+    let tick: ((time: number) => void) | null = null;
+    let currentInterval = Infinity;
+    const loop = createLiquidLoop({
+      request: cb => { requests++; tick = cb; return requests; },
+      cancel: () => {},
+      interval: () => currentInterval,
+      capture: async () => "frame",
+      paint: vi.fn(),
+      dispose: vi.fn(),
+      release: async () => {},
+      fail: vi.fn(),
+    });
+    loop.setEnabled(true);
+    expect(requests).toBe(1);
+    tick!(0);
+    for (let i = 0; i < 6; i++) await Promise.resolve();
+    // While interval is Infinity, schedule() must not queue further frames
+    expect(requests).toBe(1);
+
+    // Calling refresh() must wake up and request next frame
+    loop.refresh();
+    expect(requests).toBe(2);
+    loop.destroy();
+  });
 });
