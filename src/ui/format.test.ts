@@ -139,6 +139,10 @@ describe("formatModelLabel", () => {
     expect(formatModelLabel("gemini-2.0-flash")).toBe("2.0 Flash");
     expect(formatModelLabel("gemini-3.8-flash-high")).toBe("3.8 Flash");
     expect(formatModelLabel("gemini-3.8-flash-low")).toBe("3.8 Flash");
+    expect(formatModelLabel("gemini-3.8-flash-tiered")).toBe("3.8 Flash");
+    expect(formatModelLabel("gemini-3.8-flash-tiered-high")).toBe("3.8 Flash");
+    expect(formatModelLabel("3.8-flash-tiered")).toBe("3.8 Flash");
+    expect(formatModelLabel("3.8 Flash tiered")).toBe("3.8 Flash");
     expect(formatModelLabel("gemini-4-argon-high")).toBe("4 Argon");
     expect(formatModelLabel("gemini-4-argon-low")).toBe("4 Argon");
     expect(formatModelLabel("claude-opus-5-5-high")).toBe("5.5 Opus");
@@ -163,6 +167,23 @@ describe("formatModelLabel", () => {
     const segments = modelSegments(data);
     expect(segments.length).toBe(1);
     expect(segments[0].label).toBe("4 Argon");
+    expect(segments[0].share).toBe(100);
+  });
+
+  it("consolidates all 3.8 Flash variants (high, tiered, etc.) into a single 3.8 Flash segment", () => {
+    const countsFlash = { input: 12000, output: 400, cache_read: 2000, cache_write: null, reasoning: null };
+    const countsTiered = { input: 8000, output: 200, cache_read: 1000, cache_write: null, reasoning: null };
+    const data = {
+      models: [
+        { model: "gemini-3.8-flash-high", counts: countsFlash },
+        { model: "gemini-3.8-flash-tiered", counts: countsTiered },
+      ],
+      totals: { input: 20000, output: 600, cache_read: 3000, cache_write: null, reasoning: null },
+    };
+    const segments = modelSegments(data);
+    expect(segments.length).toBe(1);
+    expect(segments[0].label).toBe("3.8 Flash");
+    expect(segments[0].model).toBe("3.8 Flash");
     expect(segments[0].share).toBe(100);
   });
 });

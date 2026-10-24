@@ -144,8 +144,8 @@ export function mountNotch(
       for (const [id, button] of buttons) {
         const state = states.find((s) => s.provider_id === id)?.state ?? "unknown";
         button.dataset.activity = state;
+        button.removeAttribute("title");
         const label = state === "running" ? `${id}: working` : "";
-        button.title = label;
         if (label) button.setAttribute("aria-description", label);
         else button.removeAttribute("aria-description");
       }

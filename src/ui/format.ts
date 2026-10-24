@@ -158,8 +158,14 @@ export function formatModelLabel(model: string): string {
   let s = model.trim();
   if (!s) return MODEL_MISSING;
 
-  // Reasoning effort suffixes (low, medium, high, xhigh, max) are execution settings, not distinct models.
+  // 3.8 Flash is always consolidated into "3.8 Flash" regardless of tier (tiered), reasoning effort (high/low/medium), or other suffixes.
+  if (/^(?:gemini-)?3\.8-flash(?:[- ].*)?$/i.test(s) || /^3\.8\s+flash(?:[- ].*)?$/i.test(s)) {
+    return "3.8 Flash";
+  }
+
+  // Reasoning effort suffixes (low, medium, high, xhigh, max) and tier variants are execution settings, not distinct models.
   s = s.replace(/-(?:low|medium|high|xhigh|max)$/i, "");
+  s = s.replace(/-tiered$/i, "");
 
   if (/^claude-/i.test(s)) {
     s = s.replace(/^claude-/i, "").replace(/-(?:latest|preview|\d{8})$/i, "");
@@ -209,7 +215,8 @@ export function modelSegments(data: TokenPeriod): { model: string; label: string
     if (existing) {
       existing.total += rowTotal;
     } else {
-      grouped.set(label, { model, label, total: rowTotal });
+      const displayModel = label === "3.8 Flash" ? "3.8 Flash" : model;
+      grouped.set(label, { model: displayModel, label, total: rowTotal });
     }
   }
 

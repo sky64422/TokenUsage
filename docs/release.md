@@ -1,7 +1,7 @@
 # Release & in-app updates
 
 **Updated:** 2026-10-25
-**Current public tag:** v0.5.14
+**Current public tag:** v0.5.15
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,6 +12,7 @@
 
 | Tag | Highlights |
 |-----|------------|
+| **v0.5.15** | Consolidate all 3.8 Flash variants (high/tiered/etc.) into unified 3.8 Flash model, eliminate native 'working' tooltip on notch hover, and add random-cadence liquid contrast test |
 | **v0.5.14** | In-notch twin sparkle update indicator with Quiet Luxury detail card, instant startup check, session dismissal persistence, and automatic screenshot backdrop restoration |
 | **v0.5.13** | Antigravity: support dedicated Argon model quota window, separate token ledger attribution, and clean model labels without reasoning effort suffixes |
 | **v0.5.6** | Fix drag capture conflict: release pointer capture on blur (ESC cancels Snipping Tool), prevent hall-of-mirrors blur during drag |

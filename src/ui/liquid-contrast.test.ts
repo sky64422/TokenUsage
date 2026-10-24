@@ -61,5 +61,40 @@ describe("liquid foreground contrast", () => {
     expect(invoke).toHaveBeenCalledTimes(12);
     controller.setActive(false);
   });
+  it("switches promptly without lag when background alternates between white and black across random intervals", () => {
+    const pseudoRandomIntervals = [
+      { ms: 40, isWhite: true },
+      { ms: 1500, isWhite: false },
+      { ms: 60, isWhite: true },
+      { ms: 2200, isWhite: false },
+      { ms: 30, isWhite: true },
+      { ms: 80, isWhite: false },
+      { ms: 3000, isWhite: true },
+      { ms: 120, isWhite: false },
+      { ms: 1100, isWhite: true },
+      { ms: 50, isWhite: false },
+      { ms: 2500, isWhite: true },
+      { ms: 45, isWhite: false },
+      { ms: 1800, isWhite: true },
+      { ms: 90, isWhite: false },
+      { ms: 1300, isWhite: true },
+      { ms: 35, isWhite: false },
+    ];
 
+    let currentContrast = "dark";
+    for (const { ms, isWhite } of pseudoRandomIntervals) {
+      const targetContrast = isWhite ? "light" : "dark";
+      const pixelVal = isWhite ? 245 : 15;
+      const frame = gray(pixelVal);
+
+      currentContrast = liquidContrast(frame, currentContrast);
+      expect(currentContrast).toBe(targetContrast);
+
+      const frameCount = Math.max(1, Math.floor(ms / 33));
+      for (let f = 1; f < frameCount; f++) {
+        currentContrast = liquidContrast(frame, currentContrast);
+        expect(currentContrast).toBe(targetContrast);
+      }
+    }
+  });
 });

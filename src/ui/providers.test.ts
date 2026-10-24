@@ -290,6 +290,66 @@ describe("provider card DOM rendering and model legends", () => {
     expect(quotaHtml).not.toContain("3.8 Flash-H…");
   });
 
+  it("consolidates 3.8 Flash and 3.8 Flash tiered into a single model dot in AGY provider legend", () => {
+    const onResize = vi.fn();
+    const root = new MockElement("div");
+    const mounted = mountProviders(root as unknown as HTMLElement, onResize);
+
+    const agyRolling = quota({ kind: "rolling5h", label: "5h", used_percent: 65, group: "Gemini" });
+    const snap: ProviderSnapshot = {
+      provider_id: "agy",
+      display_name: "Antigravity",
+      windows: [agyRolling],
+      status: "ok",
+      source: "vendor",
+      as_of: reset,
+      message: null,
+      primary_resets_at: reset,
+      primary_used_percent: 65,
+      token_usage: {
+        source: "local_records",
+        status: "ready",
+        as_of: reset,
+        today: period("today"),
+        week: period("week"),
+        month: period("month"),
+        windows: [{
+          kind: "rolling5h",
+          label: "5h",
+          group: "Gemini",
+          resets_at: reset,
+          usage: {
+            models: [
+              {
+                model: "gemini-3.8-flash-high",
+                counts: { input: 12000, output: 400, cache_read: 2000, cache_write: null, reasoning: null },
+              },
+              {
+                model: "gemini-3.8-flash-tiered",
+                counts: { input: 8000, output: 200, cache_read: 1000, cache_write: null, reasoning: null },
+              },
+            ],
+            totals: { input: 20000, output: 600, cache_read: 3000, cache_write: null, reasoning: null },
+          },
+        }],
+      },
+    };
+
+    mounted.setSnapshots([snap]);
+
+    const list = root.querySelector<MockElement>(".provider-list")!;
+    const entry = list.children[0];
+    const quotaHtml = entry.children[0].innerHTML;
+
+    expect(quotaHtml).toContain("token-model-legend");
+    expect(quotaHtml).toContain("3.8 Flash");
+    expect(quotaHtml).not.toContain("3.8 Flash tiered");
+    expect(quotaHtml).not.toContain("3.8 Flash High");
+    // Ensure only 1 legend item dot exists for 3.8 Flash
+    const matches = quotaHtml.match(/token-legend-item/g);
+    expect(matches?.length).toBe(1);
+  });
+
   it("omits model legend when token models are unavailable or quota is idle", () => {
     const onResize = vi.fn();
     const root = new MockElement("div");
