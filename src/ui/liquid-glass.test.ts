@@ -224,6 +224,16 @@ describe("Liquid desktop capture lifecycle", () => {
     capturedAgain = invoke.mock.calls.some(([cmd]) => cmd === "capture_liquid_backdrop");
     expect(capturedAgain).toBe(true);
 
+    // Test window blur immediately invokes release and does NOT schedule capture
+    invoke.mockClear();
+    window.dispatchEvent(new Event("blur"));
+    await settle();
+
+    const releasedOnBlur = invoke.mock.calls.some(([cmd]) => cmd === "release_liquid_backdrop");
+    expect(releasedOnBlur).toBe(true);
+    const capturedOnBlur = invoke.mock.calls.some(([cmd]) => cmd === "capture_liquid_backdrop");
+    expect(capturedOnBlur).toBe(false);
+
     renderer.destroy();
   });
 
