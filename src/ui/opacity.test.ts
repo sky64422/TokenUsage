@@ -88,15 +88,24 @@ describe("applyPanelOpacity", () => {
     expect(parseFloat(vars["--chrome-opacity"])).toBeGreaterThan(0.28);
   });
 
-  it("maps the full slider range to Liquid material strength", () => {
+  it("reduces Liquid material strength faster while preserving the endpoints", () => {
     const vars: Record<string, string> = {};
     const panel = { style: { setProperty: (name: string, value: string) => { vars[name] = value; } } } as unknown as HTMLElement;
     applyPanelOpacity(panel, OPACITY_MIN);
     expect(Number(vars["--liquid-opacity"])).toBeCloseTo(0);
     applyPanelOpacity(panel, pctToOpacity(50));
-    expect(Number(vars["--liquid-opacity"])).toBeCloseTo(0.5);
+    expect(Number(vars["--liquid-opacity"])).toBeCloseTo(0.15, 2);
+    applyPanelOpacity(panel, pctToOpacity(70));
+    expect(Number(vars["--liquid-opacity"])).toBeCloseTo(0.25, 2);
     applyPanelOpacity(panel, 1);
     expect(Number(vars["--liquid-opacity"])).toBeCloseTo(1);
+    let previous = -1;
+    for (let percent = 0; percent <= 100; percent += 5) {
+      applyPanelOpacity(panel, pctToOpacity(percent));
+      const current = Number(vars["--liquid-opacity"]);
+      expect(current).toBeGreaterThan(previous);
+      previous = current;
+    }
   });
 });
 
