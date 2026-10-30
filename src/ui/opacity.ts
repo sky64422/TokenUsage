@@ -69,6 +69,7 @@ export function applyPanelOpacity(panel: HTMLElement, opacity: number): void {
   const elements = root ? [panel, root] : [panel];
   for (const el of elements) {
     el.style.setProperty("--panel-opacity", String(o));
+    el.style.setProperty("--liquid-opacity", String((o - OPACITY_MIN) / (1 - OPACITY_MIN)));
     el.style.setProperty("--fg-opacity", String(fg));
     el.style.setProperty("--accent-opacity", String(accent));
     el.style.setProperty("--chrome-opacity", String(chrome));

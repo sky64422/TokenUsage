@@ -87,6 +87,17 @@ describe("applyPanelOpacity", () => {
     expect(parseFloat(vars["--accent-opacity"])).toBeGreaterThan(0.36);
     expect(parseFloat(vars["--chrome-opacity"])).toBeGreaterThan(0.28);
   });
+
+  it("maps the full slider range to Liquid material strength", () => {
+    const vars: Record<string, string> = {};
+    const panel = { style: { setProperty: (name: string, value: string) => { vars[name] = value; } } } as unknown as HTMLElement;
+    applyPanelOpacity(panel, OPACITY_MIN);
+    expect(Number(vars["--liquid-opacity"])).toBeCloseTo(0);
+    applyPanelOpacity(panel, pctToOpacity(50));
+    expect(Number(vars["--liquid-opacity"])).toBeCloseTo(0.5);
+    applyPanelOpacity(panel, 1);
+    expect(Number(vars["--liquid-opacity"])).toBeCloseTo(1);
+  });
 });
 
 describe("opacityTicksHtml", () => {
