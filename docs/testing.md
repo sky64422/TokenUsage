@@ -1,3 +1,59 @@
+# Testing and performance verification
+
+The sections dated below are historical evidence, not proof of the current build.
+In particular, the current `liquid-glass.ts` uses canvas capture, while some older
+material sections describe a Windows Composition implementation. The older
+`liquid-cadence-smoke.py` and `liquid-renderer-smoke.py` assume that other
+implementation and are not part of the current gate. `token-details-smoke.py`
+also expects the former calendar-month labels and chart; it needs updating before
+it can serve as a gate. Do not interpret their failure as a current product defect
+without checking the applicable contract.
+
+## Repeatable checks
+
+| Layer | Command | What it establishes |
+| --- | --- | --- |
+| Logic and geometry | `npm test` | Vitest, Rust unit, risk, notch geometry and frame tests. |
+| Browser UI | `npm run test:ui` | Nine isolated fixture regressions: settings, detail size, quota states, ring, tracks, Liquid edges, token details, display refresh and theme geometry. |
+| Build | `npm run build` | TypeScript and production frontend build. |
+| Native Windows | `python -X utf8 scripts/native-quality-smoke.py --port 9223` | Isolated WebView settings heights, themes, option persistence across reload, stable rail/window and frame-interval samples. |
+| Native hover | `python -X utf8 scripts/notch-hover-stability.py --port 9223 --fixture` | Unequal-height detail changes preserve window and rail coordinates each frame. |
+
+The browser command requires Python Playwright, Pillow and Microsoft Edge, already used by
+the existing scripts. It starts and stops its own Vite server on port 1420; stop
+any existing process on that port first. It runs every listed test even after a
+failure and writes individual logs and `tmp/ui-check/results.json`. It uses
+synthetic inputs and does not connect to a real Tauri backend. Windows CI runs
+Vitest, the browser suite, Rust tests and the frontend build; the native checks
+require an interactive desktop and are not run by CI.
+
+The Liquid edge test supplies identical synthetic captures over two contrasting
+backgrounds. At 0%, 50%, and 100% it checks that the detail and rail center and
+four edges do not expose the background through blurred canvas boundaries. It
+also delays a resized detail's capture and checks that the previous frame remains
+visible until replacement pixels arrive. It checks compositing in a browser;
+native screenshot behavior is a separate check.
+
+For native checks follow the isolated preview setup in `windows-dev.md`. The
+preview must use `com.tokenusage.notch-preview` and
+`TOKENUSAGE_SKIP_DIRECT_QUOTA=1`; both scripts refuse to mutate a different
+identifier. Native quality changes only preview preferences. It deliberately
+does not toggle autostart, because even a debug build can affect OS autostart.
+The report `tmp/native-quality-results.json` records settings height and the mean
+and maximum WebView `requestAnimationFrame` intervals for 45 frames on detail
+opening per theme. The timing sample is diagnostic, not presented FPS, a CPU or
+power measurement, or a pass/fail performance budget. Compare repeated runs on
+the same monitor, DPI, build type, refresh rate and background workload before
+setting thresholds. A passing sample cannot rule out intermittent hitches.
+
+Coverage remains incomplete: long-duration memory/CPU and power, actual presented
+frames, reduced-motion behavior across all themes, monitor unplug/replug, mixed
+DPI hardware, actual vendor authentication and installed updater behavior need
+separate measurements or manual checks. The short native script is not an
+exhaustive cross-product of every option, provider, edge and theme. Existing
+interactive drag and screenshot scripts cover additional scenarios; they may need
+specific monitor hardware and should be run when those areas change.
+
 ## Liquid adaptive foreground contrast (2026-10-19)
 
 `liquid-contrast.test.ts` covers bright/dark modes, hysteresis, isolated outliers,

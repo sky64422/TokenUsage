@@ -35,8 +35,8 @@ with sync_playwright() as p:
             document.querySelector('.notch-detail').style.height = height+'px';
             return height;
         };
-        window.saves=0;
-        const save=()=>{window.saves++;return new Promise((resolve,reject)=>{window.saveResolve=resolve;window.saveReject=reject;});};
+        window.saves=0; window.savedValues=[];
+        const save=(value)=>{window.saves++;window.savedValues.push(value);return new Promise((resolve,reject)=>{window.saveResolve=resolve;window.saveReject=reject;});};
         const st={theme:'dark',opacity:0.675,autostart:false,hover_detail:false,always_show_notch:false,
             show_orbit:true,show_icon_glow:true,
             claude:{enabled:true},codex:{enabled:true},grok:{enabled:true},agy:{enabled:true}};
@@ -51,6 +51,15 @@ with sync_playwright() as p:
         window.settingsPanel.show();
         await document.fonts.ready;
     }""")
+
+    # The live Liquid renderer selects light contrast on bright captured backgrounds.
+    page.evaluate('''()=>{document.querySelector('.notch-shell').dataset.theme='liquid';
+      document.querySelector('.notch-detail').dataset.contrast='light';}''')
+    for selector in ['.settings-title', '.settings-label', '.settings-group-title', '#opacity-val', '#tab-btn-models']:
+        color = page.locator(selector).first.evaluate('(e)=>getComputedStyle(e).color')
+        assert int(re.search(r'\d+', color).group()) < 100, (selector, color)
+    page.evaluate('''()=>{delete document.querySelector('.notch-shell').dataset.theme;
+      delete document.querySelector('.notch-detail').dataset.contrast;}''')
 
     # Use the same measured height as the app, including after tab/monitor changes.
     # Missing scroll padding or tab margins must fail even when 440px would fit.
@@ -141,6 +150,7 @@ with sync_playwright() as p:
     page.evaluate('window.saveReject(new Error("simulated write failure"))')
     expect(page.locator('#always-show')).not_to_be_checked()
     expect(page.locator('#always-show')).to_be_enabled()
+
     expect(page.locator('#always-show-status')).to_have_count(0)
     expect(page.locator('label[for="always-show"]')).to_have_attribute('data-save-state','restored')
     page.screenshot(path='tmp/settings-rollback.png',animations='disabled')
@@ -148,6 +158,17 @@ with sync_playwright() as p:
     page.evaluate('window.saveResolve()')
     expect(page.locator('#always-show')).to_be_checked()
     expect(page.locator('#always-show')).to_be_enabled()
+
+    # Each visible switch sends both values through its save callback.
+    for toggle in ['always-show', 'hover-detail', 'show-animation']:
+        control = page.locator('#' + toggle)
+        initial = control.is_checked()
+        for value in [not initial, initial]:
+            page.locator(f'label[for="{toggle}"]').click()
+            assert page.evaluate('window.savedValues.at(-1)') == value
+            page.evaluate('window.saveResolve()')
+            expect(control).to_be_checked() if value else expect(control).not_to_be_checked()
+            expect(control).to_be_enabled()
 
     # Default height fits every appearance control; constrained screens still scroll.
     assert page.locator('.settings-scroll').evaluate('(e)=>e.scrollHeight<=e.clientHeight')
@@ -182,6 +203,12 @@ with sync_playwright() as p:
     expect(page.locator('[data-provider="agy"]')).to_have_attribute('title', 'Antigravity: 최소 1개 서비스를 표시해야 합니다')
 
     page.locator('#tab-btn-general').click()
+    for value in [True, False]:
+        page.locator('label[for="autostart"]').click()
+        assert page.evaluate('window.savedValues.at(-1)') == value
+        page.evaluate('window.saveResolve()')
+        expect(page.locator('#autostart')).to_be_checked() if value else expect(page.locator('#autostart')).not_to_be_checked()
+        expect(page.locator('#autostart')).to_be_enabled()
     diag = page.locator('#btn-diag')
     diag_width = diag.bounding_box()['width']
     diag.click()

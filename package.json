@@ -11,6 +11,7 @@
     "run:exe": "node scripts/run-release.mjs",
     "release:publish": "node scripts/publish-release.mjs",
     "test": "vitest run && cd src-tauri && cargo test --lib && cargo test --test risk_scenarios && cargo test --test notch --test liquid_frames",
+    "test:ui": "python -X utf8 scripts/ui-check.py",
     "test:coverage": "bash scripts/coverage.sh"
   },
   "dependencies": {

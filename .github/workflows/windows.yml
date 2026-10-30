@@ -40,6 +40,19 @@ jobs:
           npm ci
           npm run build
 
+      - name: Frontend unit tests
+        run: npx vitest run
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install browser test dependency
+        run: python -m pip install playwright==1.62.0 Pillow==11.1.0
+
+      - name: Browser UI regressions
+        run: npm run test:ui
+
       - name: cargo test
         working-directory: src-tauri
         run: cargo test --all-targets

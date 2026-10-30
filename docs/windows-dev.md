@@ -67,6 +67,7 @@ python -X utf8 scripts/notch-edge-drag.py
 python -X utf8 scripts/notch-seam-drag.py
 python -X utf8 scripts/notch-polish.py
 python -X utf8 scripts/notch-hover-stability.py --port 9223 --fixture
+python -X utf8 scripts/native-quality-smoke.py --port 9223
 ```
 
 These smoke scripts refuse the production identifier. They use synthetic quota data,
@@ -81,14 +82,8 @@ sample percentages with unavailable values; reload or restart after fixture chec
 before handing the preview to a user.
 
 Select a theme in settings to compare Dark, Glass and Liquid. Selection survives
-reload/restart. Glass/Liquid use Windows 11 host-backdrop composition and native
-Gaussian blur behind the WebView, clipped to the visible notch/detail silhouettes.
-The widget stays included in normal Windows screenshots and screen sharing; no
-`WDA_EXCLUDEFROMCAPTURE` or desktop readback is used for these materials. Glass's
-former CPU refraction lens is replaced by native blur. Unsupported composition
-reports an error and keeps a readable tint fallback.
-
-For native capture regression, run `python scripts/liquid-capture-smoke.py` against
-the isolated `com.tokenusage.notch-preview` on CDP 9223 with Glass/Liquid selected.
-It checks a running material, display affinity 0 and saves an actual OS screenshot
-for inspection. Renderer/CDP screenshots alone cannot detect capture exclusion.
+reload/restart. The current Glass/Liquid renderer captures desktop pixels into
+canvas surfaces and temporarily changes window capture affinity while a capture
+is in flight. Browser fixtures cannot validate actual desktop capture or screen
+sharing behavior. The older `liquid-capture-smoke.py` assumes a different native
+material implementation and is not a valid current screenshot-compatibility gate.
