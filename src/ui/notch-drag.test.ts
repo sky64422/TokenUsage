@@ -132,6 +132,50 @@ describe("notch drag lifecycle", () => {
     expect(invoke).toHaveBeenCalledWith("yield_notch_focus", { forwardEscape: false });
   });
 
+  it("plays the release animation after pointer capture ends on a normal pointerup", async () => {
+    const listeners: Record<string, (event: any) => void> = {};
+    const captured = new Set<number>();
+    const classes = new Set<string>();
+    vi.stubGlobal("window", { addEventListener: vi.fn() });
+    const rail = {
+      offsetWidth: 64,
+      addEventListener: (type: string, handler: (event: any) => void) => { listeners[type] = handler; },
+      setPointerCapture: (id: number) => captured.add(id),
+      hasPointerCapture: (id: number) => captured.has(id),
+      releasePointerCapture: (id: number) => captured.delete(id),
+      classList: {
+        toggle: (name: string, value: boolean) => value ? classes.add(name) : classes.delete(name),
+        add: (name: string) => classes.add(name), remove: (name: string) => classes.delete(name),
+      },
+    } as unknown as HTMLElement;
+    const finish = vi.fn(async () => {});
+    const drag = mountNotchDrag(rail, () => ({ metrics: { drag_threshold: 5 } } as any), {
+      begin: async () => {}, finish, onStart: () => {}, onNotice: () => {}, fail: () => {},
+    });
+    listeners.pointerdown({ button: 0, pointerId: 7, screenX: 100, screenY: 100, target: rail });
+    const id = drag.sessionId!;
+    const notice = (active: boolean, finished: boolean): DragNotice => ({ id, active, finished, error: null,
+      placement: { edge: "right", monitor_hint: null, offset: .5 } });
+    drag.notice(notice(true, false));
+    listeners.pointerup({ pointerId: 7 });
+    listeners.lostpointercapture({ pointerId: 7, buttons: 0 });
+    drag.notice(notice(true, true));
+    expect(classes.has("is-snapped")).toBe(true);
+    await Promise.resolve(); await Promise.resolve();
+    expect(finish).not.toHaveBeenCalledWith(id, true);
+    classes.delete("is-snapped");
+    listeners.pointerdown({ button: 0, pointerId: 7, screenX: 100, screenY: 100, target: rail });
+    const cancelledId = drag.sessionId!;
+    drag.notice({ ...notice(true, false), id: cancelledId });
+    listeners.lostpointercapture({ pointerId: 7, buttons: 1 });
+    expect(drag.sessionId).toBeNull();
+    listeners.pointerdown({ button: 0, pointerId: 7, screenX: 100, screenY: 100, target: rail });
+    drag.notice({ ...notice(false, true), id: drag.sessionId! });
+    expect(classes.has("is-snapped")).toBe(false);
+    drag.destroy();
+    vi.unstubAllGlobals();
+  });
+
   it("yields focus on Escape and PrintScreen keydown in mountNotchDrag", () => {
     invoke.mockClear();
     const windowListeners: Array<{ type: string; handler: (e: any) => void }> = [];
