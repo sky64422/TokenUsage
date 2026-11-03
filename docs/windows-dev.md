@@ -87,3 +87,37 @@ canvas surfaces and temporarily changes window capture affinity while a capture
 is in flight. Browser fixtures cannot validate actual desktop capture or screen
 sharing behavior. The older `liquid-capture-smoke.py` assumes a different native
 material implementation and is not a valid current screenshot-compatibility gate.
+
+
+### Capture diagnostics
+
+Per-frame capture file logging is off by default. To diagnose capture/affinity timing,
+set `$env:TOKENUSAGE_CAPTURE_DEBUG = '1'` before launching the process. It writes the
+bounded `%LOCALAPPDATA%/TokenUsage/logs/capture-debug.log`. Restart without this variable
+for normal performance measurements. The opt-in is sampled once per process.
+
+### WGC capture (default since v0.5.18)
+
+Debug and release builds use monitor WGC with per-session notch exclusion, keeping
+window-wide capture affinity unchanged. The worker requests official borderless
+access once per process and sets `IsBorderRequired(false)` only after `Allowed`.
+Windows may ask for consent. Unsupported interfaces, denial or capture errors
+leave the base material visible; there is no automatic GDI fallback or OS policy override.
+
+For automated tests, use the isolated identifier above. No WGC flags are required.
+For legacy GDI comparisons only, set `$env:TOKENUSAGE_WGC_PREVIEW = '0'` in a debug
+build. `TOKENUSAGE_WGC_BORDERLESS_PREVIEW=0` keeps the OS border for debug diagnosis.
+Release builds ignore both overrides. Remove them and restart to restore defaults.
+
+After launch, run sequentially:
+
+```powershell
+python -X utf8 scripts/liquid-events-native-smoke.py --screenshots --latency-samples 20 --screen-samples 100 --require-visible
+python -X utf8 scripts/liquid-environment-smoke.py --seconds 15
+python -X utf8 scripts/native-quality-smoke.py --port 9223
+```
+
+Borderless access and screenshot visibility were verified on the development
+machine. Real denied-policy devices, mixed DPI/HDR, sleep/device loss and complete
+OBS/Teams/Zoom coverage remain outside that evidence. See
+[the detailed validation report](liquid-wgc-deep-validation.md).

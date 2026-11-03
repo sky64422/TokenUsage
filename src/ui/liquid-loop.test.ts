@@ -2,6 +2,44 @@ import { describe, expect, it, vi } from "vitest";
 import { createLiquidLoop } from "./liquid-loop";
 
 describe("Liquid capture lifecycle", () => {
+  it("coalesces refresh storms during capture and cancels idle timers on stop", async () => {
+    vi.useFakeTimers();
+    try {
+      let tick!: (time: number) => void;
+      let finish!: (value: null) => void;
+      const request = vi.fn(cb => { tick = cb; return 1; });
+      const capture = vi.fn(() => new Promise<null>(resolve => { finish = resolve; }));
+      const loop = createLiquidLoop({ request, cancel: vi.fn(), interval: () => 1000,
+        capture, paint: vi.fn(), dispose: vi.fn(), release: async () => {}, fail: vi.fn() });
+      loop.setEnabled(true); tick(performance.now());
+      for (let i = 0; i < 100; i++) loop.refresh();
+      expect(request).toHaveBeenCalledTimes(1);
+      finish(null); await vi.advanceTimersByTimeAsync(0);
+      expect(request).toHaveBeenCalledTimes(2);
+      tick(performance.now()); finish(null); await vi.advanceTimersByTimeAsync(0);
+      expect(capture).toHaveBeenCalledTimes(2);
+      loop.setEnabled(false); await vi.advanceTimersByTimeAsync(5000);
+      expect(request).toHaveBeenCalledTimes(2);
+      loop.destroy();
+    } finally { vi.useRealTimers(); }
+  });
+  it("does not request animation frames while waiting for the idle deadline", async () => {
+    vi.useFakeTimers();
+    try {
+      let tick!: (time: number) => void;
+      const request = vi.fn(cb => { tick = cb; return 1; });
+      const loop = createLiquidLoop({
+        request, cancel: vi.fn(), interval: () => 1000,
+        capture: async () => null, paint: vi.fn(), dispose: vi.fn(), release: async () => {}, fail: vi.fn(),
+      });
+      loop.setEnabled(true); tick(performance.now());
+      await vi.advanceTimersByTimeAsync(999);
+      expect(request).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(request).toHaveBeenCalledTimes(2);
+      loop.destroy();
+    } finally { vi.useRealTimers(); }
+  });
   it("preserves fractional timing on a faster display without queuing catch-up frames", async () => {
     vi.useFakeTimers();
     try {

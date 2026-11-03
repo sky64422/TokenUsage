@@ -10,6 +10,12 @@ fn log_file_path() -> Option<PathBuf> {
 }
 
 pub fn log_event(tag: &str, message: &str) {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if !*ENABLED
+        .get_or_init(|| std::env::var_os("TOKENUSAGE_CAPTURE_DEBUG").is_some_and(|v| v == "1"))
+    {
+        return;
+    }
     let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
     let line = format!("[{now}] [{tag}] {message}\n");
     if let Some(path) = log_file_path() {

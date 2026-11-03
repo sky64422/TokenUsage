@@ -1,12 +1,14 @@
 """Check isolated Windows WebView geometry, theme transitions and real frame cadence."""
 import argparse
 import json
+import pyautogui
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 from notch_test_support import prepare_hover_fixture, reset_notch
 
 ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_FRAMES = 45
+POINTER_MOVE_SECONDS = .15
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--port', type=int, default=9223)
@@ -21,6 +23,7 @@ with sync_playwright() as p:
     page.on('pageerror', lambda error: errors.append(str(error)))
     prepare_hover_fixture(page)
     results = []
+    original_pointer = pyautogui.position()
     try:
         for theme in ['dark', 'glass', 'liquid']:
             reset_notch(page)
@@ -48,10 +51,21 @@ with sync_playwright() as p:
             assert max(heights) - min(heights) <= 1, {'theme': theme, 'settings_heights': heights}
             page.locator('#btn-close-settings').dispatch_event('click')
             reset_notch(page)
+            # A synthetic pointerenter leaves the OS cursor over the disappearing
+            # settings panel; its later pointerleave legitimately closes hover.
+            target = page.evaluate('''async()=>{
+              const p=await window.__TAURI__.window.getCurrentWindow().innerPosition();
+              const r=document.querySelector('.notch-cell:not([hidden])').getBoundingClientRect();
+              return {x:p.x+(r.x+r.width/2)*devicePixelRatio,y:p.y+(r.y+r.height/2)*devicePixelRatio};
+            }''')
+            # Two instantaneous jumps can be coalesced while the native window is
+            # settling. Exercise a real crossing before asserting hover stability.
+            pyautogui.moveTo(target['x'] - 100, target['y'], duration=POINTER_MOVE_SECONDS)
+            pyautogui.moveTo(target['x'], target['y'], duration=POINTER_MOVE_SECONDS)
+            expect(page.locator('.notch-detail')).to_be_visible()
             sample = page.evaluate('''async count=>{
-              const rail=document.querySelector('.notch'), cell=rail.querySelector('.notch-cell');
+              const rail=document.querySelector('.notch');
               const frames=[]; const rect=()=>{const r=rail.getBoundingClientRect();return [screenX,screenY,innerWidth,innerHeight,r.x,r.y,r.width,r.height]};
-              cell.dispatchEvent(new PointerEvent('pointerenter'));
               for(let i=0;i<count;i++) await new Promise(resolve=>requestAnimationFrame(t=>{
                 const d=document.querySelector('.notch-detail');
                 frames.push({t,rect:rect(),visible:!d.hidden,transform:getComputedStyle(d).transform});resolve();
@@ -59,6 +73,7 @@ with sync_playwright() as p:
               return frames;
             }''', SAMPLE_FRAMES)
             expect(page.locator('.notch-detail')).to_be_visible()
+            assert all(frame['visible'] for frame in sample), theme
             baseline = sample[0]['rect']
             assert all(all(abs(a-b) <= .1 for a,b in zip(frame['rect'], baseline)) for frame in sample), theme
             deltas = [sample[i]['t'] - sample[i-1]['t'] for i in range(1, len(sample))]
@@ -91,4 +106,5 @@ with sync_playwright() as p:
                                      'limitations': 'WebView requestAnimationFrame intervals, not presented FPS; no CPU or long-duration leak measurement.'}, indent=2), encoding='utf-8')
         print(json.dumps({'themes': results, 'report': str(output)}, ensure_ascii=False))
     finally:
+        pyautogui.moveTo(original_pointer.x, original_pointer.y)
         page.evaluate('()=>clearInterval(window.hoverFixtureTimer)')

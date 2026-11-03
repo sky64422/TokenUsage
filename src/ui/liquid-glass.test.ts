@@ -105,7 +105,58 @@ afterEach(() => {
 });
 
 describe("Liquid desktop capture lifecycle", () => {
-  it("mounts canvas layers and invokes release on cleanup", async () => {
+  it("leaves the base material visible when native capture is unavailable", async () => {
+    let frameCb!: (time: number) => void;
+    vi.stubGlobal("requestAnimationFrame", (cb: (time: number) => void) => { frameCb = cb; return 1; });
+    const error = new Error("WGC borderless access denied");
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    invoke.mockImplementation(command => command === "capture_liquid_backdrop"
+      ? Promise.reject(error) : Promise.resolve());
+    const { renderer, shell, rail } = fixture();
+    renderer.setEnabled(true);
+    frameCb(performance.now());
+    await settle();
+    expect(shell.dataset.liquidStatus).toBe("unavailable");
+    expect(rail.hidden).toBe(false);
+    expect(rail.children.every(layer => layer.hidden)).toBe(true);
+    expect(invoke).toHaveBeenCalledWith("destroy_liquid_backdrop");
+    expect(logged).toHaveBeenCalledWith("Liquid backdrop:", error);
+    renderer.destroy();
+  });
+  it("discards an in-flight drag image when the rail changes orientation", async () => {
+    vi.stubGlobal("ImageData", class {
+      constructor(public data: Uint8ClampedArray, public width: number, public height: number) {}
+    });
+    let frameCb!: (time: number) => void;
+    let finish!: (data: ArrayBuffer) => void;
+    let requested!: { width: number; height: number };
+    vi.stubGlobal("requestAnimationFrame", (cb: (time: number) => void) => { frameCb = cb; return 1; });
+    invoke.mockImplementation((command, args) => {
+      if (command === "capture_liquid_backdrop") {
+        requested = args;
+        return new Promise(resolve => { finish = resolve; });
+      }
+      return Promise.resolve();
+    });
+    const { renderer, rail, detail, shell } = fixture();
+    detail.hidden = true;
+    rail.classList.toggle("is-dragging", true);
+    renderer.setEnabled(true);
+    frameCb(performance.now());
+    rail.dataset.edge = "top";
+    rail.rect = { x: 0, y: 0, width: 300, height: 64 };
+    renderer.relayout();
+    const data = new ArrayBuffer(12 + requested.width * requested.height * 4);
+    new Uint8Array(data).set([76, 81, 48, 49]);
+    const header = new DataView(data);
+    header.setUint32(4, requested.width, true);
+    header.setUint32(8, requested.height, true);
+    finish(data);
+    await settle();
+    expect(shell.dataset.liquidStatus).toBeUndefined();
+    renderer.destroy();
+  });
+  it("mounts canvas layers and destroys native capture resources on cleanup", async () => {
     invoke.mockImplementation((command: string) => {
       if (command === "capture_liquid_backdrop") return Promise.resolve(new ArrayBuffer(0));
       return Promise.resolve();
@@ -122,7 +173,7 @@ describe("Liquid desktop capture lifecycle", () => {
     renderer.destroy();
     await settle();
 
-    const released = invoke.mock.calls.some(([cmd]) => cmd === "release_liquid_backdrop");
+    const released = invoke.mock.calls.some(([cmd]) => cmd === "destroy_liquid_backdrop");
     expect(released).toBe(true);
   });
 
@@ -332,7 +383,7 @@ describe("Liquid desktop capture lifecycle", () => {
     renderer.destroy();
   });
 
-  it("passes dragging: true to capture_liquid_backdrop while actively dragging", async () => {
+  it("keeps live rail capture and the same filter during drag, then refreshes on release", async () => {
     let now = 1000;
     vi.stubGlobal("performance", { now: () => now });
     let frameCb: ((time: number) => void) | null = null;
@@ -348,21 +399,36 @@ describe("Liquid desktop capture lifecycle", () => {
       return Promise.resolve();
     });
 
+    let changed!: () => void;
+    vi.stubGlobal("MutationObserver", class {
+      constructor(callback: (records: never[]) => void) { changed = () => callback([]); }
+      observe() {}
+      disconnect() {}
+    });
     const { renderer, rail } = fixture();
-    rail.classList.toggle("is-dragging", true);
     renderer.setEnabled(true);
-    invoke.mockClear();
-
     frameCb!(now);
     await settle();
-
-    expect(invoke).toHaveBeenCalledWith(
-      "capture_liquid_backdrop",
-      expect.objectContaining({ dragging: true }),
-    );
-    // While dragging, release_liquid_backdrop is NOT called per-frame
-    expect(invoke).not.toHaveBeenCalledWith("release_liquid_backdrop");
-
+    invoke.mockClear();
+    const canvas = rail.children[0].children[0];
+    const filter = canvas.style.filter;
+    rail.classList.toggle("is-dragging", true);
+    changed();
+    now += 34;
+    frameCb!(now);
+    await settle();
+    expect(canvas.style.filter).toBe(filter);
+    expect(invoke).toHaveBeenCalledWith("capture_liquid_backdrop", expect.objectContaining({ dragging: true, surface: 0 }));
+    expect(invoke).not.toHaveBeenCalledWith("capture_liquid_backdrop", expect.objectContaining({ surface: 1 }));
+    expect(invoke).not.toHaveBeenCalledWith("destroy_liquid_backdrop");
+    invoke.mockClear();
+    rail.classList.toggle("is-dragging", false);
+    changed();
+    await settle();
+    now += 16;
+    frameCb!(now);
+    await settle();
+    expect(invoke).toHaveBeenCalledWith("capture_liquid_backdrop", expect.objectContaining({ dragging: false }));
     renderer.destroy();
   });
 });

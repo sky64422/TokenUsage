@@ -92,6 +92,9 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
   let enabled = false, destroyed = false, nativeVisible = true;
   let lastChangedAt = performance.now(), lastVisible = false;
   let lastDetailHidden = detail.hidden, lastDragging = false;
+  let lastEventRefresh = -Infinity;
+  let lastCaptureAt = -Infinity;
+  let eventTimer: ReturnType<typeof setTimeout> | undefined;
 
   const clear = (releaseBuffers = false) => entries.forEach(entry => {
     entry.layer.hidden = true;
@@ -170,21 +173,14 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
 
       if (painted) {
         shell.dataset.liquidStatus = "ready";
-      }
-      if (!rail.classList.contains("is-dragging")) {
-        if (!painted) {
-          void invoke("release_liquid_backdrop");
-          if (now - lastChangedAt >= SETTLING_AFTER_MS) {
-            lastChangedAt = 0;
-          }
-        }
+        lastChangedAt = now;
       }
     },
     dispose: frames => {
       frames.length = 0;
     },
     release: async () => {
-      await invoke("release_liquid_backdrop");
+      await invoke("destroy_liquid_backdrop");
     },
     fail: error => {
       clear(true);
@@ -196,16 +192,18 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
   function sync() {
     const visible = nativeVisible && enabled && !document.hidden && (!rail.classList.contains("is-folded") || !detail.hidden);
     const dragging = rail.classList.contains("is-dragging");
+    // Drop completions from the previous drag state without replacing the glass
+    // effect or tearing down the monitor capture session.
+    if (dragging !== lastDragging) entries.forEach(entry => entry.generation++);
     if (visible && (!lastVisible || detail.hidden !== lastDetailHidden || dragging !== lastDragging)) {
-      lastChangedAt = (lastDragging && !dragging)
-        ? performance.now() - STATIC_AFTER_MS
-        : performance.now();
+      lastChangedAt = performance.now();
       loop.refresh();
     }
     lastVisible = visible;
     lastDetailHidden = detail.hidden;
     lastDragging = dragging;
     if (!visible) clear(!enabled || !nativeVisible || document.hidden);
+    if (!visible) { clearTimeout(eventTimer); eventTimer = undefined; }
     loop.setEnabled(visible);
   }
 
@@ -316,17 +314,23 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
     entry.filter.querySelector("feImage")!.setAttribute("href", mask.toDataURL());
   }
 
+  function surfaceKey(width: number, height: number, ratio: number) {
+    return `${width}:${height}:${rail.dataset.edge}:${ratio}:${shell.style.getPropertyValue("--notch-scale")}`;
+  }
+
   async function capture(): Promise<CapturedFrame[]> {
+    lastCaptureAt = performance.now();
     const frames: CapturedFrame[] = [];
     try {
       for (const entry of entries) {
+        if (entry.slot === 1 && rail.classList.contains("is-dragging")) continue;
         if (entry.surface.hidden || (entry.surface === rail && rail.classList.contains("is-folded"))) continue;
         const rect = entry.surface.getBoundingClientRect();
         const width = Math.round(entry.surface.offsetWidth || rect.width);
         const height = Math.round(entry.surface.offsetHeight || rect.height);
         if (!width || !height) continue;
         const ratio = devicePixelRatio || 1;
-        const key = `${width}:${height}:${rail.dataset.edge}:${ratio}:${shell.style.getPropertyValue("--notch-scale")}`;
+        const key = surfaceKey(width, height, ratio);
         if (key !== entry.key) {
           entry.key = key;
           entry.generation++;
@@ -351,11 +355,37 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
     } catch (error) {
       frames.length = 0;
       throw error;
+    } finally {
+      // Continuous video must not keep the rolling native exclusion lease alive.
+      await invoke("release_liquid_backdrop");
     }
   }
 
   return {
+    refresh() {
+      // Window events are hints: only changed pixels prolong the fast cadence.
+      if (!enabled || !nativeVisible || document.hidden || destroyed) return;
+      const now = performance.now();
+      const delay = Math.max(lastEventRefresh, lastCaptureAt) + (motion.matches ? REDUCED_FRAME_MS : IDLE_FRAME_MS) - now;
+      if (eventTimer !== undefined) return;
+      eventTimer = setTimeout(() => {
+        eventTimer = undefined;
+        lastEventRefresh = performance.now();
+        loop.refresh();
+      }, Math.max(0, delay));
+    },
     relayout() {
+      // Ignore position-only events, but invalidate an in-flight image as soon
+      // as edge, size or DPI changes, before that image can paint the new shape.
+      if (rail.classList.contains("is-dragging")) {
+        for (const entry of entries) {
+          const rect = entry.surface.getBoundingClientRect();
+          const key = surfaceKey(Math.round(entry.surface.offsetWidth || rect.width),
+            Math.round(entry.surface.offsetHeight || rect.height), devicePixelRatio || 1);
+          if (key !== entry.key) { entry.key = key; entry.generation++; }
+        }
+        return;
+      }
       entries.forEach(entry => {
         entry.key = "";
         entry.generation++;
@@ -388,6 +418,7 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
     },
     destroy() {
       destroyed = true;
+      clearTimeout(eventTimer);
       loop.destroy();
       observer.disconnect();
       events.abort();

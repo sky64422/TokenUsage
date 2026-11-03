@@ -491,6 +491,14 @@
   stroke-width: calc(1.2px * var(--notch-rim-scale, 1));
 }
 
+/* Live desktop pixels must stay at screen scale while the HWND moves. Scaling
+   this parent also magnifies the captured background and bends aligned edges. */
+.notch-shell[data-theme="liquid"] .notch:is(.is-drag-armed, .is-dragging) .notch-surface {
+  transform: none;
+  animation: none;
+  transition: filter 200ms ease;
+}
+
 /* Liquid snap slosh when docking on edge release */
 .notch[data-edge="right"].is-snapped .notch-surface,
 .notch[data-edge="left"].is-snapped .notch-surface {

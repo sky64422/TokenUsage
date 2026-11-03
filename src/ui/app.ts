@@ -143,6 +143,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     () => { if (interaction.provider && !interaction.settings) requestSurface(); },
   );
   const liquidGlass = mountLiquidGlass(shell, rail, detail);
+  unlisteners.push(await listen("liquid-backdrop-changed", () => liquidGlass.refresh()));
   unlisteners.push(await listen<boolean>("widget-visibility", ({payload}) => liquidGlass.setVisible(payload)));
   let readyToCapture = false;
   function applyAppearanceClasses(st: AppSettings) {

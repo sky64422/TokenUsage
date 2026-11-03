@@ -27,8 +27,17 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-core = "0.61"
+windows-collections = "0.2"
 windows = { version = "0.61", features = [
   "Graphics",
+  "Graphics_Capture",
+  "Security_Authorization_AppCapabilityAccess",
+  "Graphics_DirectX_Direct3D11",
+  "Win32_Graphics_Direct3D11",
+  "Win32_Graphics_Direct3D",
+  "Win32_Graphics_Dxgi_Common",
+  "Win32_System_WinRT_Direct3D11",
+  "Win32_System_WinRT_Graphics_Capture",
   "Graphics_Effects",
   "Win32_Graphics_Direct2D",
   "Win32_Graphics_Direct2D_Common",
@@ -47,6 +56,7 @@ windows = { version = "0.61", features = [
   "Win32_Graphics_Dwm",
   "Win32_Graphics_Gdi",
   "Win32_UI_WindowsAndMessaging",
+  "Win32_UI_Accessibility",
   "Win32_UI_Input_KeyboardAndMouse",
 ] }
 

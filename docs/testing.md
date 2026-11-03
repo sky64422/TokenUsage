@@ -384,3 +384,122 @@ between the left monitor's right edge and the right monitor's left edge, at
 instant, 0.11s and 0.5s mouse moves. Both directions and persisted targets passed.
 Domain tests reproduce a successful first crossing followed by a skipped return
 sample, plus vertically stacked displays and 100/125/150/200% geometry.
+
+
+## Event-assisted GDI capture (2026-10-31)
+
+Current capture scheduling supersedes the historical cadence notes above. A single
+one-shot timer sleeps until the next capture; rAF is requested only at that deadline.
+Changed pixels retain 30 Hz, then unchanged pixels settle through 10 Hz after 150 ms
+to a 1 Hz heartbeat after 400 ms. Reduced motion uses 4 Hz. Existing Liquid drag
+pause is preserved. Window hints retain one trailing refresh and do not themselves
+prolong fast capture. Pixel-only changes without a window event can still wait up
+to the heartbeat before accelerating. Provider polling remains fixed at 5 seconds.
+
+Windows out-of-context hooks watch foreground, show/hide/destroy and location events,
+exclude the current process and filter known windows by previous/current overlap.
+Unknown windows invalidate conservatively. Hook failure leaves heartbeat capture
+working. A bounded cache tracks 512 window rectangles; eviction only loses filtering,
+not correctness. Each completed two-surface capture batch releases display affinity,
+including continuously changing pixels and errors.
+
+- `python -X utf8 scripts/liquid-scheduling-smoke.py --port 1524` with Vite on 1524:
+  virtual-clock, real-canvas checks of idle wakeups, 30 Hz changing pixels, settling,
+  trailing invalidation, reduced motion, live drag cadence and destroy. Pixels are synthetic.
+- `python -X utf8 scripts/liquid-events-native-smoke.py` against an isolated preview
+  on CDP 9223: creates/removes a colored desktop window, checks real window events,
+  changed Canvas frames and samples the actual Tauri HWND's display affinity.
+  This uses real-time observation intervals, not unit-test timing assumptions.
+  Identify the `Tauri Window` class: title-only lookup can select a Shell TabProxyWindow.
+  OS screenshots explicitly include layered windows. Artifacts are under `tmp/`.
+
+Observed deterministic sample: idle 3 reads/3 rAF callbacks over 3 seconds; changing
+30 reads/second; reduced motion 4 reads/second. Final native sample: 24 ms from one
+window move to changed Canvas paint, 19 paints over 20 color updates, WDA_NONE in
+12/20 samples while active. A settled external screenshot showed the notch normally.
+These are short latency/cadence checks, not CPU/GPU/power savings or a guarantee that
+an external screenshot taken during an in-flight capture includes the notch.
+
+`native-quality-smoke.py` was attempted but failed its synthetic hover/detail-open
+assertion; it is not recorded as passing. The focused native backdrop check and
+`settings-smoke.py` passed separately.
+
+
+## Follow-up Liquid validation
+
+See [liquid-validation-report.md](liquid-validation-report.md) for the current result.
+The prior native-quality failure was a synthetic pointer-enter/real pointer-leave
+race. The smoke now moves the physical cursor and asserts every sampled detail
+frame stays visible; all three themes pass. Two monitors/four edges, ten reloads
+and a three-minute resource observation also pass within their documented scope.
+
+`liquid-native-benchmark.py` performs a frontend ABBA comparison on the same current
+native backend; `--gpu` adds coarse engine counters. The baseline ref must be pinned
+for reproducibility. `liquid-environment-smoke.py --seconds 180` records geometry,
+reload recovery and bounded resource observations. `liquid-events-native-smoke.py
+--screenshots --latency-samples 20` records actual changed-pixel latency and external
+capture visibility. Run these native checks sequentially in the isolated preview.
+
+External capture is a remaining limitation: during continuous background changes,
+8/20 and 11/20 local OS screenshots omitted the notch in two short samples, despite
+normal appearance after exclusion release. Do not claim screen-sharing compatibility
+from a settled screenshot or a WDA_NONE sample alone.
+
+## WGC session exclusion experiment
+
+`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/liquid-wgc-capability.ps1`
+builds a standalone MSVC probe in `tmp/liquid-wgc-capability` and queries the real
+monitor capture session without starting capture. Add `-CaptureTest` to display
+two small nonactivating test windows for six seconds and compare filtered WGC,
+unfiltered WGC, and GDI samples. The app is not modified or launched.
+
+After building, `tmp/liquid-wgc-capability/probe.exe --control` omits the exclusion
+list: expected exit code is 1 with every own frame failing background detection,
+while external/GDI foreground checks remain clean. This is a negative control,
+not a product regression. See [scope and measured results](liquid-screen-sharing-review.md).
+
+The actual-notch debug preview is documented in [windows-dev.md](windows-dev.md).
+`liquid-events-native-smoke.py --screenshots --screen-samples 100 --require-visible`
+makes screenshot omissions and any observed nonzero affinity hard failures.
+Run with `--latency-samples 20` to measure changed-pixel arrival as well. This
+checks local OS screenshots, not an external conferencing application's stream.
+
+For backend performance, close CDP 9223 and run `python -X utf8
+scripts/liquid-backend-comparison.py` with Vite on 1524. This restarts only its own
+isolated preview in GDI/WGC/WGC/GDI order with the same renderer. `--raw-gpu` runs
+a separate GDI/WGC comparison using raw GPU timer differences and adds an
+outside-notch change workload. Per-engine sums are not whole-GPU utilization.
+
+Compile the standalone C++ probe, then add `--observer --screen-samples 300` to the
+native event smoke to check a separate recording process. `--observer-control`
+hides notch rendering and expects all 200 observer frames to report absence;
+do not combine this negative control with `--require-visible`.
+`python -X utf8 scripts/liquid-wgc-recovery-smoke.py` temporarily moves only the
+verified debug preview beyond the virtual desktop, restores it in a finally
+block, and tests failure/reload and 20 concurrent capture resets. It also places
+a two-color static fixture behind the preview and verifies exact RGBA for 40
+alternating surface requests with distinct positions, sizes and generations.
+Run native
+checks sequentially. See [measured results and limits](liquid-wgc-deep-validation.md).
+
+For live drag, run `python -X utf8 scripts/liquid-live-drag-smoke.py` with the
+isolated WGC preview and `TOKENUSAGE_CAPTURE_DEBUG=1`. It uses actual pointer
+movement over a two-color striped backdrop and checks fresh pixels, exact final
+ROI color, unchanged filter, zero same-monitor session restarts, affinity 0 and
+release repaint. It restores placement after the check. The current fixture
+uses the primary monitor at (0, 0). Run `scripts/notch-seam-drag.py` separately
+for repeated crossings on the local two-monitor arrangement.
+
+`python -X utf8 scripts/liquid-drag-geometry-smoke.py` checks actual Liquid CSS
+through drag-armed/dragging transitions with a paused browser clock. Background
+geometry must remain unchanged; docking animation must still work after release
+and stop if the user immediately grabs the notch again. No running dev server is
+required for this CSS regression check.
+
+### v0.5.18 release backend policy
+
+WGC and official borderless access are enabled by default, including debug builds.
+Legacy GDI comparisons must explicitly set `TOKENUSAGE_WGC_PREVIEW=0`; release
+builds ignore that override. Unsupported/denied WGC leaves the base material and
+reports capture unavailable, without automatic GDI fallback. Historical preview
+commands using `=1` still select WGC. See `docs/windows-dev.md`.

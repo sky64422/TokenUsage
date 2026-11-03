@@ -11,9 +11,17 @@ export function createLiquidLoop<T>(io: {
 }) {
   let requested = false, enabled = false, destroyed = false, busy = false;
   let releasePending = false, epoch = 0, frame = 0, due = -Infinity, previousInterval = -1;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  function cancelScheduled() {
+    io.cancel(frame); frame = 0;
+    clearTimeout(timer); timer = undefined;
+  }
   function schedule() {
-    if (enabled && !destroyed && !frame && previousInterval !== Infinity) {
-      frame = io.request(tick);
+    if (enabled && !destroyed && !busy && !frame && timer === undefined && previousInterval !== Infinity) {
+      const delay = due - performance.now();
+      if (delay > 0) {
+        timer = setTimeout(() => { timer = undefined; frame = io.request(tick); }, delay);
+      } else frame = io.request(tick);
     }
   }
   async function release() {
@@ -23,11 +31,12 @@ export function createLiquidLoop<T>(io: {
   }
   function tick(now: number) {
     frame = 0;
+    clearTimeout(timer); timer = undefined;
     if (!enabled || destroyed) return;
     const interval = io.interval(now);
     if (interval !== previousInterval) { due = now; previousInterval = interval; }
-    schedule();
-    if (busy || now < due) return;
+    if (busy) return;
+    if (now < due) { schedule(); return; }
     // Preserve fractional frame time; missed refreshes must not accumulate queued reads.
     due = Math.max(due, now - interval) + interval;
     busy = true;
@@ -40,13 +49,18 @@ export function createLiquidLoop<T>(io: {
       } catch (error) {
         if (generation === epoch) {
           enabled = false; epoch++;
-          io.cancel(frame); frame = 0;
+          cancelScheduled();
           io.fail(error);
         }
         releasePending = true;
       } finally {
         await release();
         busy = false;
+        if (due !== -Infinity) {
+          const nextInterval = io.interval(performance.now());
+          if (nextInterval !== previousInterval) due = now + nextInterval;
+          previousInterval = nextInterval;
+        }
         schedule();
       }
     })();
@@ -55,7 +69,7 @@ export function createLiquidLoop<T>(io: {
     if (destroyed || requested === value) return;
     requested = enabled = value; epoch++;
     if (value) { due = -Infinity; previousInterval = -1; schedule(); return; }
-    io.cancel(frame); frame = 0; releasePending = true;
+    cancelScheduled(); releasePending = true;
     if (!busy) {
       busy = true;
       void release().finally(() => { busy = false; schedule(); });
@@ -66,8 +80,9 @@ export function createLiquidLoop<T>(io: {
     refresh() {
       due = -Infinity;
       previousInterval = -1;
-      if (enabled && !destroyed && !frame) frame = io.request(tick);
+      clearTimeout(timer); timer = undefined;
+      schedule();
     },
-    destroy() { setEnabled(false); destroyed = true; io.cancel(frame); frame = 0; },
+    destroy() { setEnabled(false); destroyed = true; cancelScheduled(); },
   };
 }

@@ -61,6 +61,7 @@ pub fn run() {
 
             app.manage(handle_state);
             app.manage(infrastructure::liquid_glass::LiquidBackdrop::default());
+            infrastructure::liquid_events::start(app.handle().clone());
             infrastructure::activity::start(app.handle());
             app.manage(infrastructure::notch_window::NotchController::default());
             infrastructure::notch_window::start(app.handle().clone());

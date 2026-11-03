@@ -30,6 +30,13 @@ struct Lease {
 /// Navigation restores normal screen sharing even if the previous renderer died.
 pub fn reset_on_load(view: &tauri::Webview) {
     if let Some(window) = view.get_webview_window("main") {
+        #[cfg(windows)]
+        if super::liquid_wgc::enabled() {
+            if let Err(error) = destroy_liquid_backdrop(window) {
+                eprintln!("WGC navigation reset: {error}");
+            }
+            return;
+        }
         if let Err(error) = release_liquid_backdrop(window) {
             eprintln!("Liquid backdrop reset: {error}");
         }
@@ -49,11 +56,18 @@ pub fn log_capture_event(
 
 #[tauri::command]
 pub fn release_liquid_backdrop(window: WebviewWindow) -> Result<(), String> {
+    #[cfg(windows)]
+    if super::liquid_wgc::enabled() {
+        return Ok(());
+    }
     if let Some(state) = window.try_state::<LiquidBackdrop>() {
         let mut guard = state.0.lock().map_err(|e| e.to_string())?;
         if guard.in_flight > 0 {
             guard.release_pending = true;
-            crate::infrastructure::capture_log::log_event("RELEASE", "release_liquid_backdrop queued (in_flight > 0)");
+            crate::infrastructure::capture_log::log_event(
+                "RELEASE",
+                "release_liquid_backdrop queued (in_flight > 0)",
+            );
             return Ok(());
         }
         if let Some(lease) = guard.lease.take() {
@@ -182,7 +196,7 @@ pub async fn capture_liquid_backdrop(
     height: u32,
     surface: Option<u8>,
     generation: Option<u64>,
-    _dragging: Option<bool>,
+    dragging: Option<bool>,
 ) -> Result<tauri::ipc::Response, String> {
     if !state.core.is_visible()
         || !matches!(
@@ -202,12 +216,31 @@ pub async fn capture_liquid_backdrop(
     #[cfg(windows)]
     {
         use windows::Win32::Graphics::Dwm::DwmFlush;
-        use windows::Win32::UI::WindowsAndMessaging::{
-            WDA_EXCLUDEFROMCAPTURE,
-        };
+        use windows::Win32::UI::WindowsAndMessaging::WDA_EXCLUDEFROMCAPTURE;
         let hwnd = window.hwnd().map_err(|e| e.to_string())?;
         let pos = window.inner_position().map_err(|e| e.to_string())?;
         let backdrop = window.state::<LiquidBackdrop>();
+        if super::liquid_wgc::enabled() {
+            let bytes = backdrop
+                .1
+                .frame(
+                    hwnd.0 as usize,
+                    FrameKey {
+                        // Resolve local coordinates on the capture worker so queued
+                        // requests follow the current HWND position during drag.
+                        x: x as i32,
+                        y: y as i32,
+                        width,
+                        height,
+                        generation: generation.unwrap_or(0),
+                    },
+                    surface,
+                    dragging.unwrap_or(false),
+                )
+                .await
+                .inspect_err(|e| state.core.note_diag(e.clone()))?;
+            return Ok(tauri::ipc::Response::new(bytes));
+        }
         {
             let mut guard = backdrop.0.lock().map_err(|e| e.to_string())?;
             if guard.lease.is_none() {
@@ -234,6 +267,7 @@ pub async fn capture_liquid_backdrop(
         let bytes = backdrop
             .1
             .frame(
+                hwnd.0 as usize,
                 FrameKey {
                     x: pos.x + x as i32,
                     y: pos.y + y as i32,
@@ -242,12 +276,17 @@ pub async fn capture_liquid_backdrop(
                     generation: generation.unwrap_or(0),
                 },
                 surface,
+                dragging.unwrap_or(false),
             )
             .await
             .inspect_err(|e| state.core.note_diag(e.clone()))?;
         crate::infrastructure::capture_log::log_event(
             "BACKDROP",
-            &format!("frame captured in {:?} (bytes={})", capture_start.elapsed(), bytes.len()),
+            &format!(
+                "frame captured in {:?} (bytes={})",
+                capture_start.elapsed(),
+                bytes.len()
+            ),
         );
         drop(_flight);
         Ok(tauri::ipc::Response::new(bytes))
@@ -289,11 +328,7 @@ mod tests {
     fn bounds_reject_zero_overflow_and_unbounded_pixel_allocations() {
         assert_eq!(valid_region(268, 372, 56, 376, 324, 1120), Ok(true));
         assert_eq!(valid_region(300, 0, 56, 1, 324, 1120), Ok(false));
-        for (x, y, w, h) in [
-            (0, 0, 0, 1),
-            (u32::MAX, 0, 1, 1),
-            (0, 0, 2048, 2048),
-        ] {
+        for (x, y, w, h) in [(0, 0, 0, 1), (u32::MAX, 0, 1, 1), (0, 0, 2048, 2048)] {
             assert!(valid_region(x, y, w, h, 324, 1120).is_err());
         }
     }
