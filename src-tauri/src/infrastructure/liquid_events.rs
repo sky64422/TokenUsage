@@ -1,6 +1,18 @@
 //! Window-event hints for the GDI backdrop; the heartbeat covers pixel-only changes.
 use super::liquid_capture::FrameKey;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
+use tauri::Emitter;
+
+static APP: OnceLock<tauri::AppHandle> = OnceLock::new();
+
+/// Pixel-only WGC changes use the existing coalesced renderer hint.
+pub fn notify_frame() {
+    if let Some(app) = APP.get() {
+        if let Err(error) = app.emit("liquid-backdrop-changed", ()) {
+            eprintln!("Liquid frame event: {error}");
+        }
+    }
+}
 
 static REGIONS: Mutex<[Option<FrameKey>; 2]> = Mutex::new([None, None]);
 
@@ -137,6 +149,7 @@ mod platform {
     }
 
     pub fn start(app: tauri::AppHandle) {
+        let _ = APP.set(app.clone());
         // Out-of-context hooks require a message loop on their installing thread.
         if let Err(error) = std::thread::Builder::new()
             .name("liquid-events".into())

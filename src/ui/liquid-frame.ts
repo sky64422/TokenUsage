@@ -1,11 +1,12 @@
 const HEADER_BYTES = 12;
-const MAX_PIXELS = 1_048_576;
+// Matches native MAX_PADDED_FRAME_PIXELS; content requests retain their 1 Mi-pixel cap.
+const MAX_PADDED_PIXELS = 4_194_304;
 /** Validate dimensions before exposing the native RGBA buffer; no Blob or decoder. */
 export function decodeLiquidFrame(data: ArrayBuffer, width: number, height: number): Uint8ClampedArray {
   if (data.byteLength < HEADER_BYTES) throw Error("Truncated Liquid frame");
   const v = new DataView(data);
   if (v.getUint32(0, false) !== 0x4c513031 || !Number.isInteger(width) || !Number.isInteger(height)
-      || width <= 0 || height <= 0 || width * height > MAX_PIXELS
+      || width <= 0 || height <= 0 || width * height > MAX_PADDED_PIXELS
       || v.getUint32(4, true) !== width || v.getUint32(8, true) !== height
       || data.byteLength !== HEADER_BYTES + width * height * 4) {
     throw Error("Invalid Liquid frame");

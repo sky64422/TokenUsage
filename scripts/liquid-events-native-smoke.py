@@ -41,7 +41,9 @@ with sync_playwright() as p:
       window.captureSamples=[];window.windowEvents=[];
       const original=CanvasRenderingContext2D.prototype.putImageData;
       CanvasRenderingContext2D.prototype.putImageData=function(image,...args){
-        window.captureSamples.push({at:Date.now(),bytes:image.data.length,rgb:[...image.data.slice(0,3)]});
+        // Blur support can extend beyond the fixture; observe its visible center.
+        const center=(Math.floor(image.height/2)*image.width+Math.floor(image.width/2))*4;
+        window.captureSamples.push({at:Date.now(),bytes:image.data.length,rgb:[...image.data.slice(center,center+3)]});
         return original.call(this,image,...args);
       };
       window.stopEvents=await window.__TAURI__.event.listen('liquid-backdrop-changed',()=>window.windowEvents.push(Date.now()));

@@ -105,6 +105,74 @@ afterEach(() => {
 });
 
 describe("Liquid desktop capture lifecycle", () => {
+  it("rechecks a pending frame hint after an intervening regular capture", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+    try {
+      let tick!: (time: number) => void;
+      const request = vi.fn((cb: (time: number) => void) => { tick = cb; return 1; });
+      vi.stubGlobal("requestAnimationFrame", request);
+      invoke.mockImplementation(command => Promise.resolve(command === "capture_liquid_backdrop" ? new ArrayBuffer(0) : undefined));
+      const { renderer, detail } = fixture(); detail.hidden = true;
+      renderer.setEnabled(true); tick(performance.now());
+      await vi.advanceTimersByTimeAsync(0);
+      renderer.refresh();
+      await vi.advanceTimersByTimeAsync(15);
+      // A scheduled RAF arrives just before the event timer.
+      tick(performance.now() + 2);
+      await vi.advanceTimersByTimeAsync(0);
+      request.mockClear();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(request).not.toHaveBeenCalled();
+      renderer.destroy();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("captures real blur support without changing the logical surface request", async () => {
+    let tick!: (time: number) => void;
+    vi.stubGlobal("requestAnimationFrame", (cb: (time: number) => void) => { tick = cb; return 1; });
+    invoke.mockImplementation(command => Promise.resolve(command === "capture_liquid_backdrop" ? new ArrayBuffer(0) : undefined));
+    const { renderer, detail } = fixture();
+    renderer.setEnabled(true);
+    tick(performance.now());
+    await settle();
+    expect(invoke).toHaveBeenCalledWith("capture_liquid_backdrop", expect.objectContaining({
+      surface: 0, width: 128, height: 600, padding: 84, cachePadding: 144, activeSurfaces: 3,
+    }));
+    expect(invoke).toHaveBeenCalledWith("capture_liquid_backdrop", expect.objectContaining({
+      surface: 1, padding: 144,
+    }));
+    detail.hidden = true;
+    invoke.mockClear();
+    renderer.relayout();
+    tick(performance.now() + 20);
+    await settle();
+    expect(invoke).toHaveBeenCalledWith("capture_liquid_backdrop", expect.objectContaining({
+      surface: 0, activeSurfaces: 1,
+    }));
+    expect(invoke).not.toHaveBeenCalledWith("capture_liquid_backdrop", expect.objectContaining({surface: 1}));
+    renderer.destroy();
+  });
+
+  it("coalesces pixel-arrival hints but wakes within one 60 Hz interval", async () => {
+    vi.useFakeTimers();
+    try {
+      let tick!: (time: number) => void;
+      const request = vi.fn((cb: (time: number) => void) => { tick = cb; return 1; });
+      vi.stubGlobal("requestAnimationFrame", request);
+      invoke.mockImplementation(command => Promise.resolve(command === "capture_liquid_backdrop" ? new ArrayBuffer(0) : undefined));
+      const { renderer, detail } = fixture();
+      detail.hidden = true;
+      renderer.setEnabled(true);
+      tick(performance.now());
+      await vi.advanceTimersByTimeAsync(0);
+      request.mockClear();
+      for (let i = 0; i < 100; i++) renderer.refresh();
+      await vi.advanceTimersByTimeAsync(17);
+      expect(request).toHaveBeenCalledTimes(1);
+      renderer.destroy();
+    } finally { vi.useRealTimers(); }
+  });
+
   it("leaves the base material visible when native capture is unavailable", async () => {
     let frameCb!: (time: number) => void;
     vi.stubGlobal("requestAnimationFrame", (cb: (time: number) => void) => { frameCb = cb; return 1; });

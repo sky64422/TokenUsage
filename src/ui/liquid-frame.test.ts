@@ -24,3 +24,11 @@ test('bright backdrops receive a stronger neutral wash while dark backdrops reta
  const luminance=((whiteThroughGlass/255+.055)/1.055)**2.4;
  expect((1.05)/(luminance+.05)).toBeGreaterThanOrEqual(4.5);
 });
+
+test('padded high-DPI details decode within a separate bounded buffer budget',()=>{
+ const width=808,height=1488;
+ const data=new ArrayBuffer(12+width*height*4),v=new DataView(data);
+ v.setUint32(0,0x4c513031,false);v.setUint32(4,width,true);v.setUint32(8,height,true);
+ expect(decodeLiquidFrame(data,width,height).length).toBe(width*height*4);
+ expect(()=>decodeLiquidFrame(data,4096,4096)).toThrow();
+});

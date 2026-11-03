@@ -65,7 +65,10 @@ with sync_playwright() as p:
       window.dragPaints=[];
       const put=CanvasRenderingContext2D.prototype.putImageData;
       CanvasRenderingContext2D.prototype.putImageData=function(image,...args){
-        window.dragPaints.push({at:performance.now(),rgb:[...image.data.slice(0,3)],dragging:document.querySelector('.notch').classList.contains('is-dragging')});
+        const rail=document.querySelector('.notch');
+        const padding=Math.max(0,(image.width-Math.round(rail.offsetWidth*devicePixelRatio))/2);
+        const origin=(Math.round(padding)*image.width+Math.round(padding))*4;
+        window.dragPaints.push({at:performance.now(),rgb:[...image.data.slice(origin,origin+3)],dragging:rail.classList.contains('is-dragging')});
         return put.call(this,image,...args);
       };
     }''')

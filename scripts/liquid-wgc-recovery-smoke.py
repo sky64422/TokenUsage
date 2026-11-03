@@ -84,24 +84,32 @@ with sync_playwright() as p:
         alternating = page.evaluate('''async()=>{
       let frames=0;
       for(let i=0;i<40;i++) {
-        const surface=i%2,width=surface?16:8,height=surface?12:8;
+        const surface=i%2,width=surface?16:8,height=surface?12:8,padding=(i%3)*2;
+        const outputWidth=width+2*padding,outputHeight=height+2*padding;
         const expected=surface?[25,92,218]:[220,48,32];
         const deadline=performance.now()+3000;
         let bytes,correct=false;
         do {
           bytes=new Uint8Array(await window.__TAURI__.core.invoke('capture_liquid_backdrop',
-            {x:surface?40:8,y:8,width,height,surface,generation:910000+i}));
-          correct=bytes.length===12+width*height*4 &&
+            {x:surface?40:8,y:8,width,height,padding,surface,generation:910000+i}));
+          correct=bytes.length===12+outputWidth*outputHeight*4 &&
             bytes.slice(12).every((value,index)=>value===(index%4===3?255:expected[index%4]));
           if(correct) break;
           await new Promise(requestAnimationFrame);
         } while(performance.now()<deadline);
         if(!correct) throw new Error(`Wrong static ROI pixels ${i}: ${[...bytes.slice(12,16)]}`);
         const header=new DataView(bytes.buffer);
-        if(bytes.length!==12+width*height*4 || String.fromCharCode(...bytes.slice(0,4))!=='LQ01'
-           || header.getUint32(4,true)!==width || header.getUint32(8,true)!==height)
+        if(bytes.length!==12+outputWidth*outputHeight*4 || String.fromCharCode(...bytes.slice(0,4))!=='LQ01'
+           || header.getUint32(4,true)!==outputWidth || header.getUint32(8,true)!==outputHeight)
           throw new Error(`Invalid alternating surface frame ${i}: ${bytes.length}`);
         frames++;
+      }
+      // Raw diagnostic callers do not opt into empty cache-hit responses.
+      for(let i=0;i<2;i++) {
+        const raw=new Uint8Array(await window.__TAURI__.core.invoke('capture_liquid_backdrop',
+          {x:8,y:8,width:8,height:8}));
+        if(raw.length!==54+8*8*4 || raw[0]!==66 || raw[1]!==77)
+          throw new Error(`Raw snapshot cache regression: ${raw.length}`);
       }
       return frames;
     }''')
@@ -112,6 +120,7 @@ with sync_playwright() as p:
     page.wait_for_function('document.querySelector(".notch-shell")?.dataset.liquidStatus==="ready"')
     result = {'invalid_monitor_error': failure, 'failure_affinity': affinity.value,
               'restored_ready': True, 'concurrent_resets': 20, 'fresh_frame_bytes': reset_bytes,
-              'alternating_surface_generations': alternating}
+              'alternating_surface_generations': alternating, 'padding_variants': [0,2,4], 'raw_snapshots': 2}
+    (ROOT/'tmp/liquid-wgc-capability').mkdir(parents=True, exist_ok=True)
     (ROOT/'tmp/liquid-wgc-capability/recovery-result.json').write_text(json.dumps(result,indent=2))
     print(json.dumps(result))

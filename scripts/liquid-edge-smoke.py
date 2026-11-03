@@ -23,7 +23,8 @@ with sync_playwright() as p:
         if(args.surface===1 && window.holdDetail){
           await new Promise(resolve=>window.releaseDetail=resolve);
         }
-        const {width,height}=args, bytes=new Uint8Array(12+width*height*4), view=new DataView(bytes.buffer);
+        const width=args.width+2*(args.padding??0), height=args.height+2*(args.padding??0);
+        const bytes=new Uint8Array(12+width*height*4), view=new DataView(bytes.buffer);
         view.setUint32(0,0x4c513031,false);view.setUint32(4,width,true);view.setUint32(8,height,true);
         for(let i=12;i<bytes.length;i+=4){bytes[i]=100;bytes[i+1]=110;bytes[i+2]=120;bytes[i+3]=255;}
         return bytes.buffer;

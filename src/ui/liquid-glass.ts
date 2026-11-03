@@ -10,7 +10,7 @@ const MATERIALS = {
   liquid: { bezel: 28, displacement: 0, dispersion: [.93, 1, 1.07], blur: [2.5, 8], saturation: 1.08, brightness: 1.03 },
 };
 
-const IDLE_FRAME_MS = 1000 / 30;
+const IDLE_FRAME_MS = 1000 / 60;
 const DRAG_FRAME_MS = 1000 / 60;
 const REDUCED_FRAME_MS = 250;
 const SETTLING_FRAME_MS = 100;
@@ -152,20 +152,8 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
             scratch.height = height;
           }
           scratch.getContext("2d", { alpha: false })!.putImageData(image, 0, 0);
-          const pad = entry.padding;
-          const w = entry.canvas.width - pad * 2, h = entry.canvas.height - pad * 2;
-          ctx.drawImage(scratch, 0, 0, width, height, pad, pad, w, h);
-          if (pad) {
-            // Duplicate edge pixels so the blur cannot mix with transparency.
-            ctx.drawImage(scratch, 0, 0, 1, height, 0, pad, pad, h);
-            ctx.drawImage(scratch, width - 1, 0, 1, height, pad + w, pad, pad, h);
-            ctx.drawImage(scratch, 0, 0, width, 1, pad, 0, w, pad);
-            ctx.drawImage(scratch, 0, height - 1, width, 1, pad, pad + h, w, pad);
-            ctx.drawImage(scratch, 0, 0, 1, 1, 0, 0, pad, pad);
-            ctx.drawImage(scratch, width - 1, 0, 1, 1, pad + w, 0, pad, pad);
-            ctx.drawImage(scratch, 0, height - 1, 1, 1, 0, pad + h, pad, pad);
-            ctx.drawImage(scratch, width - 1, height - 1, 1, 1, pad + w, pad + h, pad, pad);
-          }
+          // The native image includes real desktop pixels around the blur footprint.
+          ctx.drawImage(scratch, 0, 0, width, height, 0, 0, entry.canvas.width, entry.canvas.height);
         }
         entry.layer.hidden = false;
         painted = true;
@@ -321,10 +309,11 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
   async function capture(): Promise<CapturedFrame[]> {
     lastCaptureAt = performance.now();
     const frames: CapturedFrame[] = [];
+    const activeSurfaces = (!rail.hidden && !rail.classList.contains("is-folded") ? 1 : 0)
+      | (!detail.hidden && !rail.classList.contains("is-dragging") ? 2 : 0);
     try {
       for (const entry of entries) {
-        if (entry.slot === 1 && rail.classList.contains("is-dragging")) continue;
-        if (entry.surface.hidden || (entry.surface === rail && rail.classList.contains("is-folded"))) continue;
+        if (!(activeSurfaces & (1 << entry.slot))) continue;
         const rect = entry.surface.getBoundingClientRect();
         const width = Math.round(entry.surface.offsetWidth || rect.width);
         const height = Math.round(entry.surface.offsetHeight || rect.height);
@@ -343,13 +332,17 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
         if (w <= 0 || h <= 0) continue;
 
         const dragging = rail.classList.contains("is-dragging");
+        const padding = materialTheme === "liquid"
+          ? Math.ceil(LIQUID_BLUR_PX[entry.slot] * BLUR_EDGE_PADDING_FACTOR * ratio) : 0;
+        const cachePadding = materialTheme === "liquid"
+          ? Math.ceil(Math.max(...LIQUID_BLUR_PX) * BLUR_EDGE_PADDING_FACTOR * ratio) : 0;
         const data = await invoke<ArrayBuffer>("capture_liquid_backdrop", {
-          x, y, width: w, height: h, surface: entry.slot, generation, dragging,
+          x, y, width: w, height: h, surface: entry.slot, generation, dragging, padding, cachePadding, activeSurfaces,
         });
         if (!data.byteLength) continue;
         if (entry.key !== key || entry.generation !== generation) continue;
-        const pixels = decodeLiquidFrame(data, w, h);
-        frames.push({ entry, pixels, width: w, height: h, logicalWidth: width, logicalHeight: height, key, generation });
+        const pixels = decodeLiquidFrame(data, w + padding * 2, h + padding * 2);
+        frames.push({ entry, pixels, width: w + padding * 2, height: h + padding * 2, logicalWidth: width, logicalHeight: height, key, generation });
       }
       return frames;
     } catch (error) {
@@ -365,14 +358,19 @@ export function mountLiquidGlass(shell: HTMLElement, rail: HTMLElement, detail: 
     refresh() {
       // Window events are hints: only changed pixels prolong the fast cadence.
       if (!enabled || !nativeVisible || document.hidden || destroyed) return;
-      const now = performance.now();
-      const delay = Math.max(lastEventRefresh, lastCaptureAt) + (motion.matches ? REDUCED_FRAME_MS : IDLE_FRAME_MS) - now;
       if (eventTimer !== undefined) return;
-      eventTimer = setTimeout(() => {
+      const wake = () => {
+        const now = performance.now();
+        const delay = Math.max(lastEventRefresh, lastCaptureAt)
+          + (motion.matches ? REDUCED_FRAME_MS : IDLE_FRAME_MS) - now;
+        // A normal capture may have run while this hint was waiting. Recheck
+        // its deadline so the hint cannot bypass the active frame-rate ceiling.
+        if (delay > 0) { eventTimer = setTimeout(wake, Math.ceil(delay)); return; }
         eventTimer = undefined;
-        lastEventRefresh = performance.now();
+        lastEventRefresh = now;
         loop.refresh();
-      }, Math.max(0, delay));
+      };
+      wake();
     },
     relayout() {
       // Ignore position-only events, but invalidate an in-flight image as soon

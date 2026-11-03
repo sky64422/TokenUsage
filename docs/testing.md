@@ -1,5 +1,19 @@
 # Testing and performance verification
 
+## Liquid pixel-only motion (2026-11-04)
+
+With the isolated WGC preview on CDP 9223, run
+`python -X utf8 scripts/liquid-motion-smoke.py --label final --require-responsive`.
+It checks six brief pixel-only pulses after idle, a moving bar, actual surrounding
+blur pixels and first detail opening. It verifies the preview identifier and
+executable before changing settings. Native fixtures deliberately pace real
+desktop motion; unit timing tests use fake clocks.
+
+Run native checks sequentially. `liquid-wgc-recovery-smoke.py` now also checks
+padded ROI generations and repeated raw snapshots. Browser/native fixtures use
+padded transport dimensions and sample visible content instead of blur margins.
+See [results, resource costs and limits](liquid-motion-validation.md).
+
 The sections dated below are historical evidence, not proof of the current build.
 In particular, the current `liquid-glass.ts` uses canvas capture, while some older
 material sections describe a Windows Composition implementation. The older

@@ -1,12 +1,12 @@
 //! Live desktop capture and backdrop lease management.
-use super::liquid_capture::{CaptureWorker, FrameKey};
+use super::liquid_capture::{CapturePadding, CaptureWorker, FrameKey};
 use crate::domain::types::AppTheme;
 use crate::state::AppHandleState;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::{Manager, State, WebviewWindow};
 
-const MAX_CAPTURE_PIXELS: u64 = 1_048_576;
+const MAX_CAPTURE_PIXELS: u64 = super::liquid_capture::MAX_FRAME_PIXELS;
 const CAPTURE_LEASE: Duration = Duration::from_millis(80);
 const LEASE_CHECK: Duration = Duration::from_millis(20);
 
@@ -197,6 +197,9 @@ pub async fn capture_liquid_backdrop(
     surface: Option<u8>,
     generation: Option<u64>,
     dragging: Option<bool>,
+    padding: Option<u32>,
+    cache_padding: Option<u32>,
+    active_surfaces: Option<u8>,
 ) -> Result<tauri::ipc::Response, String> {
     if !state.core.is_visible()
         || !matches!(
@@ -209,6 +212,21 @@ pub async fn capture_liquid_backdrop(
     if surface.is_some_and(|s| s > 1) || (surface.is_some() && generation.is_none()) {
         return Err("Invalid Liquid surface generation".into());
     }
+    let image_padding = padding.unwrap_or(0);
+    let padding = CapturePadding {
+        image: image_padding,
+        cache: cache_padding.unwrap_or(image_padding),
+    };
+    super::liquid_capture::padded_key(
+        FrameKey {
+            x: 0,
+            y: 0,
+            width,
+            height,
+            generation: 0,
+        },
+        padding.image,
+    )?;
     let size = window.inner_size().map_err(|e| e.to_string())?;
     if !valid_region(x, y, width, height, size.width, size.height)? {
         return Ok(tauri::ipc::Response::new(Vec::<u8>::new()));
@@ -236,6 +254,8 @@ pub async fn capture_liquid_backdrop(
                     },
                     surface,
                     dragging.unwrap_or(false),
+                    padding,
+                    active_surfaces.unwrap_or(3),
                 )
                 .await
                 .inspect_err(|e| state.core.note_diag(e.clone()))?;
@@ -277,6 +297,8 @@ pub async fn capture_liquid_backdrop(
                 },
                 surface,
                 dragging.unwrap_or(false),
+                padding,
+                active_surfaces.unwrap_or(3),
             )
             .await
             .inspect_err(|e| state.core.note_diag(e.clone()))?;

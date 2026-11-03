@@ -7,6 +7,8 @@ use tokio::sync::oneshot;
 
 const FRAME_HEADER: usize = 12;
 pub(super) const MAX_FRAME_PIXELS: u64 = 1_048_576;
+// Blur support is additional to the established content budget (e.g. 200% DPI).
+pub(super) const MAX_PADDED_FRAME_PIXELS: u64 = MAX_FRAME_PIXELS * 4;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FrameKey {
@@ -15,6 +17,45 @@ pub struct FrameKey {
     pub width: u32,
     pub height: u32,
     pub generation: u64,
+}
+
+/// Image support and session reserve differ so first detail opening needs no new desktop frame.
+#[derive(Clone, Copy, Default)]
+pub struct CapturePadding {
+    pub image: u32,
+    pub cache: u32,
+}
+
+/// Three blur radii at high DPI; reject oversized IPC requests before allocation.
+pub const MAX_CAPTURE_PADDING: u32 = 512;
+pub fn padded_key(key: FrameKey, padding: u32) -> Result<FrameKey, String> {
+    if padding > MAX_CAPTURE_PADDING {
+        return Err("Invalid Liquid capture padding".into());
+    }
+    let width = key
+        .width
+        .checked_add(padding * 2)
+        .ok_or("Liquid padding overflow")?;
+    let height = key
+        .height
+        .checked_add(padding * 2)
+        .ok_or("Liquid padding overflow")?;
+    if u64::from(width) * u64::from(height) > MAX_PADDED_FRAME_PIXELS {
+        return Err("Invalid padded Liquid dimensions".into());
+    }
+    Ok(FrameKey {
+        x: key
+            .x
+            .checked_sub(padding as i32)
+            .ok_or("Liquid padding origin overflow")?,
+        y: key
+            .y
+            .checked_sub(padding as i32)
+            .ok_or("Liquid padding origin overflow")?,
+        width,
+        height,
+        ..key
+    })
 }
 
 #[derive(Default)]
@@ -29,7 +70,7 @@ impl FrameCache {
     }
     pub fn frame(&mut self, key: FrameKey, bgra: &[u8]) -> Result<Vec<u8>, String> {
         let count = u64::from(key.width) * u64::from(key.height);
-        if count == 0 || count > MAX_FRAME_PIXELS || bgra.len() != count as usize * 4 {
+        if count == 0 || count > MAX_PADDED_FRAME_PIXELS || bgra.len() != count as usize * 4 {
             return Err("Invalid Liquid pixel buffer".into());
         }
         // Most idle desktops are byte-identical. Compare in bulk before converting pixels.
@@ -68,25 +109,31 @@ struct Job {
     key: FrameKey,
     surface: Option<usize>,
     dragging: bool,
+    padding: CapturePadding,
+    active_surfaces: u8,
     reply: oneshot::Sender<Result<Vec<u8>, String>>,
 }
 enum Message {
     Capture(Job),
+    FrameReady,
     Reset,
 }
 #[derive(Default)]
 pub struct CaptureWorker {
-    sender: Mutex<Option<mpsc::SyncSender<Message>>>,
+    sender: Mutex<Option<Arc<mpsc::SyncSender<Message>>>>,
     epoch: Arc<AtomicU64>,
 }
 impl CaptureWorker {
-    fn sender(&self) -> Result<mpsc::SyncSender<Message>, String> {
+    fn sender(&self) -> Result<Arc<mpsc::SyncSender<Message>>, String> {
         let mut sender = self.sender.lock().map_err(|e| e.to_string())?;
         if let Some(sender) = &*sender {
             return Ok(sender.clone());
         }
         let (tx, rx) = mpsc::sync_channel(2);
         let epoch = self.epoch.clone();
+        // A weak sender avoids keeping the worker alive through its own callback.
+        let frame_sender = Arc::new(tx.clone());
+        let wake_sender = Arc::downgrade(&frame_sender);
         std::thread::Builder::new()
             .name("liquid-capture".into())
             .spawn(move || {
@@ -94,7 +141,15 @@ impl CaptureWorker {
                 #[cfg(windows)]
                 let mut surfaces: [Option<Surface>; 2] = [None, None];
                 #[cfg(windows)]
-                let mut wgc = super::liquid_wgc::WgcCapture::default();
+                let wake: Arc<dyn Fn() + Send + Sync> = Arc::new(move || {
+                    if let Some(sender) = wake_sender.upgrade() {
+                        // Full means a read/reset already wakes the worker; source frames
+                        // stay in the bounded WGC pool until that request drains them.
+                        let _ = sender.try_send(Message::FrameReady);
+                    }
+                });
+                #[cfg(windows)]
+                let mut wgc = super::liquid_wgc::WgcCapture::new(wake.clone());
                 #[cfg(windows)]
                 let apartment = if super::liquid_wgc::enabled() {
                     unsafe {
@@ -129,12 +184,23 @@ impl CaptureWorker {
                         #[cfg(windows)]
                         {
                             surfaces = [None, None];
-                            wgc = Default::default();
+                            wgc = super::liquid_wgc::WgcCapture::new(wake.clone());
                         }
                         applied_epoch = current_epoch;
                     }
                     match message {
                         Message::Reset => {}
+                        Message::FrameReady => {
+                            #[cfg(windows)]
+                            {
+                                // Source frames can keep the queue busy even after a
+                                // renderer disappears; expiry cannot depend on timeout.
+                                wgc.expire_idle();
+                                if wgc.refresh() {
+                                    super::liquid_events::notify_frame();
+                                }
+                            }
+                        }
                         Message::Capture(job) => {
                             if job.epoch != current_epoch {
                                 // Cancellation is not a capture failure: the current renderer retries.
@@ -144,13 +210,19 @@ impl CaptureWorker {
                             #[cfg(windows)]
                             let result = if super::liquid_wgc::enabled() {
                                 match &apartment {
-                                    Ok(()) => {
-                                        wgc.capture(job.hwnd, job.key, job.surface, job.dragging)
-                                    }
+                                    Ok(()) => wgc.capture(
+                                        job.hwnd,
+                                        job.key,
+                                        job.surface,
+                                        job.dragging,
+                                        job.padding,
+                                        job.active_surfaces,
+                                    ),
                                     Err(error) => Err(format!("WGC apartment: {error}")),
                                 }
                             } else {
-                                capture(&mut surfaces, job.key, job.surface)
+                                padded_key(job.key, job.padding.image)
+                                    .and_then(|key| capture(&mut surfaces, key, job.surface))
                             };
                             #[cfg(not(windows))]
                             let result = {
@@ -172,8 +244,8 @@ impl CaptureWorker {
                 }
             })
             .map_err(|e| e.to_string())?;
-        *sender = Some(tx.clone());
-        Ok(tx)
+        *sender = Some(frame_sender.clone());
+        Ok(frame_sender)
     }
     pub async fn frame(
         &self,
@@ -181,8 +253,14 @@ impl CaptureWorker {
         key: FrameKey,
         surface: Option<u8>,
         dragging: bool,
+        padding: CapturePadding,
+        active_surfaces: u8,
     ) -> Result<Vec<u8>, String> {
-        if surface.is_some_and(|s| s > 1) {
+        if padding.image > padding.cache || padding.cache > MAX_CAPTURE_PADDING {
+            return Err("Invalid Liquid cache padding".into());
+        }
+        if active_surfaces > 3 || surface.is_some_and(|s| s > 1 || active_surfaces & (1 << s) == 0)
+        {
             return Err("Invalid Liquid surface".into());
         }
         let sender = self.sender()?;
@@ -193,6 +271,8 @@ impl CaptureWorker {
             key,
             surface: surface.map(usize::from),
             dragging,
+            padding,
+            active_surfaces,
             reply,
         })) {
             Ok(()) => {}
@@ -347,7 +427,7 @@ fn capture(
     slot: Option<usize>,
 ) -> Result<Vec<u8>, String> {
     let count = u64::from(key.width) * u64::from(key.height);
-    if count == 0 || count > MAX_FRAME_PIXELS {
+    if count == 0 || count > MAX_PADDED_FRAME_PIXELS {
         return Err("Invalid Liquid capture dimensions".into());
     }
     if let Some(slot) = slot {
@@ -370,7 +450,7 @@ mod lifecycle_tests {
     async fn capture_congestion_returns_no_frame_but_disconnect_is_an_error() {
         let (sender, receiver) = mpsc::sync_channel(2);
         let worker = CaptureWorker {
-            sender: Mutex::new(Some(sender)),
+            sender: Mutex::new(Some(Arc::new(sender))),
             epoch: Arc::new(AtomicU64::new(0)),
         };
         worker.reset().unwrap();
@@ -382,15 +462,23 @@ mod lifecycle_tests {
             height: 8,
             generation: 1,
         };
-        assert_eq!(worker.frame(0, key, Some(0), false).await, Ok(Vec::new()));
+        assert_eq!(
+            worker
+                .frame(0, key, Some(0), false, CapturePadding::default(), 3)
+                .await,
+            Ok(Vec::new())
+        );
         drop(receiver);
-        assert!(worker.frame(0, key, Some(0), false).await.is_err());
+        assert!(worker
+            .frame(0, key, Some(0), false, CapturePadding::default(), 3)
+            .await
+            .is_err());
     }
     #[test]
     fn repeated_reset_is_not_lost_when_worker_queue_is_full() {
         let (sender, receiver) = mpsc::sync_channel(2);
         let worker = CaptureWorker {
-            sender: Mutex::new(Some(sender)),
+            sender: Mutex::new(Some(Arc::new(sender))),
             epoch: Arc::new(AtomicU64::new(0)),
         };
         for _ in 0..5 {
