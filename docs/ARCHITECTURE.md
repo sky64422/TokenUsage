@@ -1,7 +1,7 @@
 # TokenUsage Architecture
 
 **Stack:** Tauri 2 + Rust + TypeScript (Vite), screen-edge notch with inward quota details.  
-**Current ship:** v0.5.2 — release notes: [docs/release.md](./release.md), GitHub [v0.5.2](https://github.com/sky64422/TokenUsage/releases/tag/v0.5.2).
+**Current ship:** v0.5.19 — release notes: [docs/release.md](./release.md), GitHub [v0.5.19](https://github.com/sky64422/TokenUsage/releases/tag/v0.5.19).
 
 **Product / visual context:** [PRODUCT.md](../PRODUCT.md) (Operate mode), [DESIGN.md](../DESIGN.md) (tokens + contracts), [docs/providers.md](./providers.md) (provider adapters).
 

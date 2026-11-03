@@ -1,7 +1,7 @@
 # Release & in-app updates
 
-**Updated:** 2026-11-03
-**Current public tag:** v0.5.18
+**Updated:** 2026-11-04
+**Current public tag:** v0.5.19
 
 **Audience:** maintainers publishing Windows builds that clients can install **and** self-update.  
 **Product:** TokenUsage (`com.tokenusage.app`)
@@ -12,6 +12,7 @@
 
 | Tag | Highlights |
 |-----|------------|
+| **v0.5.19** | Capture fast background scrolling promptly; use real surrounding pixels for Liquid blur edges |
 | **v0.5.18** | Preserve screenshot visibility with WGC; smooth live Liquid dragging and reduce idle capture work |
 | **v0.5.17** | Liquid transparency, edge and hover stability; restore drag-release animation |
 | **v0.5.16** | Liquid opacity controls background clarity and frosted glass intensity |
@@ -52,6 +53,18 @@
 | v0.1.24 | Opacity meter ticks; denser refresh chips |
 
 ---
+
+## v0.5.19 — 2026-11-04
+
+### Fixed
+
+- Liquid now responds to pixel-only background changes, including fast scrolling after the desktop has been still.
+- Blur edges use actual surrounding desktop pixels, reducing stretched scrollbar artifacts at notch boundaries.
+- Preserve live dragging, first detail rendering on a static desktop, and padded captures on high-DPI displays.
+
+### Changed
+
+- Active background updates can run up to 60 Hz; unchanged/hidden areas avoid unnecessary painting. More frequent and wider capture can increase CPU, GPU and memory use during motion. See [measured results and limits](liquid-motion-validation.md).
 
 ## What "publish" means
 
